@@ -259,6 +259,7 @@ export const Items = () => {
         category: showNewCategory ? newCategory : (formData.category || null),
         composition: formData.composition || null,
         offer: formData.offer || null,
+        special_offer: formData.special_offer || null,
         mrp: parseFloat(formData.mrp),
         rate: parseFloat(formData.rate),
         gst: parseFloat(formData.gst) || 0,

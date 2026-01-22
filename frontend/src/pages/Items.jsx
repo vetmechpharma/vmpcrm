@@ -1,0 +1,516 @@
+import { useState, useEffect } from 'react';
+import { itemsAPI } from '../lib/api';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Separator } from '../components/ui/separator';
+import { toast } from 'sonner';
+import { 
+  Plus, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Loader2,
+  Package,
+  X,
+  Save,
+  PlusCircle
+} from 'lucide-react';
+import { formatDate } from '../lib/utils';
+
+export const Items = () => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    item_name: '',
+    composition: '',
+    offer: '',
+    mrp: '',
+    rate: '',
+    gst: '',
+    custom_fields: [],
+  });
+
+  // New custom field state
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldValue, setNewFieldValue] = useState('');
+
+  useEffect(() => {
+    fetchItems();
+  }, [search]);
+
+  const fetchItems = async () => {
+    try {
+      const params = {};
+      if (search) params.search = search;
+      const response = await itemsAPI.getAll(params);
+      setItems(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      item_name: '',
+      composition: '',
+      offer: '',
+      mrp: '',
+      rate: '',
+      gst: '',
+      custom_fields: [],
+    });
+    setNewFieldName('');
+    setNewFieldValue('');
+  };
+
+  const handleSelectItem = (item) => {
+    setSelectedItem(item);
+    setFormData({
+      item_name: item.item_name,
+      composition: item.composition || '',
+      offer: item.offer || '',
+      mrp: item.mrp.toString(),
+      rate: item.rate.toString(),
+      gst: item.gst.toString(),
+      custom_fields: item.custom_fields || [],
+    });
+    setIsEditing(false);
+    setIsCreating(false);
+  };
+
+  const handleNewItem = () => {
+    setSelectedItem(null);
+    resetForm();
+    setIsCreating(true);
+    setIsEditing(false);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    if (isCreating) {
+      setIsCreating(false);
+      resetForm();
+    } else {
+      setIsEditing(false);
+      if (selectedItem) {
+        setFormData({
+          item_name: selectedItem.item_name,
+          composition: selectedItem.composition || '',
+          offer: selectedItem.offer || '',
+          mrp: selectedItem.mrp.toString(),
+          rate: selectedItem.rate.toString(),
+          gst: selectedItem.gst.toString(),
+          custom_fields: selectedItem.custom_fields || [],
+        });
+      }
+    }
+  };
+
+  const handleAddCustomField = () => {
+    if (!newFieldName.trim()) {
+      toast.error('Please enter a field name');
+      return;
+    }
+    setFormData({
+      ...formData,
+      custom_fields: [
+        ...formData.custom_fields,
+        { field_name: newFieldName.trim(), field_value: newFieldValue.trim() }
+      ]
+    });
+    setNewFieldName('');
+    setNewFieldValue('');
+  };
+
+  const handleRemoveCustomField = (index) => {
+    const updated = formData.custom_fields.filter((_, i) => i !== index);
+    setFormData({ ...formData, custom_fields: updated });
+  };
+
+  const handleUpdateCustomField = (index, field, value) => {
+    const updated = formData.custom_fields.map((cf, i) => 
+      i === index ? { ...cf, [field]: value } : cf
+    );
+    setFormData({ ...formData, custom_fields: updated });
+  };
+
+  const handleSave = async () => {
+    if (!formData.item_name.trim()) {
+      toast.error('Item name is required');
+      return;
+    }
+    if (!formData.mrp || !formData.rate) {
+      toast.error('MRP and Rate are required');
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      const payload = {
+        item_name: formData.item_name,
+        composition: formData.composition || null,
+        offer: formData.offer || null,
+        mrp: parseFloat(formData.mrp),
+        rate: parseFloat(formData.rate),
+        gst: parseFloat(formData.gst) || 0,
+        custom_fields: formData.custom_fields,
+      };
+
+      if (isCreating) {
+        const response = await itemsAPI.create(payload);
+        toast.success('Item created successfully');
+        setSelectedItem(response.data);
+        setIsCreating(false);
+      } else {
+        const response = await itemsAPI.update(selectedItem.id, payload);
+        toast.success('Item updated successfully');
+        setSelectedItem(response.data);
+        setIsEditing(false);
+      }
+      fetchItems();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save item');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    
+    if (!window.confirm(`Are you sure you want to delete "${selectedItem.item_name}"?`)) {
+      return;
+    }
+
+    setFormLoading(true);
+    try {
+      await itemsAPI.delete(selectedItem.id);
+      toast.success('Item deleted successfully');
+      setSelectedItem(null);
+      resetForm();
+      fetchItems();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete item');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const isFormMode = isEditing || isCreating;
+
+  return (
+    <div className="h-[calc(100vh-8rem)] animate-fade-in" data-testid="items-page">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Items / Products</h1>
+          <p className="text-slate-500 mt-1">Manage your product inventory</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
+        {/* Left Panel - Items List */}
+        <Card className="lg:col-span-1 flex flex-col h-full">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Items List</CardTitle>
+              <Button size="sm" onClick={handleNewItem} data-testid="add-item-btn">
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search items..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+                data-testid="search-items-input"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto p-0">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+              </div>
+            ) : items.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectItem(item)}
+                    className={`p-3 cursor-pointer transition-colors hover:bg-slate-50 ${
+                      selectedItem?.id === item.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                    }`}
+                    data-testid={`item-row-${item.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Package className="w-5 h-5 text-slate-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">{item.item_name}</p>
+                        <p className="text-xs text-slate-500">{item.item_code}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">₹{item.rate}</p>
+                        <p className="text-xs text-slate-400">MRP: ₹{item.mrp}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                <Package className="w-8 h-8 mb-2" />
+                <p className="text-sm">No items found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right Panel - Item Details / Form */}
+        <Card className="lg:col-span-2 flex flex-col h-full">
+          <CardHeader className="pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
+                {isCreating ? 'New Item' : selectedItem ? selectedItem.item_name : 'Item Details'}
+              </CardTitle>
+              {(selectedItem || isCreating) && (
+                <div className="flex items-center gap-2">
+                  {isFormMode ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleCancel} disabled={formLoading}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleSave} disabled={formLoading} data-testid="save-item-btn">
+                        {formLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+                        Save
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={handleEdit} data-testid="edit-item-btn">
+                        <Edit2 className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={handleDelete} disabled={formLoading} data-testid="delete-item-btn">
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto">
+            {!selectedItem && !isCreating ? (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <Package className="w-16 h-16 mb-4" />
+                <p className="text-lg font-medium">Select an item or add a new one</p>
+                <p className="text-sm">Click on an item from the list or click "Add" to create new</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Item Code (read-only) */}
+                {selectedItem && !isCreating && (
+                  <div className="inline-flex items-center px-3 py-1 bg-slate-100 rounded-full">
+                    <span className="text-sm font-mono font-medium text-slate-700">{selectedItem.item_code}</span>
+                  </div>
+                )}
+
+                {/* Basic Fields */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="item_name">Item Name *</Label>
+                    <Input
+                      id="item_name"
+                      value={formData.item_name}
+                      onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
+                      placeholder="Enter item name"
+                      disabled={!isFormMode}
+                      data-testid="item-name-input"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="composition">Composition</Label>
+                    <Input
+                      id="composition"
+                      value={formData.composition}
+                      onChange={(e) => setFormData({ ...formData, composition: e.target.value })}
+                      placeholder="Enter composition details"
+                      disabled={!isFormMode}
+                      data-testid="item-composition-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mrp">MRP (₹) *</Label>
+                    <Input
+                      id="mrp"
+                      type="number"
+                      step="0.01"
+                      value={formData.mrp}
+                      onChange={(e) => setFormData({ ...formData, mrp: e.target.value })}
+                      placeholder="0.00"
+                      disabled={!isFormMode}
+                      data-testid="item-mrp-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rate">Rate (₹) *</Label>
+                    <Input
+                      id="rate"
+                      type="number"
+                      step="0.01"
+                      value={formData.rate}
+                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                      placeholder="0.00"
+                      disabled={!isFormMode}
+                      data-testid="item-rate-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gst">GST (%)</Label>
+                    <Input
+                      id="gst"
+                      type="number"
+                      step="0.01"
+                      value={formData.gst}
+                      onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
+                      placeholder="0"
+                      disabled={!isFormMode}
+                      data-testid="item-gst-input"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="offer">Offer</Label>
+                    <Input
+                      id="offer"
+                      value={formData.offer}
+                      onChange={(e) => setFormData({ ...formData, offer: e.target.value })}
+                      placeholder="e.g., 10% off, Buy 2 Get 1"
+                      disabled={!isFormMode}
+                      data-testid="item-offer-input"
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Custom Fields Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <Label className="text-base font-semibold">Custom Fields</Label>
+                  </div>
+
+                  {/* Existing Custom Fields */}
+                  {formData.custom_fields.length > 0 && (
+                    <div className="space-y-3 mb-4">
+                      {formData.custom_fields.map((cf, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                          <div className="flex-1 grid grid-cols-2 gap-3">
+                            <Input
+                              value={cf.field_name}
+                              onChange={(e) => handleUpdateCustomField(index, 'field_name', e.target.value)}
+                              placeholder="Field Name"
+                              disabled={!isFormMode}
+                              className="bg-white"
+                            />
+                            <Input
+                              value={cf.field_value}
+                              onChange={(e) => handleUpdateCustomField(index, 'field_value', e.target.value)}
+                              placeholder="Field Value"
+                              disabled={!isFormMode}
+                              className="bg-white"
+                            />
+                          </div>
+                          {isFormMode && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveCustomField(index)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add New Custom Field */}
+                  {isFormMode && (
+                    <div className="flex items-end gap-3 p-3 border-2 border-dashed border-slate-200 rounded-lg">
+                      <div className="flex-1 grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-500">Field Name</Label>
+                          <Input
+                            value={newFieldName}
+                            onChange={(e) => setNewFieldName(e.target.value)}
+                            placeholder="e.g., Batch No"
+                            data-testid="custom-field-name-input"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-500">Field Value</Label>
+                          <Input
+                            value={newFieldValue}
+                            onChange={(e) => setNewFieldValue(e.target.value)}
+                            placeholder="e.g., B12345"
+                            data-testid="custom-field-value-input"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAddCustomField}
+                        data-testid="add-custom-field-btn"
+                      >
+                        <PlusCircle className="w-4 h-4 mr-1" />
+                        Add Field
+                      </Button>
+                    </div>
+                  )}
+
+                  {!isFormMode && formData.custom_fields.length === 0 && (
+                    <p className="text-sm text-slate-400 italic">No custom fields added</p>
+                  )}
+                </div>
+
+                {/* Timestamps */}
+                {selectedItem && !isCreating && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-6 text-sm text-slate-500">
+                      <span>Created: {formatDate(selectedItem.created_at)}</span>
+                      <span>Updated: {formatDate(selectedItem.updated_at)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};

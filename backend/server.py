@@ -89,6 +89,9 @@ class DoctorUpdate(BaseModel):
     phone: Optional[str] = None
     lead_status: Optional[str] = None
     dob: Optional[str] = None
+    priority: Optional[str] = None  # low, moderate, high
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
 
 class DoctorResponse(BaseModel):
     id: str
@@ -100,8 +103,46 @@ class DoctorResponse(BaseModel):
     phone: str
     lead_status: str
     dob: Optional[str] = None
+    priority: Optional[str] = None
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+class DoctorNoteCreate(BaseModel):
+    note: str
+
+class DoctorNoteResponse(BaseModel):
+    id: str
+    doctor_id: str
+    note: str
+    created_by: str
+    created_at: datetime
+
+class TaskCreate(BaseModel):
+    doctor_id: str
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = "moderate"  # low, moderate, high
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None  # pending, completed
+
+class TaskResponse(BaseModel):
+    id: str
+    doctor_id: str
+    doctor_name: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: str
+    status: str
+    created_at: datetime
 
 class SMTPConfigCreate(BaseModel):
     smtp_server: str

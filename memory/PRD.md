@@ -1,0 +1,109 @@
+# VMP CRM - Product Requirements Document
+
+## Original Problem Statement
+Build a simple CRM for managing doctor leads. Features include:
+- Only admin and staff login (no end-user access)
+- Basic CRM fields: Doctor Name, Reg.no, Address, Mail id, Phone Number, Lead status
+- CRUD operations (create, edit, delete)
+- Customer code (individual, VMP format)
+- SMTP mail integration
+- Additional field: Doctor Date of Birth
+
+## User Choices
+- **Authentication**: JWT-based custom auth (email/password)
+- **Email**: Custom SMTP (user provides credentials)
+- **Lead Statuses**: Customer, Contacted, Pipeline, Not Interested, Closed
+- **Customer Code Format**: VMP-XXXX (auto-generated)
+
+## User Personas
+1. **Admin**: Full access to all features including SMTP configuration, user management, and all doctor operations
+2. **Staff**: Access to doctor CRUD operations, search/filter, and email sending (no SMTP config access)
+
+## Core Requirements
+- [x] JWT Authentication (login/register)
+- [x] Role-based access (admin/staff)
+- [x] Doctor CRUD with all fields
+- [x] Auto-generated customer codes (VMP-0001, VMP-0002, ...)
+- [x] Lead status management
+- [x] SMTP configuration (admin only)
+- [x] Email sending to doctors
+- [x] Email logs tracking
+- [x] Dashboard with statistics
+- [x] Search and filter functionality
+
+## Architecture
+
+### Backend (FastAPI)
+- **Auth**: JWT tokens with bcrypt password hashing
+- **Database**: MongoDB collections:
+  - `users`: Admin and staff accounts
+  - `doctors`: Doctor/lead records
+  - `smtp_config`: SMTP settings (single record)
+  - `email_logs`: Email send history
+
+### Frontend (React)
+- **State Management**: Context API for auth
+- **UI Library**: Shadcn/UI components
+- **Styling**: Tailwind CSS with Manrope/Inter fonts
+- **Charts**: Recharts for dashboard visualization
+
+### API Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/register` | POST | Register new user |
+| `/api/auth/login` | POST | Login and get JWT |
+| `/api/auth/me` | GET | Get current user |
+| `/api/doctors` | GET/POST | List/Create doctors |
+| `/api/doctors/{id}` | GET/PUT/DELETE | Doctor CRUD |
+| `/api/smtp-config` | GET/POST | SMTP settings |
+| `/api/send-email` | POST | Send email to doctor |
+| `/api/email-logs` | GET | Get email history |
+| `/api/dashboard/stats` | GET | Dashboard statistics |
+
+## What's Been Implemented (January 2025)
+
+### Phase 1 - MVP Complete ✅
+- Full JWT authentication system
+- Doctor management with all CRUD operations
+- Auto-generated VMP-XXXX customer codes
+- Lead status tracking with 5 statuses
+- Dashboard with statistics and pie chart
+- SMTP configuration page (admin only)
+- Email sending functionality with background tasks
+- Email logs tracking
+- Search and filter for doctors
+- Responsive sidebar navigation
+- Professional UI with Manrope/Inter fonts
+
+## Prioritized Backlog
+
+### P0 (Critical) - None remaining
+
+### P1 (High Priority)
+- [ ] Bulk email sending to multiple doctors
+- [ ] Export doctors to CSV/Excel
+- [ ] Import doctors from CSV
+
+### P2 (Medium Priority)
+- [ ] Email templates with variables
+- [ ] Activity log for doctor interactions
+- [ ] Notes/comments on doctor records
+- [ ] Pagination for large datasets
+
+### P3 (Low Priority)
+- [ ] Dark mode support
+- [ ] Multi-language support
+- [ ] Advanced reporting and analytics
+- [ ] Custom lead status configuration
+
+## Next Tasks
+1. Configure SMTP with your email provider credentials
+2. Start adding doctor leads
+3. Consider implementing bulk email feature for marketing campaigns
+4. Add export functionality for reporting
+
+## Tech Stack
+- **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
+- **Frontend**: React 19, React Router, Axios, Tailwind CSS, Shadcn/UI, Recharts
+- **Database**: MongoDB
+- **Auth**: JWT tokens

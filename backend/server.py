@@ -1044,6 +1044,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         category=updated_item.get('category'),
         composition=updated_item.get('composition'),
         offer=updated_item.get('offer'),
+        special_offer=updated_item.get('special_offer'),
         mrp=updated_item['mrp'],
         rate=updated_item['rate'],
         gst=updated_item.get('gst', 0),

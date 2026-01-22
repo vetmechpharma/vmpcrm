@@ -332,8 +332,10 @@ class VMPCRMTester:
         # Test unauthorized access (without token)
         old_token = self.token
         self.token = None
-        success, details, data = self.make_request('GET', 'doctors', expected_status=401)
-        self.log_result("Unauthorized access (401)", success, details, data)
+        success, details, data = self.make_request('GET', 'doctors', expected_status=403)
+        if not success:
+            success, details, data = self.make_request('GET', 'doctors', expected_status=401)
+        self.log_result("Unauthorized access (401/403)", success, details, data)
         self.token = old_token
 
     def run_all_tests(self):

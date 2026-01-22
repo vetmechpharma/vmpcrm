@@ -1965,6 +1965,58 @@ Regards,
     except Exception as e:
         logger.error(f"WhatsApp out of stock notification error: {str(e)}")
 
+async def send_whatsapp_stock_arrived(doctor_phone: str, doctor_name: str, item_name: str, item_code: str, quantity: str):
+    """Send WhatsApp notification when stock arrives for a pending item"""
+    config = await get_whatsapp_config()
+    if not config:
+        logger.warning("WhatsApp config not found, skipping stock arrived notification")
+        return False
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    company_phone = config.get('sender_id', '')
+    
+    clean_mobile = ''.join(filter(str.isdigit, doctor_phone))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
+    
+    message = f"""{greeting},
+
+🎉 *GOOD NEWS - STOCK ARRIVED!*
+
+We are pleased to inform you that the following item you requested is now *BACK IN STOCK*:
+
+📦 *{item_name}* ({item_code})
+   Quantity requested: {quantity}
+
+You can now place your order or contact us to complete your previous pending order.
+
+Thank you for your patience! 🙏
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+    
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(config['api_url'], params=params, timeout=30)
+            logger.info(f"Stock arrived notification sent to {clean_mobile} for item {item_code}")
+            return True
+    except Exception as e:
+        logger.error(f"WhatsApp stock arrived notification error: {str(e)}")
+        return False
+
 @api_router.post("/public/send-otp")
 async def send_otp(request: OTPRequest):
     """Send OTP to mobile number via WhatsApp"""

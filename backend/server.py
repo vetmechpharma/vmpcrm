@@ -1389,6 +1389,159 @@ Regards,
     except Exception as e:
         logger.error(f"WhatsApp order message error: {str(e)}")
 
+async def send_whatsapp_status_update(order: dict, new_status: str, update_data: dict = None):
+    """Send WhatsApp notification for order status changes"""
+    config = await get_whatsapp_config()
+    if not config:
+        logger.warning("WhatsApp config not found, skipping notification")
+        return
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    company_phone = config.get('sender_id', '')
+    
+    mobile = order.get('doctor_phone', '')
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    doctor_name = order.get('doctor_name')
+    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
+    order_number = order.get('order_number', '')
+    
+    # Build items list
+    items = order.get('items', [])
+    items_text = "\n".join([f"• {item.get('item_name', '')} - Qty: {item.get('quantity', '')}" for item in items])
+    
+    message = ""
+    
+    if new_status == 'confirmed':
+        message = f"""{greeting},
+
+✅ Your order has been *CONFIRMED*!
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+
+We are processing your order and will ship it soon.
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+
+    elif new_status == 'shipped':
+        transport_name = update_data.get('transport_name', 'N/A') if update_data else 'N/A'
+        tracking_number = update_data.get('tracking_number', 'N/A') if update_data else 'N/A'
+        delivery_station = update_data.get('delivery_station', 'N/A') if update_data else 'N/A'
+        payment_mode = update_data.get('payment_mode', '') if update_data else ''
+        payment_text = "To Pay" if payment_mode == 'to_pay' else "Paid" if payment_mode == 'paid' else 'N/A'
+        
+        # Package details
+        boxes = update_data.get('boxes_count', 0) if update_data else 0
+        cans = update_data.get('cans_count', 0) if update_data else 0
+        bags = update_data.get('bags_count', 0) if update_data else 0
+        
+        package_parts = []
+        if boxes: package_parts.append(f"{boxes} Box(es)")
+        if cans: package_parts.append(f"{cans} Can(s)")
+        if bags: package_parts.append(f"{bags} Bag(s)")
+        package_text = ", ".join(package_parts) if package_parts else "N/A"
+        
+        # Invoice details
+        invoice_number = update_data.get('invoice_number', 'N/A') if update_data else 'N/A'
+        invoice_date = update_data.get('invoice_date', 'N/A') if update_data else 'N/A'
+        invoice_value = update_data.get('invoice_value', 0) if update_data else 0
+        invoice_value_text = f"₹{invoice_value:,.2f}" if invoice_value else 'N/A'
+        
+        message = f"""{greeting},
+
+🚚 Your order has been *SHIPPED*!
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+
+*Shipping Information:*
+🚛 Transport: {transport_name}
+📦 Tracking No: {tracking_number}
+📍 Delivery Station: {delivery_station}
+💰 Payment: {payment_text}
+
+*Package Details:*
+📦 {package_text}
+
+*Invoice Details:*
+🧾 Invoice No: {invoice_number}
+📅 Invoice Date: {invoice_date}
+💵 Invoice Value: {invoice_value_text}
+
+Thank you for your order!
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+
+    elif new_status == 'delivered':
+        message = f"""{greeting},
+
+🎉 Your order has been *DELIVERED*!
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+
+Thank you for choosing us! We hope you are satisfied with your order.
+
+For any queries, please contact us.
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+
+    elif new_status == 'cancelled':
+        cancellation_reason = update_data.get('cancellation_reason', 'Not specified') if update_data else 'Not specified'
+        
+        message = f"""{greeting},
+
+❌ Your order has been *CANCELLED*
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+
+*Reason for Cancellation:*
+{cancellation_reason}
+
+If you have any questions, please contact us.
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+    
+    if not message:
+        return
+    
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(config['api_url'], params=params, timeout=30)
+            logger.info(f"Order status update ({new_status}) sent to {clean_mobile}")
+    except Exception as e:
+        logger.error(f"WhatsApp status update error: {str(e)}")
+
 @api_router.post("/public/send-otp")
 async def send_otp(request: OTPRequest):
     """Send OTP to mobile number via WhatsApp"""

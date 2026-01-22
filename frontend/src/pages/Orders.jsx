@@ -223,9 +223,78 @@ export const Orders = () => {
     }
   };
 
-  const viewOrderDetails = (order) => {
+  const viewOrderDetails = async (order) => {
     setSelectedOrder(order);
+    // Fetch pending items for this order's customer
+    try {
+      const response = await pendingItemsAPI.getByDoctor(order.doctor_phone);
+      setPendingItemsForOrder(response.data);
+    } catch (error) {
+      setPendingItemsForOrder([]);
+    }
     setShowDetailModal(true);
+  };
+
+  const openEditModal = (order) => {
+    setSelectedOrder(order);
+    setEditItems(order.items.map(item => ({ ...item, remove: false })));
+    setItemsToMarkPending({});
+    setShowEditModal(true);
+  };
+
+  const handleRemoveItem = (index, shouldRemove) => {
+    const newItems = [...editItems];
+    newItems[index].remove = shouldRemove;
+    setEditItems(newItems);
+  };
+
+  const handleMarkPending = (index, shouldMarkPending) => {
+    setItemsToMarkPending(prev => ({
+      ...prev,
+      [index]: shouldMarkPending
+    }));
+  };
+
+  const handleSaveEditedItems = async () => {
+    setSaving(true);
+    try {
+      // Get items that are NOT removed
+      const remainingItems = editItems.filter(item => !item.remove);
+      
+      // Get items to mark as pending
+      const pendingItems = editItems
+        .filter((item, index) => item.remove && itemsToMarkPending[index])
+        .map(item => ({
+          item_id: item.item_id,
+          item_code: item.item_code,
+          item_name: item.item_name,
+          quantity: item.quantity
+        }));
+      
+      await ordersAPI.updateItems(selectedOrder.id, {
+        items: remainingItems,
+        pending_items: pendingItems.length > 0 ? pendingItems : null
+      });
+      
+      const removedCount = editItems.filter(item => item.remove).length;
+      const pendingCount = pendingItems.length;
+      
+      let message = 'Order items updated';
+      if (removedCount > 0) {
+        message += `, ${removedCount} item(s) removed`;
+      }
+      if (pendingCount > 0) {
+        message += `, ${pendingCount} item(s) marked as pending`;
+      }
+      
+      toast.success(message);
+      setShowEditModal(false);
+      fetchOrders();
+    } catch (error) {
+      toast.error('Failed to update order items');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedTransport = transports.find(t => t.id === updateForm.transport_id);

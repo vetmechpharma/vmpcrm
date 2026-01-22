@@ -1851,6 +1851,112 @@ async def update_order_items(order_id: str, update_data: OrderItemsUpdate, curre
     
     return {"message": "Order items updated successfully"}
 
+@api_router.put("/orders/{order_id}/customer")
+async def update_order_customer(order_id: str, customer_data: OrderCustomerUpdate, current_user: dict = Depends(get_current_user)):
+    """Update customer/doctor information for an order"""
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    update_data = {
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    if customer_data.doctor_name:
+        update_data['doctor_name'] = customer_data.doctor_name
+    if customer_data.doctor_email:
+        update_data['doctor_email'] = customer_data.doctor_email
+    if customer_data.doctor_address:
+        update_data['doctor_address'] = customer_data.doctor_address
+    if customer_data.doctor_phone:
+        update_data['doctor_phone'] = customer_data.doctor_phone
+    
+    # Update the order
+    await db.orders.update_one({'id': order_id}, {'$set': update_data})
+    
+    # Also update pending items for this customer if phone changed
+    old_phone = order.get('doctor_phone')
+    new_phone = customer_data.doctor_phone or old_phone
+    new_name = customer_data.doctor_name or order.get('doctor_name')
+    
+    if old_phone:
+        await db.pending_items.update_many(
+            {'doctor_phone': old_phone},
+            {'$set': {'doctor_phone': new_phone, 'doctor_name': new_name}}
+        )
+    
+    # If link_to_doctor is true, find or create doctor record
+    if customer_data.link_to_doctor:
+        phone = new_phone or old_phone
+        existing_doctor = await db.doctors.find_one({'phone': phone}, {'_id': 0})
+        
+        if existing_doctor:
+            # Update existing doctor
+            doctor_update = {}
+            if new_name:
+                doctor_update['name'] = new_name
+            if customer_data.doctor_email:
+                doctor_update['email'] = customer_data.doctor_email
+            if customer_data.doctor_address:
+                doctor_update['address'] = customer_data.doctor_address
+            
+            if doctor_update:
+                await db.doctors.update_one({'phone': phone}, {'$set': doctor_update})
+            
+            # Link order to doctor
+            await db.orders.update_one({'id': order_id}, {'$set': {'doctor_id': existing_doctor['id']}})
+            
+            return {"message": "Customer info updated and linked to existing doctor", "doctor_id": existing_doctor['id']}
+        else:
+            # Create new doctor
+            count = await db.doctors.count_documents({})
+            customer_code = f"VMP-{str(count + 1).zfill(4)}"
+            
+            new_doctor = {
+                'id': str(uuid.uuid4()),
+                'name': new_name or 'Unknown',
+                'reg_no': '',
+                'address': customer_data.doctor_address or '',
+                'email': customer_data.doctor_email or '',
+                'phone': phone,
+                'dob': None,
+                'lead_status': 'Customer',
+                'customer_code': customer_code,
+                'created_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.doctors.insert_one(new_doctor)
+            await db.orders.update_one({'id': order_id}, {'$set': {'doctor_id': new_doctor['id']}})
+            
+            return {"message": "Customer info updated and new doctor created", "doctor_id": new_doctor['id'], "customer_code": customer_code}
+    
+    return {"message": "Customer info updated successfully"}
+
+@api_router.get("/orders/{order_id}/lookup-doctor")
+async def lookup_doctor_for_order(order_id: str, current_user: dict = Depends(get_current_user)):
+    """Look up existing doctor by order's phone number"""
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    phone = order.get('doctor_phone')
+    if not phone:
+        return {"found": False, "doctor": None}
+    
+    # Clean phone number - get last 10 digits
+    clean_phone = ''.join(filter(str.isdigit, phone))[-10:]
+    
+    # Search for doctor with matching phone
+    doctor = await db.doctors.find_one(
+        {'phone': {'$regex': clean_phone}},
+        {'_id': 0}
+    )
+    
+    if doctor:
+        return {"found": True, "doctor": doctor}
+    
+    return {"found": False, "doctor": None}
+
 # ============== PENDING ITEMS ROUTES ==============
 
 @api_router.get("/pending-items")

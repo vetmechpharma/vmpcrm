@@ -413,13 +413,23 @@ export const Orders = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => viewOrderDetails(order)}
+                              title="View Details"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => openEditModal(order)}
+                              title="Edit Items"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => openUpdateModal(order)}
+                              title="Update Status"
                             >
                               <Truck className="w-4 h-4" />
                             </Button>

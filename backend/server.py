@@ -1872,7 +1872,7 @@ async def update_order_transport(order_id: str, transport_data: OrderStatusUpdat
     return await update_order_status(order_id, transport_data, background_tasks, current_user)
 
 @api_router.put("/orders/{order_id}/items")
-async def update_order_items(order_id: str, update_data: OrderItemsUpdate, current_user: dict = Depends(get_current_user)):
+async def update_order_items(order_id: str, update_data: OrderItemsUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Update order items and optionally create pending items for removed items"""
     order = await db.orders.find_one({'id': order_id}, {'_id': 0})
     if not order:
@@ -1888,8 +1888,8 @@ async def update_order_items(order_id: str, update_data: OrderItemsUpdate, curre
         }}
     )
     
-    # Create pending items if any
-    if update_data.pending_items:
+    # Create pending items if any and send WhatsApp notification
+    if update_data.pending_items and len(update_data.pending_items) > 0:
         now = datetime.now(timezone.utc)
         order_date = order.get('created_at')
         if isinstance(order_date, str):
@@ -1910,6 +1910,9 @@ async def update_order_items(order_id: str, update_data: OrderItemsUpdate, curre
                 'created_at': now.isoformat()
             }
             await db.pending_items.insert_one(pending_doc)
+        
+        # Send WhatsApp notification for out of stock items
+        background_tasks.add_task(send_whatsapp_out_of_stock, order, update_data.pending_items)
     
     return {"message": "Order items updated successfully"}
 

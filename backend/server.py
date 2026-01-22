@@ -272,6 +272,29 @@ class WhatsAppConfigResponse(BaseModel):
     sender_id: str
     updated_at: datetime
 
+# ============== TRANSPORT MODELS ==============
+
+class TransportCreate(BaseModel):
+    name: str
+    tracking_url_template: Optional[str] = None  # e.g., "https://track.com/?id={tracking_number}"
+    is_local: bool = False  # Local supply - no tracking needed
+
+class TransportResponse(BaseModel):
+    id: str
+    name: str
+    tracking_url_template: Optional[str] = None
+    is_local: bool
+    created_at: datetime
+
+class OrderTransportUpdate(BaseModel):
+    status: str
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None
+    tracking_number: Optional[str] = None
+    tracking_url: Optional[str] = None
+    delivery_station: Optional[str] = None
+    payment_mode: Optional[str] = None  # "to_pay" or "paid"
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

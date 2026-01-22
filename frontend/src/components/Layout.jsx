@@ -9,7 +9,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  Package
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -17,6 +18,7 @@ import { cn } from '../lib/utils';
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/doctors', icon: Users, label: 'Doctors' },
+  { path: '/items', icon: Package, label: 'Items' },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];

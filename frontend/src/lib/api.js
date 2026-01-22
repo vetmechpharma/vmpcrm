@@ -88,6 +88,14 @@ export const companyAPI = {
 export const ordersAPI = {
   getAll: (params) => api.get('/orders', { params }),
   updateStatus: (id, status) => api.put(`/orders/${id}/status?status=${status}`),
+  updateTransport: (id, data) => api.put(`/orders/${id}/transport`, data),
+};
+
+// Transport APIs
+export const transportAPI = {
+  getAll: () => api.get('/transports'),
+  create: (data) => api.post('/transports', data),
+  delete: (id) => api.delete(`/transports/${id}`),
 };
 
 // WhatsApp Config APIs

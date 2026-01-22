@@ -256,6 +256,19 @@ class OrderResponse(BaseModel):
     device_info: Optional[str] = None
     created_at: datetime
 
+# ============== WHATSAPP CONFIG MODELS ==============
+
+class WhatsAppConfigCreate(BaseModel):
+    api_url: str
+    auth_token: str
+    sender_id: str
+
+class WhatsAppConfigResponse(BaseModel):
+    id: str
+    api_url: str
+    sender_id: str
+    updated_at: datetime
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

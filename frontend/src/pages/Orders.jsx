@@ -596,6 +596,33 @@ export const Orders = () => {
                 </Card>
               )}
 
+              {/* Pending Items for this Customer */}
+              {pendingItemsForOrder.length > 0 && (
+                <Card className="border-orange-200 bg-orange-50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base text-orange-700 flex items-center gap-2">
+                      <Clock className="w-4 h-4" /> Pending Items for this Customer
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {pendingItemsForOrder.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                        <div>
+                          <p className="font-medium text-sm">{item.item_name}</p>
+                          <p className="text-xs text-slate-500">
+                            Qty: {item.quantity} | From: {item.original_order_number} ({formatDateTime(item.original_order_date)})
+                          </p>
+                        </div>
+                        <Badge className="bg-orange-100 text-orange-700 text-xs">Pending</Badge>
+                      </div>
+                    ))}
+                    <p className="text-xs text-orange-600 mt-2">
+                      💡 These items were removed from previous orders due to stock unavailability. Follow up with the customer!
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Device Info */}
               <Card>
                 <CardHeader className="pb-3">

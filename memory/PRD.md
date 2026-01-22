@@ -78,10 +78,17 @@ Build a simple CRM for managing doctor leads. Features include:
 ### Phase 2 - Items/Products Module ✅ (January 2025)
 - Items/Products page with single-page layout (list left, details right)
 - Item fields: Name, Composition, Offer, MRP, Rate, GST
-- Auto-generated item codes (ITM-0001, ITM-0002, ...)
+- Auto-generated item codes (ITM-0001, ITM-0002, ...) OR custom codes
+- **Category field** with filter dropdown and "Add New Category" option
+- **Custom Item Code** field (can specify custom code like AMX-500)
+- **Image Upload**: 
+  - Auto-resizes to 100x100 pixels
+  - Converts to WebP format
+  - Compresses to under 25KB automatically
+  - Displays thumbnail in list and detail view
 - **Custom Fields feature**: Add unlimited custom fields per item
 - Add, Edit, Delete operations on single page
-- Search functionality for items
+- Search and category filter functionality
 
 ## Prioritized Backlog
 

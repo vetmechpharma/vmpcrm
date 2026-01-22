@@ -13,7 +13,8 @@ import {
   ShoppingCart, 
   Phone,
   CheckCircle,
-  Send
+  Send,
+  Sparkles
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -201,7 +202,6 @@ export const PublicShowcase = () => {
     );
   }
 
-  // Count items with qty
   const selectedCount = getSelectedItems().length;
 
   return (
@@ -256,55 +256,69 @@ export const PublicShowcase = () => {
                   
                   {/* Table Body */}
                   {category.items.map((item, index) => (
-                    <div 
-                      key={item.id} 
-                      className={`grid grid-cols-12 gap-1 px-2 py-2 items-center border-b border-slate-100 ${
-                        quantities[item.id] ? 'bg-emerald-50' : ''
-                      }`}
-                    >
-                      {/* S.No */}
-                      <div className="col-span-1 text-xs text-slate-400">
-                        {index + 1}
-                      </div>
-                      
-                      {/* Item Name & Composition */}
-                      <div className="col-span-4">
-                        <p className="text-xs font-medium text-slate-900 leading-tight">
-                          {item.item_name}
-                        </p>
-                        {item.composition && (
-                          <p className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">
-                            {item.composition}
+                    <div key={item.id}>
+                      {/* Main Row */}
+                      <div 
+                        className={`grid grid-cols-12 gap-1 px-2 py-2 items-center border-b border-slate-100 ${
+                          quantities[item.id] ? 'bg-emerald-50' : ''
+                        }`}
+                      >
+                        {/* S.No */}
+                        <div className="col-span-1 text-xs text-slate-400">
+                          {index + 1}
+                        </div>
+                        
+                        {/* Item Name & Composition */}
+                        <div className="col-span-4">
+                          <p className="text-xs font-medium text-slate-900 leading-tight">
+                            {item.item_name}
                           </p>
-                        )}
+                          {item.composition && (
+                            <p className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">
+                              {item.composition}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Rate */}
+                        <div className="col-span-2 text-right">
+                          <p className="text-xs font-bold text-emerald-600">₹{item.rate}</p>
+                        </div>
+                        
+                        {/* Offer */}
+                        <div className="col-span-2 text-center">
+                          {item.offer ? (
+                            <span className="inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                              {item.offer}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </div>
+                        
+                        {/* Qty Input */}
+                        <div className="col-span-3">
+                          <Input
+                            placeholder="Qty"
+                            value={quantities[item.id] || ''}
+                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                            className="h-8 text-xs text-center px-1"
+                            data-testid={`qty-${item.id}`}
+                          />
+                        </div>
                       </div>
                       
-                      {/* Rate */}
-                      <div className="col-span-2 text-right">
-                        <p className="text-xs font-bold text-emerald-600">₹{item.rate}</p>
-                      </div>
-                      
-                      {/* Offer */}
-                      <div className="col-span-2 text-center">
-                        {item.offer ? (
-                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
-                            {item.offer}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
-                      </div>
-                      
-                      {/* Qty Input */}
-                      <div className="col-span-3">
-                        <Input
-                          placeholder="Qty"
-                          value={quantities[item.id] || ''}
-                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          className="h-8 text-xs text-center px-1"
-                          data-testid={`qty-${item.id}`}
-                        />
-                      </div>
+                      {/* Special Offer Row - Only shown if special_offer exists */}
+                      {item.special_offer && (
+                        <div className="px-2 py-1.5 bg-gradient-to-r from-pink-50 via-orange-50 to-yellow-50 border-b border-orange-200">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-3 h-3 text-orange-500 flex-shrink-0" />
+                            <span className="text-[11px] font-semibold bg-gradient-to-r from-pink-600 via-orange-500 to-yellow-500 bg-clip-text text-transparent">
+                              SPECIAL: {item.special_offer}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

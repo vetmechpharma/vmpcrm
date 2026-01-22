@@ -164,10 +164,16 @@ export const Orders = () => {
   };
 
   const handleSaveOrder = async () => {
+    // Validate cancellation reason if status is cancelled
+    if (updateForm.status === 'cancelled' && !updateForm.cancellation_reason.trim()) {
+      toast.error('Please provide a reason for cancellation');
+      return;
+    }
+    
     setSaving(true);
     try {
-      await ordersAPI.updateTransport(selectedOrder.id, updateForm);
-      toast.success('Order updated successfully');
+      await ordersAPI.updateStatus(selectedOrder.id, updateForm);
+      toast.success(`Order ${updateForm.status === 'shipped' ? 'shipped' : 'updated'} successfully! WhatsApp notification sent.`);
       setShowUpdateModal(false);
       fetchOrders();
     } catch (error) {

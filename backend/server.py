@@ -302,14 +302,25 @@ class TransportResponse(BaseModel):
     is_local: bool
     created_at: datetime
 
-class OrderTransportUpdate(BaseModel):
+class OrderStatusUpdate(BaseModel):
     status: str
+    # Transport details (only for shipped status)
     transport_id: Optional[str] = None
     transport_name: Optional[str] = None
     tracking_number: Optional[str] = None
     tracking_url: Optional[str] = None
     delivery_station: Optional[str] = None
     payment_mode: Optional[str] = None  # "to_pay" or "paid"
+    # Package counts (only for shipped status)
+    boxes_count: Optional[int] = None
+    cans_count: Optional[int] = None
+    bags_count: Optional[int] = None
+    # Invoice details (only for shipped status)
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    invoice_value: Optional[float] = None
+    # Cancellation reason (only for cancelled status)
+    cancellation_reason: Optional[str] = None
 
 # ============== AUTH HELPERS ==============
 

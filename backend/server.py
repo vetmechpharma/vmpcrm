@@ -137,6 +137,43 @@ class DashboardStats(BaseModel):
     recent_emails: int
     recent_doctors: List[DoctorResponse]
 
+# ============== ITEM MODELS ==============
+
+class CustomField(BaseModel):
+    field_name: str
+    field_value: str
+
+class ItemCreate(BaseModel):
+    item_name: str
+    composition: Optional[str] = None
+    offer: Optional[str] = None
+    mrp: float
+    rate: float
+    gst: float = 0
+    custom_fields: Optional[List[CustomField]] = []
+
+class ItemUpdate(BaseModel):
+    item_name: Optional[str] = None
+    composition: Optional[str] = None
+    offer: Optional[str] = None
+    mrp: Optional[float] = None
+    rate: Optional[float] = None
+    gst: Optional[float] = None
+    custom_fields: Optional[List[CustomField]] = None
+
+class ItemResponse(BaseModel):
+    id: str
+    item_code: str
+    item_name: str
+    composition: Optional[str] = None
+    offer: Optional[str] = None
+    mrp: float
+    rate: float
+    gst: float
+    custom_fields: List[CustomField] = []
+    created_at: datetime
+    updated_at: datetime
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:
@@ -181,6 +218,19 @@ async def generate_customer_code() -> str:
     else:
         new_num = 1
     return f"VMP-{str(new_num).zfill(4)}"
+
+async def generate_item_code() -> str:
+    last_item = await db.items.find_one(
+        {},
+        {'item_code': 1},
+        sort=[('item_code', -1)]
+    )
+    if last_item and 'item_code' in last_item:
+        last_num = int(last_item['item_code'].replace('ITM-', ''))
+        new_num = last_num + 1
+    else:
+        new_num = 1
+    return f"ITM-{str(new_num).zfill(4)}"
 
 # ============== AUTH ROUTES ==============
 
@@ -618,6 +668,167 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         recent_emails=recent_emails,
         recent_doctors=recent_doctors
     )
+
+# ============== ITEM ROUTES ==============
+
+@api_router.post("/items", response_model=ItemResponse)
+async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_current_user)):
+    item_id = str(uuid.uuid4())
+    item_code = await generate_item_code()
+    now = datetime.now(timezone.utc)
+    
+    item_doc = {
+        'id': item_id,
+        'item_code': item_code,
+        'item_name': item_data.item_name,
+        'composition': item_data.composition,
+        'offer': item_data.offer,
+        'mrp': item_data.mrp,
+        'rate': item_data.rate,
+        'gst': item_data.gst,
+        'custom_fields': [cf.model_dump() for cf in (item_data.custom_fields or [])],
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'created_by': current_user['id']
+    }
+    
+    await db.items.insert_one(item_doc)
+    
+    return ItemResponse(
+        id=item_id,
+        item_code=item_code,
+        item_name=item_data.item_name,
+        composition=item_data.composition,
+        offer=item_data.offer,
+        mrp=item_data.mrp,
+        rate=item_data.rate,
+        gst=item_data.gst,
+        custom_fields=item_data.custom_fields or [],
+        created_at=now,
+        updated_at=now
+    )
+
+@api_router.get("/items", response_model=List[ItemResponse])
+async def get_items(
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    
+    if search:
+        query['$or'] = [
+            {'item_name': {'$regex': search, '$options': 'i'}},
+            {'item_code': {'$regex': search, '$options': 'i'}},
+            {'composition': {'$regex': search, '$options': 'i'}}
+        ]
+    
+    items = await db.items.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    
+    result = []
+    for item in items:
+        created_at = item['created_at']
+        updated_at = item['updated_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+        
+        custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
+        
+        result.append(ItemResponse(
+            id=item['id'],
+            item_code=item['item_code'],
+            item_name=item['item_name'],
+            composition=item.get('composition'),
+            offer=item.get('offer'),
+            mrp=item['mrp'],
+            rate=item['rate'],
+            gst=item.get('gst', 0),
+            custom_fields=custom_fields,
+            created_at=created_at,
+            updated_at=updated_at
+        ))
+    
+    return result
+
+@api_router.get("/items/{item_id}", response_model=ItemResponse)
+async def get_item(item_id: str, current_user: dict = Depends(get_current_user)):
+    item = await db.items.find_one({'id': item_id}, {'_id': 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    created_at = item['created_at']
+    updated_at = item['updated_at']
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
+    
+    return ItemResponse(
+        id=item['id'],
+        item_code=item['item_code'],
+        item_name=item['item_name'],
+        composition=item.get('composition'),
+        offer=item.get('offer'),
+        mrp=item['mrp'],
+        rate=item['rate'],
+        gst=item.get('gst', 0),
+        custom_fields=custom_fields,
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.put("/items/{item_id}", response_model=ItemResponse)
+async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = Depends(get_current_user)):
+    item = await db.items.find_one({'id': item_id}, {'_id': 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    update_data = {}
+    for k, v in item_data.model_dump().items():
+        if v is not None:
+            if k == 'custom_fields':
+                update_data[k] = [cf.model_dump() if hasattr(cf, 'model_dump') else cf for cf in v]
+            else:
+                update_data[k] = v
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.items.update_one({'id': item_id}, {'$set': update_data})
+    
+    updated_item = await db.items.find_one({'id': item_id}, {'_id': 0})
+    
+    created_at = updated_item['created_at']
+    updated_at = updated_item['updated_at']
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    custom_fields = [CustomField(**cf) for cf in updated_item.get('custom_fields', [])]
+    
+    return ItemResponse(
+        id=updated_item['id'],
+        item_code=updated_item['item_code'],
+        item_name=updated_item['item_name'],
+        composition=updated_item.get('composition'),
+        offer=updated_item.get('offer'),
+        mrp=updated_item['mrp'],
+        rate=updated_item['rate'],
+        gst=updated_item.get('gst', 0),
+        custom_fields=custom_fields,
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.delete("/items/{item_id}")
+async def delete_item(item_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.items.delete_one({'id': item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": "Item deleted successfully"}
 
 # ============== HEALTH CHECK ==============
 

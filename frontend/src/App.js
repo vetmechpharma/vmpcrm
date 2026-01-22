@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Doctors } from './pages/Doctors';
+import { Items } from './pages/Items';
 import { EmailLogs } from './pages/EmailLogs';
 import { Settings } from './pages/Settings';
 import { Toaster } from './components/ui/sonner';
@@ -71,6 +72,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Doctors />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/items" 
+        element={
+          <ProtectedRoute>
+            <Items />
           </ProtectedRoute>
         } 
       />

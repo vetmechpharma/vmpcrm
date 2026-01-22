@@ -106,7 +106,12 @@ export const Layout = ({ children }) => {
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
-                  {isActive && <ChevronRight className="w-4 h-4 ml-auto" />}
+                  {item.showBadge && pendingCount > 0 && (
+                    <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      {pendingCount}
+                    </span>
+                  )}
+                  {isActive && !item.showBadge && <ChevronRight className="w-4 h-4 ml-auto" />}
                 </Link>
               );
             })}

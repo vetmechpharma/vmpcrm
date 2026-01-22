@@ -155,6 +155,7 @@ export const Items = () => {
           category: selectedItem.category || '',
           composition: selectedItem.composition || '',
           offer: selectedItem.offer || '',
+          special_offer: selectedItem.special_offer || '',
           mrp: selectedItem.mrp.toString(),
           rate: selectedItem.rate.toString(),
           gst: selectedItem.gst.toString(),

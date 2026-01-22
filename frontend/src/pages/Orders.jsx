@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { ordersAPI, transportAPI } from '../lib/api';
+import { ordersAPI, transportAPI, pendingItemsAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
@@ -29,7 +30,9 @@ import {
   Package,
   FileText,
   XCircle,
-  Box
+  Box,
+  Edit,
+  AlertTriangle
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 

@@ -764,11 +764,6 @@ export const Orders = () => {
                         onChange={(e) => handleTrackingNumberChange(e.target.value)}
                         placeholder="Enter tracking number"
                       />
-                      {updateForm.tracking_url && (
-                        <a href={updateForm.tracking_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                          Preview tracking link <ExternalLink className="w-3 h-3" />
-                        </a>
-                      )}
                     </div>
                   )}
 

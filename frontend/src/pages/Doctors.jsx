@@ -285,19 +285,16 @@ export const Doctors = () => {
     });
   };
 
-  const getPriorityConfig = (priority) => {
-    const found = PRIORITIES.find(p => p.value === priority);
-    return found || PRIORITIES[1];
-  };
-
   const getPriorityLabel = (priority) => {
-    const config = getPriorityConfig(priority);
-    return config.label;
+    if (!priority || typeof priority !== 'string') return 'Moderate';
+    const found = PRIORITIES.find(p => p.value === priority);
+    return found ? found.label : 'Moderate';
   };
 
   const getPriorityColor = (priority) => {
-    const config = getPriorityConfig(priority);
-    return config.color;
+    if (!priority || typeof priority !== 'string') return 'bg-amber-100 text-amber-700';
+    const found = PRIORITIES.find(p => p.value === priority);
+    return found ? found.color : 'bg-amber-100 text-amber-700';
   };
 
   const isFollowUpDue = (doctor) => {

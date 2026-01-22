@@ -7,6 +7,9 @@ import { Doctors } from './pages/Doctors';
 import { Items } from './pages/Items';
 import { EmailLogs } from './pages/EmailLogs';
 import { Settings } from './pages/Settings';
+import { CompanySettings } from './pages/CompanySettings';
+import { Orders } from './pages/Orders';
+import { PublicShowcase } from './pages/PublicShowcase';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
@@ -51,6 +54,9 @@ const PublicRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Public Routes */}
+      <Route path="/showcase" element={<PublicShowcase />} />
+      
       <Route 
         path="/login" 
         element={
@@ -84,10 +90,26 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/orders" 
+        element={
+          <ProtectedRoute>
+            <Orders />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/email-logs" 
         element={
           <ProtectedRoute>
             <EmailLogs />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/company-settings" 
+        element={
+          <ProtectedRoute>
+            <CompanySettings />
           </ProtectedRoute>
         } 
       />

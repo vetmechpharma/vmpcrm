@@ -97,6 +97,7 @@ export const Items = () => {
       category: '',
       composition: '',
       offer: '',
+      special_offer: '',
       mrp: '',
       rate: '',
       gst: '',

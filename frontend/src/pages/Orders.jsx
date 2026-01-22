@@ -460,6 +460,50 @@ export const Orders = () => {
                         </Badge>
                       </div>
                     )}
+                    
+                    {/* Package Details */}
+                    {(selectedOrder.boxes_count > 0 || selectedOrder.cans_count > 0 || selectedOrder.bags_count > 0) && (
+                      <div className="flex items-center gap-2 pt-2 border-t">
+                        <Box className="w-4 h-4 text-slate-400" />
+                        <span>
+                          {selectedOrder.boxes_count > 0 && `${selectedOrder.boxes_count} Box(es)`}
+                          {selectedOrder.boxes_count > 0 && (selectedOrder.cans_count > 0 || selectedOrder.bags_count > 0) && ', '}
+                          {selectedOrder.cans_count > 0 && `${selectedOrder.cans_count} Can(s)`}
+                          {selectedOrder.cans_count > 0 && selectedOrder.bags_count > 0 && ', '}
+                          {selectedOrder.bags_count > 0 && `${selectedOrder.bags_count} Bag(s)`}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Invoice Details */}
+                    {selectedOrder.invoice_number && (
+                      <div className="pt-2 border-t space-y-1">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-slate-400" />
+                          <span className="font-medium">Invoice: {selectedOrder.invoice_number}</span>
+                        </div>
+                        {selectedOrder.invoice_date && (
+                          <div className="text-slate-500 pl-6">Date: {selectedOrder.invoice_date}</div>
+                        )}
+                        {selectedOrder.invoice_value && (
+                          <div className="text-slate-500 pl-6">Value: ₹{selectedOrder.invoice_value?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Cancellation Reason */}
+              {selectedOrder.status === 'cancelled' && selectedOrder.cancellation_reason && (
+                <Card className="border-red-200 bg-red-50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base text-red-700 flex items-center gap-2">
+                      <XCircle className="w-4 h-4" /> Cancellation Reason
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-red-600">{selectedOrder.cancellation_reason}</p>
                   </CardContent>
                 </Card>
               )}

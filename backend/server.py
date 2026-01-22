@@ -351,6 +351,13 @@ class OrderItemsUpdate(BaseModel):
     items: List[OrderItem]
     pending_items: Optional[List[dict]] = None  # Items to mark as pending
 
+class OrderCustomerUpdate(BaseModel):
+    doctor_name: Optional[str] = None
+    doctor_email: Optional[str] = None
+    doctor_address: Optional[str] = None
+    doctor_phone: Optional[str] = None
+    link_to_doctor: Optional[bool] = False  # If true, link/create doctor record
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

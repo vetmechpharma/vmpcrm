@@ -87,7 +87,7 @@ export const companyAPI = {
 // Orders APIs
 export const ordersAPI = {
   getAll: (params) => api.get('/orders', { params }),
-  updateStatus: (id, status) => api.put(`/orders/${id}/status?status=${status}`),
+  updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   updateTransport: (id, data) => api.put(`/orders/${id}/transport`, data),
 };
 

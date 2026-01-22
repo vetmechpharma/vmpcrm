@@ -117,7 +117,10 @@ export const pendingItemsAPI = {
   getAll: () => api.get('/pending-items'),
   getStats: () => api.get('/pending-items/stats'),
   getByDoctor: (phone) => api.get(`/pending-items/doctor/${phone}`),
+  getByItem: () => api.get('/pending-items/by-item'),
   delete: (id) => api.delete(`/pending-items/${id}`),
+  notifyStockArrivedByItem: (itemCode) => api.post(`/pending-items/notify-stock-arrived/${itemCode}`),
+  notifyStockArrivedSingle: (pendingId) => api.post(`/pending-items/${pendingId}/notify-stock-arrived`),
 };
 
 // Transport APIs

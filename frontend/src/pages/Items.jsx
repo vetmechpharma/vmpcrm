@@ -643,6 +643,22 @@ export const Items = () => {
                       data-testid="item-offer-input"
                     />
                   </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="special_offer" className="flex items-center gap-2">
+                      Special Offer
+                      <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-full">HOT</span>
+                    </Label>
+                    <Input
+                      id="special_offer"
+                      value={formData.special_offer}
+                      onChange={(e) => setFormData({ ...formData, special_offer: e.target.value })}
+                      placeholder="e.g., Buy 20 pcs at Rs.50/-"
+                      disabled={!isFormMode}
+                      data-testid="item-special-offer-input"
+                      className="border-orange-200 focus:border-orange-400"
+                    />
+                    <p className="text-xs text-slate-500">Bulk/quantity-based special pricing</p>
+                  </div>
                 </div>
 
                 <Separator />

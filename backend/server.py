@@ -736,22 +736,55 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 
 # ============== ITEM ROUTES ==============
 
+@api_router.get("/item-categories", response_model=List[CategoryResponse])
+async def get_item_categories(current_user: dict = Depends(get_current_user)):
+    """Get all unique item categories with counts"""
+    pipeline = [
+        {'$match': {'category': {'$ne': None, '$ne': ''}}},
+        {'$group': {'_id': '$category', 'count': {'$sum': 1}}},
+        {'$sort': {'_id': 1}}
+    ]
+    categories = await db.items.aggregate(pipeline).to_list(100)
+    return [CategoryResponse(name=cat['_id'], count=cat['count']) for cat in categories]
+
 @api_router.post("/items", response_model=ItemResponse)
 async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_current_user)):
     item_id = str(uuid.uuid4())
-    item_code = await generate_item_code()
+    
+    # Use custom item_code if provided, otherwise auto-generate
+    if item_data.item_code and item_data.item_code.strip():
+        item_code = item_data.item_code.strip()
+        # Check if code already exists
+        existing = await db.items.find_one({'item_code': item_code}, {'_id': 0})
+        if existing:
+            raise HTTPException(status_code=400, detail="Item code already exists")
+    else:
+        item_code = await generate_item_code()
+    
     now = datetime.now(timezone.utc)
+    
+    # Process image if provided
+    processed_image = None
+    if item_data.image_base64:
+        try:
+            # Decode base64 and process
+            image_bytes = base64.b64decode(item_data.image_base64)
+            processed_image = process_image_to_webp(image_bytes)
+        except Exception as e:
+            logger.error(f"Image processing error: {str(e)}")
     
     item_doc = {
         'id': item_id,
         'item_code': item_code,
         'item_name': item_data.item_name,
+        'category': item_data.category,
         'composition': item_data.composition,
         'offer': item_data.offer,
         'mrp': item_data.mrp,
         'rate': item_data.rate,
         'gst': item_data.gst,
         'custom_fields': [cf.model_dump() for cf in (item_data.custom_fields or [])],
+        'image_webp': processed_image,
         'created_at': now.isoformat(),
         'updated_at': now.isoformat(),
         'created_by': current_user['id']
@@ -763,19 +796,32 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         id=item_id,
         item_code=item_code,
         item_name=item_data.item_name,
+        category=item_data.category,
         composition=item_data.composition,
         offer=item_data.offer,
         mrp=item_data.mrp,
         rate=item_data.rate,
         gst=item_data.gst,
         custom_fields=item_data.custom_fields or [],
+        image_url=f"/api/items/{item_id}/image" if processed_image else None,
         created_at=now,
         updated_at=now
     )
 
+@api_router.get("/items/{item_id}/image")
+async def get_item_image(item_id: str):
+    """Get item image as WebP"""
+    item = await db.items.find_one({'id': item_id}, {'image_webp': 1})
+    if not item or not item.get('image_webp'):
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    image_data = base64.b64decode(item['image_webp'])
+    return Response(content=image_data, media_type="image/webp")
+
 @api_router.get("/items", response_model=List[ItemResponse])
 async def get_items(
     search: Optional[str] = None,
+    category: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -787,7 +833,10 @@ async def get_items(
             {'composition': {'$regex': search, '$options': 'i'}}
         ]
     
-    items = await db.items.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    if category:
+        query['category'] = category
+    
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0}).sort('created_at', -1).to_list(1000)
     
     result = []
     for item in items:
@@ -800,16 +849,21 @@ async def get_items(
         
         custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
         
+        # Check if image exists
+        has_image = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
+        
         result.append(ItemResponse(
             id=item['id'],
             item_code=item['item_code'],
             item_name=item['item_name'],
+            category=item.get('category'),
             composition=item.get('composition'),
             offer=item.get('offer'),
             mrp=item['mrp'],
             rate=item['rate'],
             gst=item.get('gst', 0),
             custom_fields=custom_fields,
+            image_url=f"/api/items/{item['id']}/image" if has_image else None,
             created_at=created_at,
             updated_at=updated_at
         ))
@@ -818,7 +872,7 @@ async def get_items(
 
 @api_router.get("/items/{item_id}", response_model=ItemResponse)
 async def get_item(item_id: str, current_user: dict = Depends(get_current_user)):
-    item = await db.items.find_one({'id': item_id}, {'_id': 0})
+    item = await db.items.find_one({'id': item_id}, {'_id': 0, 'image_webp': 0})
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
@@ -831,16 +885,21 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
     
     custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
     
+    # Check if image exists
+    has_image = await db.items.find_one({'id': item_id, 'image_webp': {'$ne': None}}, {'_id': 1})
+    
     return ItemResponse(
         id=item['id'],
         item_code=item['item_code'],
         item_name=item['item_name'],
+        category=item.get('category'),
         composition=item.get('composition'),
         offer=item.get('offer'),
         mrp=item['mrp'],
         rate=item['rate'],
         gst=item.get('gst', 0),
         custom_fields=custom_fields,
+        image_url=f"/api/items/{item['id']}/image" if has_image else None,
         created_at=created_at,
         updated_at=updated_at
     )
@@ -856,6 +915,20 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         if v is not None:
             if k == 'custom_fields':
                 update_data[k] = [cf.model_dump() if hasattr(cf, 'model_dump') else cf for cf in v]
+            elif k == 'image_base64':
+                # Process and update image
+                try:
+                    image_bytes = base64.b64decode(v)
+                    update_data['image_webp'] = process_image_to_webp(image_bytes)
+                except Exception as e:
+                    logger.error(f"Image processing error: {str(e)}")
+            elif k == 'item_code':
+                # Check if new code already exists (excluding current item)
+                if v != item.get('item_code'):
+                    existing = await db.items.find_one({'item_code': v, 'id': {'$ne': item_id}}, {'_id': 0})
+                    if existing:
+                        raise HTTPException(status_code=400, detail="Item code already exists")
+                update_data[k] = v
             else:
                 update_data[k] = v
     
@@ -863,7 +936,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     
     await db.items.update_one({'id': item_id}, {'$set': update_data})
     
-    updated_item = await db.items.find_one({'id': item_id}, {'_id': 0})
+    updated_item = await db.items.find_one({'id': item_id}, {'_id': 0, 'image_webp': 0})
     
     created_at = updated_item['created_at']
     updated_at = updated_item['updated_at']
@@ -874,19 +947,32 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     
     custom_fields = [CustomField(**cf) for cf in updated_item.get('custom_fields', [])]
     
+    # Check if image exists
+    has_image = await db.items.find_one({'id': item_id, 'image_webp': {'$ne': None}}, {'_id': 1})
+    
     return ItemResponse(
         id=updated_item['id'],
         item_code=updated_item['item_code'],
         item_name=updated_item['item_name'],
+        category=updated_item.get('category'),
         composition=updated_item.get('composition'),
         offer=updated_item.get('offer'),
         mrp=updated_item['mrp'],
         rate=updated_item['rate'],
         gst=updated_item.get('gst', 0),
         custom_fields=custom_fields,
+        image_url=f"/api/items/{item_id}/image" if has_image else None,
         created_at=created_at,
         updated_at=updated_at
     )
+
+@api_router.delete("/items/{item_id}/image")
+async def delete_item_image(item_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete item image"""
+    result = await db.items.update_one({'id': item_id}, {'$set': {'image_webp': None}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": "Image deleted successfully"}
 
 @api_router.delete("/items/{item_id}")
 async def delete_item(item_id: str, current_user: dict = Depends(get_current_user)):

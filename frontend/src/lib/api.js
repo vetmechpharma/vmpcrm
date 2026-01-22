@@ -74,6 +74,8 @@ export const itemsAPI = {
   create: (data) => api.post('/items', data),
   update: (id, data) => api.put(`/items/${id}`, data),
   delete: (id) => api.delete(`/items/${id}`),
+  deleteImage: (id) => api.delete(`/items/${id}/image`),
+  getCategories: () => api.get('/item-categories'),
 };
 
 export default api;

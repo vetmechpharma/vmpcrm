@@ -477,7 +477,7 @@ export const Doctors = () => {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {LEAD_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                      <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

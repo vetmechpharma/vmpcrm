@@ -521,13 +521,28 @@ export const Orders = () => {
             <div className="space-y-6">
               {/* Customer Info */}
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
                   <CardTitle className="text-base">Customer Information</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      openCustomerModal(selectedOrder);
+                    }}
+                    data-testid="edit-customer-btn"
+                  >
+                    <Edit className="w-3 h-3 mr-1" />
+                    Edit
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <User className="w-4 h-4 text-slate-400" />
                     <span className="font-medium">{selectedOrder.doctor_name || 'Unknown'}</span>
+                    {selectedOrder.doctor_id && (
+                      <Badge variant="outline" className="text-xs">Linked</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Phone className="w-4 h-4 text-slate-400" />

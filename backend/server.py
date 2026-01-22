@@ -155,6 +155,7 @@ class ItemCreate(BaseModel):
     category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
+    special_offer: Optional[str] = None  # e.g., "Buy 20 pcs at Rs.50/-"
     mrp: float
     rate: float
     gst: float = 0
@@ -167,6 +168,7 @@ class ItemUpdate(BaseModel):
     category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
+    special_offer: Optional[str] = None
     mrp: Optional[float] = None
     rate: Optional[float] = None
     gst: Optional[float] = None
@@ -180,6 +182,7 @@ class ItemResponse(BaseModel):
     category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
+    special_offer: Optional[str] = None
     mrp: float
     rate: float
     gst: float

@@ -528,7 +528,7 @@ export const Doctors = () => {
                 <div><span className="text-slate-500">Phone:</span> {selectedDoctor.phone}</div>
                 <div><span className="text-slate-500">Email:</span> {selectedDoctor.email || 'N/A'}</div>
                 <div><span className="text-slate-500">Status:</span> <Badge className={getStatusColor(selectedDoctor.lead_status)}>{selectedDoctor.lead_status}</Badge></div>
-                <div><span className="text-slate-500">Priority:</span> <Badge className={getPriorityConfig(selectedDoctor.priority).color}>{getPriorityConfig(selectedDoctor.priority).label}</Badge></div>
+                <div><span className="text-slate-500">Priority:</span> <Badge className={getPriorityColor(selectedDoctor.priority || 'moderate')}>{getPriorityLabel(selectedDoctor.priority || 'moderate')}</Badge></div>
                 <div><span className="text-slate-500">Last Contact:</span> {selectedDoctor.last_contact_date ? formatDate(selectedDoctor.last_contact_date) : 'Never'}</div>
                 <div><span className="text-slate-500">Follow-up:</span> {selectedDoctor.follow_up_date ? formatDate(selectedDoctor.follow_up_date) : 'Not set'}</div>
               </div>

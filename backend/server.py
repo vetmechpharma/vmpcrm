@@ -740,12 +740,13 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
 async def get_item_categories(current_user: dict = Depends(get_current_user)):
     """Get all unique item categories with counts"""
     pipeline = [
-        {'$match': {'category': {'$ne': None, '$ne': ''}}},
+        {'$match': {'category': {'$ne': None, '$ne': '', '$exists': True}}},
         {'$group': {'_id': '$category', 'count': {'$sum': 1}}},
+        {'$match': {'_id': {'$ne': None}}},
         {'$sort': {'_id': 1}}
     ]
     categories = await db.items.aggregate(pipeline).to_list(100)
-    return [CategoryResponse(name=cat['_id'], count=cat['count']) for cat in categories]
+    return [CategoryResponse(name=cat['_id'], count=cat['count']) for cat in categories if cat['_id']]
 
 @api_router.post("/items", response_model=ItemResponse)
 async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_current_user)):

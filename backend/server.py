@@ -642,8 +642,8 @@ async def get_doctors(
     
     result = []
     for doc in doctors:
-        created_at = doc['created_at']
-        updated_at = doc['updated_at']
+        created_at = doc.get('created_at')
+        updated_at = doc.get('updated_at') or doc.get('created_at')
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         if isinstance(updated_at, str):
@@ -653,11 +653,11 @@ async def get_doctors(
             id=doc['id'],
             customer_code=doc['customer_code'],
             name=doc['name'],
-            reg_no=doc['reg_no'],
-            address=doc['address'],
-            email=doc['email'],
+            reg_no=doc.get('reg_no', ''),
+            address=doc.get('address', ''),
+            email=doc.get('email', ''),
             phone=doc['phone'],
-            lead_status=doc['lead_status'],
+            lead_status=doc.get('lead_status', 'Pipeline'),
             dob=doc.get('dob'),
             priority=doc.get('priority'),
             last_contact_date=doc.get('last_contact_date'),

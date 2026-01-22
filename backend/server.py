@@ -1460,6 +1460,91 @@ async def update_order_status(order_id: str, status: str, current_user: dict = D
         raise HTTPException(status_code=404, detail="Order not found")
     return {"message": "Order status updated"}
 
+# ============== WHATSAPP CONFIG ROUTES ==============
+
+@api_router.post("/whatsapp-config", response_model=WhatsAppConfigResponse)
+async def save_whatsapp_config(config: WhatsAppConfigCreate, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can configure WhatsApp settings")
+    
+    config_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Delete existing config (only one allowed)
+    await db.whatsapp_config.delete_many({})
+    
+    config_doc = {
+        'id': config_id,
+        'api_url': config.api_url,
+        'auth_token': config.auth_token,
+        'sender_id': config.sender_id,
+        'updated_at': now.isoformat()
+    }
+    
+    await db.whatsapp_config.insert_one(config_doc)
+    
+    return WhatsAppConfigResponse(
+        id=config_id,
+        api_url=config.api_url,
+        sender_id=config.sender_id,
+        updated_at=now
+    )
+
+@api_router.get("/whatsapp-config", response_model=Optional[WhatsAppConfigResponse])
+async def get_whatsapp_config_route(current_user: dict = Depends(get_current_user)):
+    config = await db.whatsapp_config.find_one({}, {'_id': 0, 'auth_token': 0})
+    if not config:
+        # Return default config info (without token)
+        return WhatsAppConfigResponse(
+            id='default',
+            api_url='https://api.botmastersender.com/api/v1/',
+            sender_id='919944472488',
+            updated_at=datetime.now(timezone.utc)
+        )
+    
+    updated_at = config['updated_at']
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    return WhatsAppConfigResponse(
+        id=config['id'],
+        api_url=config['api_url'],
+        sender_id=config['sender_id'],
+        updated_at=updated_at
+    )
+
+@api_router.post("/whatsapp-config/test")
+async def test_whatsapp_config(mobile: str, current_user: dict = Depends(get_current_user)):
+    """Send a test message to verify WhatsApp configuration"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can test WhatsApp")
+    
+    config = await get_whatsapp_config()
+    
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    message = "Test message from VMP CRM. WhatsApp integration is working!"
+    
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(config['api_url'], params=params, timeout=30)
+            if response.status_code == 200:
+                return {"message": "Test message sent successfully", "status": "success"}
+            else:
+                return {"message": f"API returned status {response.status_code}", "status": "failed", "response": response.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
+
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/")

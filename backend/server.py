@@ -1432,8 +1432,15 @@ async def verify_otp_and_submit_order(request: OTPVerify):
     
     await db.orders.insert_one(order_doc)
     
-    # Send order confirmation via WhatsApp
-    await send_whatsapp_order(request.mobile, valid_items, order_number)
+    # Send order confirmation via WhatsApp with full details
+    await send_whatsapp_order(
+        mobile=request.mobile, 
+        items=valid_items, 
+        order_number=order_number,
+        doctor_name=doctor['name'] if doctor else None,
+        ip_address=request.ip_address,
+        location=request.location
+    )
     
     return OrderResponse(
         id=order_id,

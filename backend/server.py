@@ -1282,17 +1282,47 @@ async def send_whatsapp_otp(mobile: str, otp: str):
         logger.error(f"WhatsApp OTP error: {str(e)}")
         return False
 
-async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str):
-    """Send order confirmation via WhatsApp"""
+async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str, doctor_name: str = None, ip_address: str = None, location: str = None):
+    """Send order confirmation via WhatsApp with full details"""
     config = await get_whatsapp_config()
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    company_phone = config.get('sender_id', '')
     
     clean_mobile = ''.join(filter(str.isdigit, mobile))
     if not clean_mobile.startswith('91'):
         clean_mobile = f"91{clean_mobile[-10:]}"
     
-    # Build order message
-    items_text = "\n".join([f"- {item.item_name}: {item.quantity}" for item in items if item.quantity])
-    message = f"Order #{order_number}\n\nItems:\n{items_text}\n\nThank you for your order!"
+    # Build personalized order message
+    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
+    
+    # Build items list
+    items_text = "\n".join([f"• {item.item_name} - Qty: {item.quantity}" for item in items if item.quantity])
+    
+    # Location info
+    location_text = ""
+    if ip_address:
+        location_text += f"\n📍 IP: {ip_address}"
+    if location:
+        location_text += f"\n📍 Location: {location}"
+    
+    message = f"""{greeting},
+
+We have received your order. Kindly check it once again, we will start processing your order.
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+{location_text}
+
+Thank you for your order!
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
     
     params = {
         'action': 'send',
@@ -1305,6 +1335,7 @@ async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number:
     try:
         async with httpx.AsyncClient() as client:
             await client.get(config['api_url'], params=params, timeout=30)
+            logger.info(f"Order confirmation sent to {clean_mobile}")
     except Exception as e:
         logger.error(f"WhatsApp order message error: {str(e)}")
 

@@ -99,6 +99,14 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/pending-items" 
+        element={
+          <ProtectedRoute>
+            <PendingItems />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/email-logs" 
         element={
           <ProtectedRoute>

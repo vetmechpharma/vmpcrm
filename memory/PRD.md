@@ -75,7 +75,32 @@ Build a simple CRM for managing doctor leads. Features include:
 - Responsive sidebar navigation
 - Professional UI with Manrope/Inter fonts
 
-### Phase 2 - Items/Products Module ✅ (January 2025)
+### Phase 3 - Public Product Showcase & Orders ✅ (January 2025)
+- **Public Showcase Page** (`/showcase`) - No login required
+  - Company header: Logo, Name, Address, Email, GST, Drug License
+  - Products grouped by category in table format
+  - Table columns: Code, Item, Image, Composition & Offer (with GST%), MRP, Rate, Qty
+  - Quantity input (supports formats like 10, 10+2, 50+10)
+  - Terms & Conditions acceptance checkbox
+  - WhatsApp OTP verification via botmastersender API
+  - Auto-fetch doctor details when mobile number entered
+  - Captures: IP address, location, device info on submission
+
+- **Company Settings Page** (Admin only)
+  - Logo upload
+  - Editable fields: Company Name, Address, Email, GST Number, Drug License
+  - Terms & Conditions text
+  - Public showcase link with copy button
+
+- **Orders Management Page**
+  - View all orders from public showcase
+  - Order details: Customer info, items, quantities, device info
+  - Status management: Pending, Confirmed, Processing, Completed, Cancelled
+  - Filter orders by status
+
+- **WhatsApp Integration** (botmastersender API)
+  - OTP sending for order verification
+  - Order confirmation messages
 - Items/Products page with single-page layout (list left, details right)
 - Item fields: Name, Composition, Offer, MRP, Rate, GST
 - Auto-generated item codes (ITM-0001, ITM-0002, ...) OR custom codes

@@ -286,7 +286,18 @@ export const Doctors = () => {
   };
 
   const getPriorityConfig = (priority) => {
-    return PRIORITIES.find(p => p.value === priority) || PRIORITIES[1];
+    const found = PRIORITIES.find(p => p.value === priority);
+    return found || PRIORITIES[1];
+  };
+
+  const getPriorityLabel = (priority) => {
+    const config = getPriorityConfig(priority);
+    return config.label;
+  };
+
+  const getPriorityColor = (priority) => {
+    const config = getPriorityConfig(priority);
+    return config.color;
   };
 
   const isFollowUpDue = (doctor) => {

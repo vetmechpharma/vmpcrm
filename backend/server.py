@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -15,6 +16,9 @@ import bcrypt
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import base64
+from io import BytesIO
+from PIL import Image
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -145,34 +149,46 @@ class CustomField(BaseModel):
 
 class ItemCreate(BaseModel):
     item_name: str
+    item_code: Optional[str] = None  # Custom item code, auto-generated if not provided
+    category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
     mrp: float
     rate: float
     gst: float = 0
     custom_fields: Optional[List[CustomField]] = []
+    image_base64: Optional[str] = None  # Base64 encoded image
 
 class ItemUpdate(BaseModel):
     item_name: Optional[str] = None
+    item_code: Optional[str] = None
+    category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
     mrp: Optional[float] = None
     rate: Optional[float] = None
     gst: Optional[float] = None
     custom_fields: Optional[List[CustomField]] = None
+    image_base64: Optional[str] = None
 
 class ItemResponse(BaseModel):
     id: str
     item_code: str
     item_name: str
+    category: Optional[str] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
     mrp: float
     rate: float
     gst: float
     custom_fields: List[CustomField] = []
+    image_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+class CategoryResponse(BaseModel):
+    name: str
+    count: int
 
 # ============== AUTH HELPERS ==============
 
@@ -226,11 +242,60 @@ async def generate_item_code() -> str:
         sort=[('item_code', -1)]
     )
     if last_item and 'item_code' in last_item:
-        last_num = int(last_item['item_code'].replace('ITM-', ''))
-        new_num = last_num + 1
-    else:
-        new_num = 1
-    return f"ITM-{str(new_num).zfill(4)}"
+        # Try to extract number from existing code
+        code = last_item['item_code']
+        if code.startswith('ITM-'):
+            try:
+                last_num = int(code.replace('ITM-', ''))
+                new_num = last_num + 1
+                return f"ITM-{str(new_num).zfill(4)}"
+            except ValueError:
+                pass
+    return "ITM-0001"
+
+def process_image_to_webp(image_data: bytes, max_size_kb: int = 25, target_size: tuple = (100, 100)) -> str:
+    """
+    Process image: resize to 100x100, convert to WebP, compress to under 25KB
+    Returns base64 encoded WebP image
+    """
+    try:
+        # Open image
+        img = Image.open(BytesIO(image_data))
+        
+        # Convert to RGB if necessary (for PNG with transparency)
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        
+        # Resize to target size (100x100) maintaining aspect ratio and crop
+        img.thumbnail(target_size, Image.Resampling.LANCZOS)
+        
+        # Create a new image with exact target size and paste resized image centered
+        new_img = Image.new('RGB', target_size, (255, 255, 255))
+        offset = ((target_size[0] - img.size[0]) // 2, (target_size[1] - img.size[1]) // 2)
+        new_img.paste(img, offset)
+        
+        # Compress to WebP with quality adjustment to meet size requirement
+        quality = 85
+        while quality > 10:
+            buffer = BytesIO()
+            new_img.save(buffer, format='WEBP', quality=quality, optimize=True)
+            size_kb = buffer.tell() / 1024
+            
+            if size_kb <= max_size_kb:
+                buffer.seek(0)
+                return base64.b64encode(buffer.read()).decode('utf-8')
+            
+            quality -= 10
+        
+        # Final attempt with lowest quality
+        buffer = BytesIO()
+        new_img.save(buffer, format='WEBP', quality=10, optimize=True)
+        buffer.seek(0)
+        return base64.b64encode(buffer.read()).decode('utf-8')
+        
+    except Exception as e:
+        logger.error(f"Image processing error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Image processing failed: {str(e)}")
 
 # ============== AUTH ROUTES ==============
 

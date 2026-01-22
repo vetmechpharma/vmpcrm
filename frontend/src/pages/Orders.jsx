@@ -309,6 +309,54 @@ export const Orders = () => {
     }
   };
 
+  const openCustomerModal = async (order) => {
+    setSelectedOrder(order);
+    setCustomerForm({
+      doctor_name: order.doctor_name || '',
+      doctor_email: order.doctor_email || '',
+      doctor_address: order.doctor_address || '',
+      doctor_phone: order.doctor_phone || '',
+      link_to_doctor: false
+    });
+    setExistingDoctor(null);
+    setShowCustomerModal(true);
+    
+    // Look up existing doctor by phone
+    setLookingUpDoctor(true);
+    try {
+      const response = await ordersAPI.lookupDoctor(order.id);
+      if (response.data.found) {
+        setExistingDoctor(response.data.doctor);
+        // Pre-fill form with existing doctor data
+        setCustomerForm({
+          doctor_name: response.data.doctor.name || order.doctor_name || '',
+          doctor_email: response.data.doctor.email || order.doctor_email || '',
+          doctor_address: response.data.doctor.address || order.doctor_address || '',
+          doctor_phone: order.doctor_phone || '',
+          link_to_doctor: false
+        });
+      }
+    } catch (error) {
+      console.error('Failed to lookup doctor');
+    } finally {
+      setLookingUpDoctor(false);
+    }
+  };
+
+  const handleSaveCustomer = async () => {
+    setSaving(true);
+    try {
+      const response = await ordersAPI.updateCustomer(selectedOrder.id, customerForm);
+      toast.success(response.data.message);
+      setShowCustomerModal(false);
+      fetchOrders();
+    } catch (error) {
+      toast.error('Failed to update customer info');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const selectedTransport = transports.find(t => t.id === updateForm.transport_id);
   const isLocalSupply = selectedTransport?.is_local;
 

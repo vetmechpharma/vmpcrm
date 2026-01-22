@@ -1707,43 +1707,64 @@ async def get_orders(
     return result
 
 @api_router.put("/orders/{order_id}/status")
-async def update_order_status(order_id: str, status: str, current_user: dict = Depends(get_current_user)):
-    result = await db.orders.update_one(
-        {'id': order_id},
-        {'$set': {'status': status, 'updated_at': datetime.now(timezone.utc).isoformat()}}
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return {"message": "Order status updated"}
-
-@api_router.put("/orders/{order_id}/transport")
-async def update_order_transport(order_id: str, transport_data: OrderTransportUpdate, current_user: dict = Depends(get_current_user)):
-    """Update order with transport and delivery details"""
+async def update_order_status(order_id: str, status_data: OrderStatusUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Update order status with optional transport details (for shipped) or cancellation reason"""
     order = await db.orders.find_one({'id': order_id}, {'_id': 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
+    new_status = status_data.status
     update_data = {
-        'status': transport_data.status,
+        'status': new_status,
         'updated_at': datetime.now(timezone.utc).isoformat()
     }
     
-    if transport_data.transport_id:
-        update_data['transport_id'] = transport_data.transport_id
-    if transport_data.transport_name:
-        update_data['transport_name'] = transport_data.transport_name
-    if transport_data.tracking_number:
-        update_data['tracking_number'] = transport_data.tracking_number
-    if transport_data.tracking_url:
-        update_data['tracking_url'] = transport_data.tracking_url
-    if transport_data.delivery_station:
-        update_data['delivery_station'] = transport_data.delivery_station
-    if transport_data.payment_mode:
-        update_data['payment_mode'] = transport_data.payment_mode
+    # Only add transport/shipping details if status is 'shipped'
+    if new_status == 'shipped':
+        if status_data.transport_id:
+            update_data['transport_id'] = status_data.transport_id
+        if status_data.transport_name:
+            update_data['transport_name'] = status_data.transport_name
+        if status_data.tracking_number:
+            update_data['tracking_number'] = status_data.tracking_number
+        if status_data.tracking_url:
+            update_data['tracking_url'] = status_data.tracking_url
+        if status_data.delivery_station:
+            update_data['delivery_station'] = status_data.delivery_station
+        if status_data.payment_mode:
+            update_data['payment_mode'] = status_data.payment_mode
+        # Package counts
+        if status_data.boxes_count is not None:
+            update_data['boxes_count'] = status_data.boxes_count
+        if status_data.cans_count is not None:
+            update_data['cans_count'] = status_data.cans_count
+        if status_data.bags_count is not None:
+            update_data['bags_count'] = status_data.bags_count
+        # Invoice details
+        if status_data.invoice_number:
+            update_data['invoice_number'] = status_data.invoice_number
+        if status_data.invoice_date:
+            update_data['invoice_date'] = status_data.invoice_date
+        if status_data.invoice_value is not None:
+            update_data['invoice_value'] = status_data.invoice_value
+    
+    # Only add cancellation reason if status is 'cancelled'
+    if new_status == 'cancelled' and status_data.cancellation_reason:
+        update_data['cancellation_reason'] = status_data.cancellation_reason
     
     await db.orders.update_one({'id': order_id}, {'$set': update_data})
     
-    return {"message": "Order updated successfully"}
+    # Send WhatsApp notification for status change
+    if new_status in ['confirmed', 'shipped', 'delivered', 'cancelled']:
+        background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
+    
+    return {"message": f"Order status updated to {new_status}"}
+
+# Keep legacy endpoint for backward compatibility
+@api_router.put("/orders/{order_id}/transport")
+async def update_order_transport(order_id: str, transport_data: OrderStatusUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Legacy endpoint - redirects to status update"""
+    return await update_order_status(order_id, transport_data, background_tasks, current_user)
 
 # ============== TRANSPORT ROUTES ==============
 

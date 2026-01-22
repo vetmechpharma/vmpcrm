@@ -254,6 +254,12 @@ class OrderResponse(BaseModel):
     doctor_address: Optional[str] = None
     items: List[OrderItem]
     status: str
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None
+    tracking_number: Optional[str] = None
+    tracking_url: Optional[str] = None
+    delivery_station: Optional[str] = None
+    payment_mode: Optional[str] = None
     ip_address: Optional[str] = None
     location: Optional[str] = None
     device_info: Optional[str] = None

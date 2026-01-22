@@ -156,6 +156,32 @@ export const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Pending Items Alert */}
+      {pendingStats.total_pending_items > 0 && (
+        <Link to="/pending-items">
+          <Card className="bg-orange-50 border-orange-200 cursor-pointer hover:shadow-md transition-shadow" data-testid="pending-items-alert">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-orange-700">
+                      {pendingStats.total_pending_items} Pending Item{pendingStats.total_pending_items > 1 ? 's' : ''} 
+                    </p>
+                    <p className="text-sm text-orange-600">
+                      {pendingStats.doctors_with_pending} doctor{pendingStats.doctors_with_pending > 1 ? 's' : ''} waiting for stock - Follow up required!
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       {/* Charts and Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Distribution Chart */}

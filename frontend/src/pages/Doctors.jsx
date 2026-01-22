@@ -371,8 +371,8 @@ export const Doctors = () => {
                         <Badge variant="outline" className="text-xs">{doctor.customer_code}</Badge>
                         <Badge className={getStatusColor(doctor.lead_status)}>{doctor.lead_status}</Badge>
                         {doctor.priority && (
-                          <Badge className={getPriorityConfig(doctor.priority).color}>
-                            {getPriorityConfig(doctor.priority).label}
+                          <Badge className={getPriorityColor(doctor.priority)}>
+                            {getPriorityLabel(doctor.priority)}
                           </Badge>
                         )}
                         {isFollowUpDue(doctor) && (

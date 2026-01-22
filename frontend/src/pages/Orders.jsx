@@ -1108,6 +1108,123 @@ export const Orders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Customer Modal */}
+      <Dialog open={showCustomerModal} onOpenChange={setShowCustomerModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Edit Customer - {selectedOrder?.order_number}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {lookingUpDoctor ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <span className="ml-2 text-slate-500">Looking up customer...</span>
+              </div>
+            ) : (
+              <>
+                {/* Existing Doctor Info */}
+                {existingDoctor && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-start gap-2">
+                      <User className="w-5 h-5 text-green-600 mt-0.5" />
+                      <div className="text-sm text-green-700">
+                        <p className="font-medium">Existing Doctor Found!</p>
+                        <p>{existingDoctor.name} ({existingDoctor.customer_code})</p>
+                        <p className="text-xs text-green-600">{existingDoctor.phone}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Fields */}
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Doctor/Customer Name</Label>
+                    <Input
+                      value={customerForm.doctor_name}
+                      onChange={(e) => setCustomerForm({...customerForm, doctor_name: e.target.value})}
+                      placeholder="Enter name"
+                      data-testid="customer-name-input"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <Input
+                      value={customerForm.doctor_phone}
+                      onChange={(e) => setCustomerForm({...customerForm, doctor_phone: e.target.value})}
+                      placeholder="Enter phone number"
+                      data-testid="customer-phone-input"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={customerForm.doctor_email}
+                      onChange={(e) => setCustomerForm({...customerForm, doctor_email: e.target.value})}
+                      placeholder="Enter email"
+                      data-testid="customer-email-input"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Address</Label>
+                    <Textarea
+                      value={customerForm.doctor_address}
+                      onChange={(e) => setCustomerForm({...customerForm, doctor_address: e.target.value})}
+                      placeholder="Enter address"
+                      rows={2}
+                      data-testid="customer-address-input"
+                    />
+                  </div>
+
+                  {/* Link to Doctor Option */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="link-to-doctor"
+                        checked={customerForm.link_to_doctor}
+                        onCheckedChange={(checked) => setCustomerForm({...customerForm, link_to_doctor: checked})}
+                      />
+                      <label htmlFor="link-to-doctor" className="text-sm cursor-pointer">
+                        {existingDoctor 
+                          ? 'Update existing doctor record' 
+                          : 'Create new doctor record & link to this order'
+                        }
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 ml-6">
+                      {existingDoctor 
+                        ? 'This will update the doctor\'s information in the Doctors page'
+                        : 'This will create a new doctor with a customer code (VMP-XXXX)'
+                      }
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCustomerModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveCustomer} 
+              disabled={saving || lookingUpDoctor}
+              data-testid="save-customer-btn"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

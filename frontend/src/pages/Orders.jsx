@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -25,14 +25,17 @@ import {
   Plus,
   Trash2,
   ExternalLink,
-  CreditCard
+  CreditCard,
+  Package,
+  FileText,
+  XCircle,
+  Box
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 
 const STATUS_CONFIG = {
   pending: { color: 'bg-amber-100 text-amber-700', label: 'Pending' },
   confirmed: { color: 'bg-blue-100 text-blue-700', label: 'Confirmed' },
-  processing: { color: 'bg-purple-100 text-purple-700', label: 'Processing' },
   shipped: { color: 'bg-indigo-100 text-indigo-700', label: 'Shipped' },
   delivered: { color: 'bg-emerald-100 text-emerald-700', label: 'Delivered' },
   cancelled: { color: 'bg-red-100 text-red-700', label: 'Cancelled' },
@@ -62,15 +65,26 @@ export const Orders = () => {
     is_local: false
   });
 
-  // Order update form
+  // Order update form with new fields
   const [updateForm, setUpdateForm] = useState({
     status: 'pending',
+    // Transport & shipping (only for shipped status)
     transport_id: '',
     transport_name: '',
     tracking_number: '',
     tracking_url: '',
     delivery_station: '',
-    payment_mode: ''
+    payment_mode: '',
+    // Package counts
+    boxes_count: 0,
+    cans_count: 0,
+    bags_count: 0,
+    // Invoice details
+    invoice_number: '',
+    invoice_date: '',
+    invoice_value: '',
+    // Cancellation reason (only for cancelled status)
+    cancellation_reason: ''
   });
 
   useEffect(() => {

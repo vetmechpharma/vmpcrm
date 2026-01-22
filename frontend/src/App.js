@@ -9,6 +9,7 @@ import { EmailLogs } from './pages/EmailLogs';
 import { Settings } from './pages/Settings';
 import { CompanySettings } from './pages/CompanySettings';
 import { Orders } from './pages/Orders';
+import { PendingItems } from './pages/PendingItems';
 import { PublicShowcase } from './pages/PublicShowcase';
 import { Toaster } from './components/ui/sonner';
 import './App.css';

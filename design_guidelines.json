@@ -1,0 +1,151 @@
+{
+  "identity": {
+    "name": "VMP CRM",
+    "tone": "Professional, Efficient, Trustworthy, Clean",
+    "archetype": "The Performance Pro (Medical Variant)",
+    "description": "A streamlined CRM for managing doctor relationships and leads with precision and clarity."
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Manrope, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "weights": {
+      "headings": "font-bold tracking-tight",
+      "subheadings": "font-semibold tracking-normal",
+      "body": "font-normal"
+    },
+    "sizes": {
+      "h1": "text-3xl md:text-4xl",
+      "h2": "text-2xl md:text-3xl",
+      "h3": "text-xl md:text-2xl",
+      "body": "text-sm md:text-base",
+      "small": "text-xs"
+    },
+    "instructions": "Import Manrope from Google Fonts. Use Manrope for all headings (h1-h3) and Inter for body text. Ensure high readability for data tables."
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#0f172a",
+        "foreground": "#f8fafc"
+      },
+      "secondary": {
+        "DEFAULT": "#f1f5f9",
+        "foreground": "#0f172a"
+      },
+      "accent": {
+        "DEFAULT": "#3b82f6",
+        "foreground": "#ffffff"
+      },
+      "background": "#ffffff",
+      "surface": "#f8fafc",
+      "border": "#e2e8f0",
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#ef4444",
+      "info": "#0ea5e9"
+    },
+    "status_colors": {
+      "Customer": "bg-emerald-100 text-emerald-700 border-emerald-200",
+      "Contacted": "bg-blue-100 text-blue-700 border-blue-200",
+      "Pipeline": "bg-amber-100 text-amber-700 border-amber-200",
+      "Not Interested": "bg-slate-100 text-slate-700 border-slate-200",
+      "Closed": "bg-red-100 text-red-700 border-red-200"
+    },
+    "forbidden": [
+      "#1B93A4",
+      "#7351B7"
+    ]
+  },
+  "layout": {
+    "spacing": {
+      "container_padding": "p-6 md:p-8 lg:p-10",
+      "section_gap": "gap-6 md:gap-8",
+      "component_gap": "gap-4"
+    },
+    "grid_system": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
+      "form": "grid grid-cols-1 md:grid-cols-2 gap-6"
+    },
+    "structure": {
+      "sidebar_width": "w-64",
+      "header_height": "h-16",
+      "max_content_width": "max-w-7xl mx-auto"
+    },
+    "z_index": {
+      "modal": 50,
+      "dropdown": 40,
+      "header": 30,
+      "sidebar": 20
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-md px-4 py-2 transition-all active:scale-95",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md px-4 py-2 transition-all active:scale-95",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-md px-4 py-2 transition-all",
+      "destructive": "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-4 py-2 transition-all"
+    },
+    "cards": {
+      "base": "bg-card text-card-foreground rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200",
+      "padding": "p-6"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "tables": {
+      "wrapper": "w-full overflow-auto rounded-md border border-border",
+      "header": "bg-muted/50 text-muted-foreground font-medium text-xs uppercase tracking-wider",
+      "row": "hover:bg-muted/50 transition-colors border-b border-border last:border-0"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
+      "dropdown": "shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
+    },
+    "borders": {
+      "subtle": "border border-slate-200 dark:border-slate-800"
+    },
+    "glassmorphism": {
+      "header": "bg-white/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-white/60"
+    },
+    "animation": {
+      "hover_lift": "hover:-translate-y-1 transition-transform duration-200 ease-out",
+      "fade_in": "animate-in fade-in duration-300"
+    }
+  },
+  "assets": {
+    "images": {
+      "login_background": "https://images.pexels.com/photos/7108396/pexels-photo-7108396.jpeg",
+      "doctor_avatar_male": "https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg",
+      "doctor_avatar_female": "https://images.pexels.com/photos/5214995/pexels-photo-5214995.jpeg",
+      "placeholder_logo": "https://via.placeholder.com/150?text=VMP+CRM"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "stroke-width={1.5} size={20}"
+    }
+  },
+  "universal_guidelines": [
+    "Use 'Manrope' for all headings to give a modern, medical-tech feel.",
+    "Ensure all interactive elements have a hover state and active state.",
+    "Use 'sonner' for all toast notifications.",
+    "Implement a responsive sidebar that collapses on mobile.",
+    "Use 'recharts' for any data visualization (e.g., leads by status).",
+    "All forms must use 'react-hook-form' and 'zod' for validation.",
+    "Do not use gradients for backgrounds; stick to clean, solid colors or subtle patterns.",
+    "Ensure high contrast for text, especially in the data table.",
+    "Use 'data-testid' for all key interactive elements."
+  ],
+  "instructions_to_main_agent": {
+    "step_1": "Install 'Manrope' font via Google Fonts in index.css.",
+    "step_2": "Update tailwind.config.js to include the new font family and custom colors.",
+    "step_3": "Create a reusable 'Layout' component that includes the Sidebar and Header.",
+    "step_4": "Implement the Dashboard page with the Bento Grid layout.",
+    "step_5": "Build the Doctors List page using the Shadcn Table component with search and filter.",
+    "step_6": "Create the Add/Edit Doctor form using Shadcn Form components."
+  }
+}

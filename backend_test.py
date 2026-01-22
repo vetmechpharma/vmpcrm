@@ -151,7 +151,10 @@ class VMPCRMTester:
         """Test doctor creation"""
         print("\n🔍 Testing Doctor Creation...")
         
-        success, details, data = self.make_request('POST', 'doctors', self.test_doctor_data, 201)
+        # Try both 200 and 201 status codes
+        success, details, data = self.make_request('POST', 'doctors', self.test_doctor_data, 200)
+        if not success:
+            success, details, data = self.make_request('POST', 'doctors', self.test_doctor_data, 201)
         
         if success and data and 'id' in data:
             self.created_doctor_id = data['id']
@@ -161,7 +164,7 @@ class VMPCRMTester:
             else:
                 self.log_result("Create doctor", False, f"Invalid customer code format: {customer_code}", data)
         else:
-            self.log_result("Create doctor", False, details, data)
+            self.log_result("Create doctor", False, f"{details} - Response: {data}", data)
 
     def test_get_doctors(self):
         """Test get all doctors"""

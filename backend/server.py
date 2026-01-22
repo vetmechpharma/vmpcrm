@@ -1187,6 +1187,7 @@ async def get_public_items():
             'item_name': item['item_name'],
             'composition': item.get('composition'),
             'offer': item.get('offer'),
+            'special_offer': item.get('special_offer'),
             'mrp': item['mrp'],
             'rate': item['rate'],
             'gst': item.get('gst', 0),

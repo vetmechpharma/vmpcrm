@@ -674,8 +674,8 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
     
-    created_at = doctor['created_at']
-    updated_at = doctor['updated_at']
+    created_at = doctor.get('created_at')
+    updated_at = doctor.get('updated_at') or doctor.get('created_at')
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
     if isinstance(updated_at, str):
@@ -685,11 +685,11 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
         id=doctor['id'],
         customer_code=doctor['customer_code'],
         name=doctor['name'],
-        reg_no=doctor['reg_no'],
-        address=doctor['address'],
-        email=doctor['email'],
+        reg_no=doctor.get('reg_no', ''),
+        address=doctor.get('address', ''),
+        email=doctor.get('email', ''),
         phone=doctor['phone'],
-        lead_status=doctor['lead_status'],
+        lead_status=doctor.get('lead_status', 'Pipeline'),
         dob=doctor.get('dob'),
         priority=doctor.get('priority'),
         last_contact_date=doctor.get('last_contact_date'),

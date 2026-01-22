@@ -47,9 +47,11 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Order confirmation via WhatsApp
 - [x] Dynamic WhatsApp API configuration
 
-## Order Management & Transport (Iteration 7-9) - COMPLETED Jan 22, 2026
+## Order Management & Transport (Iteration 7-9) - UPDATED Jan 22, 2026
 - [x] Transport provider management (CRUD)
+- [x] **Transport URL**: Simple URL field for transport provider website (no tracking number template)
 - [x] Order tracking with transport details
+- [x] **Transport Display**: Orders page shows transport name + tracking number as plain text (no clickable links)
 - [x] Payment status tracking (To Pay/Paid)
 - [x] **WhatsApp notifications for status changes:**
   - Confirmed: Order confirmation message

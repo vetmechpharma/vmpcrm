@@ -10,7 +10,9 @@ import {
   Menu, 
   X,
   ChevronRight,
-  Package
+  Package,
+  ShoppingCart,
+  Building2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -19,8 +21,10 @@ const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/doctors', icon: Users, label: 'Doctors' },
   { path: '/items', icon: Package, label: 'Items' },
+  { path: '/orders', icon: ShoppingCart, label: 'Orders' },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
-  { path: '/settings', icon: Settings, label: 'Settings' },
+  { path: '/company-settings', icon: Building2, label: 'Company' },
+  { path: '/settings', icon: Settings, label: 'SMTP Settings' },
 ];
 
 export const Layout = ({ children }) => {

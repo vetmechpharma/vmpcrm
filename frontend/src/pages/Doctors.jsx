@@ -588,7 +588,7 @@ export const Doctors = () => {
                         <div className="flex items-center gap-2">
                           <input type="checkbox" checked={task.status === 'completed'} onChange={() => handleToggleTask(task)} className="w-4 h-4" />
                           <span className={task.status === 'completed' ? 'line-through text-slate-400' : ''}>{task.title}</span>
-                          <Badge className={getPriorityConfig(task.priority).color} variant="outline">{task.priority}</Badge>
+                          <Badge className={getPriorityColor(task.priority)} variant="outline">{getPriorityLabel(task.priority)}</Badge>
                         </div>
                         {task.due_date && <span className="text-xs text-slate-500">{formatDate(task.due_date)}</span>}
                       </div>

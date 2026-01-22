@@ -1578,6 +1578,68 @@ Regards,
     except Exception as e:
         logger.error(f"WhatsApp status update error: {str(e)}")
 
+async def send_whatsapp_out_of_stock(order: dict, out_of_stock_items: list):
+    """Send WhatsApp notification for out of stock items"""
+    if not out_of_stock_items:
+        return
+    
+    config = await get_whatsapp_config()
+    if not config:
+        logger.warning("WhatsApp config not found, skipping out of stock notification")
+        return
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    company_phone = config.get('sender_id', '')
+    
+    mobile = order.get('doctor_phone', '')
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    doctor_name = order.get('doctor_name')
+    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
+    order_number = order.get('order_number', '')
+    
+    # Build out of stock items list
+    items_text = "\n".join([f"• {item.get('item_name', '')} - Qty: {item.get('quantity', '')}" for item in out_of_stock_items])
+    
+    message = f"""{greeting},
+
+⚠️ *STOCK UPDATE* for Order *{order_number}*
+
+We regret to inform you that the following item(s) are currently *OUT OF STOCK*:
+
+{items_text}
+
+We have noted your requirement and will update you as soon as these items are available.
+
+We sincerely apologize for the inconvenience and thank you for your patience and cooperation. 🙏
+
+Your remaining order items are being processed.
+
+For any queries, please contact us.
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+    
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(config['api_url'], params=params, timeout=30)
+            logger.info(f"Out of stock notification sent to {clean_mobile} for order {order_number}")
+    except Exception as e:
+        logger.error(f"WhatsApp out of stock notification error: {str(e)}")
+
 @api_router.post("/public/send-otp")
 async def send_otp(request: OTPRequest):
     """Send OTP to mobile number via WhatsApp"""

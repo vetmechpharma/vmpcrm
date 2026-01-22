@@ -659,6 +659,9 @@ async def get_doctors(
             phone=doc['phone'],
             lead_status=doc['lead_status'],
             dob=doc.get('dob'),
+            priority=doc.get('priority'),
+            last_contact_date=doc.get('last_contact_date'),
+            follow_up_date=doc.get('follow_up_date'),
             created_at=created_at,
             updated_at=updated_at
         ))
@@ -688,6 +691,9 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
         phone=doctor['phone'],
         lead_status=doctor['lead_status'],
         dob=doctor.get('dob'),
+        priority=doctor.get('priority'),
+        last_contact_date=doctor.get('last_contact_date'),
+        follow_up_date=doctor.get('follow_up_date'),
         created_at=created_at,
         updated_at=updated_at
     )

@@ -81,6 +81,21 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Link/Create Doctor**: Option to create new doctor record or update existing
 - [x] **"Linked" Badge**: Shows when order is linked to a doctor record
 
+## Lead Management & Follow-up System - COMPLETED Jan 22, 2026
+- [x] **Last Contact Tracking**: Record when lead was last contacted
+- [x] **Follow-up Date**: Manual or auto-set follow-up date
+- [x] **25-Day Auto Follow-up Rule**: If no follow-up set, calculates 25 days from last contact
+- [x] **Priority Levels**: Low (gray), Moderate (amber), High (red) with visual indicators
+- [x] **Follow-up Due Alert**: Red "Follow-up Due" badge when follow-up is overdue
+- [x] **Not Interested = No Auto Follow-up**: Leads marked "Not Interested" skip auto-reminders
+- [x] **Notes System**: Add/delete notes per doctor with timestamp and author
+- [x] **Tasks System**: Create tasks per doctor with:
+  - Title, description, due date
+  - Priority (Low/Moderate/High)
+  - Status toggle (pending/completed)
+- [x] **Mark Contacted Button**: One-click to update last contact and set next follow-up
+- [x] **Doctor Detail Modal**: View all info, notes, and tasks in one place
+
 ## Architecture
 
 ### Backend (FastAPI)

@@ -322,6 +322,35 @@ class OrderStatusUpdate(BaseModel):
     # Cancellation reason (only for cancelled status)
     cancellation_reason: Optional[str] = None
 
+# ============== PENDING ITEMS MODELS ==============
+
+class PendingItemCreate(BaseModel):
+    doctor_phone: str
+    doctor_name: Optional[str] = None
+    item_id: str
+    item_code: str
+    item_name: str
+    quantity: str
+    original_order_id: str
+    original_order_number: str
+
+class PendingItemResponse(BaseModel):
+    id: str
+    doctor_phone: str
+    doctor_name: Optional[str] = None
+    item_id: str
+    item_code: str
+    item_name: str
+    quantity: str
+    original_order_id: str
+    original_order_number: str
+    original_order_date: datetime
+    created_at: datetime
+
+class OrderItemsUpdate(BaseModel):
+    items: List[OrderItem]
+    pending_items: Optional[List[dict]] = None  # Items to mark as pending
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

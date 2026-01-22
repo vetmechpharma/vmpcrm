@@ -75,6 +75,14 @@ Build a simple CRM for managing doctor leads. Features include:
 - Responsive sidebar navigation
 - Professional UI with Manrope/Inter fonts
 
+### Phase 2 - Items/Products Module ✅ (January 2025)
+- Items/Products page with single-page layout (list left, details right)
+- Item fields: Name, Composition, Offer, MRP, Rate, GST
+- Auto-generated item codes (ITM-0001, ITM-0002, ...)
+- **Custom Fields feature**: Add unlimited custom fields per item
+- Add, Edit, Delete operations on single page
+- Search functionality for items
+
 ## Prioritized Backlog
 
 ### P0 (Critical) - None remaining

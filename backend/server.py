@@ -1536,6 +1536,93 @@ async def update_order_status(order_id: str, status: str, current_user: dict = D
         raise HTTPException(status_code=404, detail="Order not found")
     return {"message": "Order status updated"}
 
+@api_router.put("/orders/{order_id}/transport")
+async def update_order_transport(order_id: str, transport_data: OrderTransportUpdate, current_user: dict = Depends(get_current_user)):
+    """Update order with transport and delivery details"""
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    update_data = {
+        'status': transport_data.status,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    if transport_data.transport_id:
+        update_data['transport_id'] = transport_data.transport_id
+    if transport_data.transport_name:
+        update_data['transport_name'] = transport_data.transport_name
+    if transport_data.tracking_number:
+        update_data['tracking_number'] = transport_data.tracking_number
+    if transport_data.tracking_url:
+        update_data['tracking_url'] = transport_data.tracking_url
+    if transport_data.delivery_station:
+        update_data['delivery_station'] = transport_data.delivery_station
+    if transport_data.payment_mode:
+        update_data['payment_mode'] = transport_data.payment_mode
+    
+    await db.orders.update_one({'id': order_id}, {'$set': update_data})
+    
+    return {"message": "Order updated successfully"}
+
+# ============== TRANSPORT ROUTES ==============
+
+@api_router.post("/transports", response_model=TransportResponse)
+async def create_transport(transport: TransportCreate, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can add transports")
+    
+    transport_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    transport_doc = {
+        'id': transport_id,
+        'name': transport.name,
+        'tracking_url_template': transport.tracking_url_template if not transport.is_local else None,
+        'is_local': transport.is_local,
+        'created_at': now.isoformat()
+    }
+    
+    await db.transports.insert_one(transport_doc)
+    
+    return TransportResponse(
+        id=transport_id,
+        name=transport.name,
+        tracking_url_template=transport.tracking_url_template if not transport.is_local else None,
+        is_local=transport.is_local,
+        created_at=now
+    )
+
+@api_router.get("/transports", response_model=List[TransportResponse])
+async def get_transports(current_user: dict = Depends(get_current_user)):
+    transports = await db.transports.find({}, {'_id': 0}).sort('name', 1).to_list(100)
+    
+    result = []
+    for t in transports:
+        created_at = t['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append(TransportResponse(
+            id=t['id'],
+            name=t['name'],
+            tracking_url_template=t.get('tracking_url_template'),
+            is_local=t.get('is_local', False),
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.delete("/transports/{transport_id}")
+async def delete_transport(transport_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete transports")
+    
+    result = await db.transports.delete_one({'id': transport_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transport not found")
+    return {"message": "Transport deleted successfully"}
+
 # ============== WHATSAPP CONFIG ROUTES ==============
 
 @api_router.post("/whatsapp-config", response_model=WhatsAppConfigResponse)

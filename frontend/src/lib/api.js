@@ -90,6 +90,13 @@ export const ordersAPI = {
   updateStatus: (id, status) => api.put(`/orders/${id}/status?status=${status}`),
 };
 
+// WhatsApp Config APIs
+export const whatsappAPI = {
+  getConfig: () => api.get('/whatsapp-config'),
+  saveConfig: (data) => api.post('/whatsapp-config', data),
+  testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
+};
+
 // Public APIs (no auth required)
 export const publicAPI = {
   getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),

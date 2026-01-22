@@ -48,6 +48,24 @@ export const doctorsAPI = {
   create: (data) => api.post('/doctors', data),
   update: (id, data) => api.put(`/doctors/${id}`, data),
   delete: (id) => api.delete(`/doctors/${id}`),
+  updateContact: (id) => api.put(`/doctors/${id}/contact`),
+  // Notes
+  getNotes: (id) => api.get(`/doctors/${id}/notes`),
+  addNote: (id, data) => api.post(`/doctors/${id}/notes`, data),
+  deleteNote: (id, noteId) => api.delete(`/doctors/${id}/notes/${noteId}`),
+};
+
+// Tasks APIs
+export const tasksAPI = {
+  getAll: (params) => api.get('/tasks', { params }),
+  create: (data) => api.post('/tasks', data),
+  update: (id, data) => api.put(`/tasks/${id}`, data),
+  delete: (id) => api.delete(`/tasks/${id}`),
+};
+
+// Reminders APIs
+export const remindersAPI = {
+  getAll: () => api.get('/reminders'),
 };
 
 // SMTP Config APIs

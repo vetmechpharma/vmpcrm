@@ -1048,6 +1048,397 @@ async def delete_item(item_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted successfully"}
 
+# ============== COMPANY SETTINGS ROUTES ==============
+
+@api_router.post("/company-settings", response_model=CompanySettingsResponse)
+async def save_company_settings(settings: CompanySettingsCreate, current_user: dict = Depends(get_current_user)):
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can update company settings")
+    
+    settings_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Process logo if provided
+    processed_logo = None
+    if settings.logo_base64:
+        try:
+            image_bytes = base64.b64decode(settings.logo_base64)
+            processed_logo = process_image_to_webp(image_bytes, max_size_kb=50, target_size=(200, 200))
+        except Exception as e:
+            logger.error(f"Logo processing error: {str(e)}")
+    
+    # Delete existing settings (only one allowed)
+    await db.company_settings.delete_many({})
+    
+    settings_doc = {
+        'id': settings_id,
+        'company_name': settings.company_name,
+        'address': settings.address,
+        'email': settings.email,
+        'gst_number': settings.gst_number,
+        'drug_license': settings.drug_license,
+        'logo_webp': processed_logo,
+        'terms_conditions': settings.terms_conditions,
+        'updated_at': now.isoformat()
+    }
+    
+    await db.company_settings.insert_one(settings_doc)
+    
+    return CompanySettingsResponse(
+        id=settings_id,
+        company_name=settings.company_name,
+        address=settings.address,
+        email=settings.email,
+        gst_number=settings.gst_number,
+        drug_license=settings.drug_license,
+        logo_url="/api/company-settings/logo" if processed_logo else None,
+        terms_conditions=settings.terms_conditions,
+        updated_at=now
+    )
+
+@api_router.get("/company-settings", response_model=Optional[CompanySettingsResponse])
+async def get_company_settings(current_user: dict = Depends(get_current_user)):
+    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0})
+    if not settings:
+        return None
+    
+    updated_at = settings['updated_at']
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    has_logo = await db.company_settings.find_one({'logo_webp': {'$ne': None}}, {'_id': 1})
+    
+    return CompanySettingsResponse(
+        id=settings['id'],
+        company_name=settings['company_name'],
+        address=settings['address'],
+        email=settings['email'],
+        gst_number=settings['gst_number'],
+        drug_license=settings['drug_license'],
+        logo_url="/api/company-settings/logo" if has_logo else None,
+        terms_conditions=settings.get('terms_conditions'),
+        updated_at=updated_at
+    )
+
+@api_router.get("/company-settings/logo")
+async def get_company_logo():
+    settings = await db.company_settings.find_one({}, {'logo_webp': 1})
+    if not settings or not settings.get('logo_webp'):
+        raise HTTPException(status_code=404, detail="Logo not found")
+    
+    image_data = base64.b64decode(settings['logo_webp'])
+    return Response(content=image_data, media_type="image/webp")
+
+# ============== PUBLIC SHOWCASE ROUTES (NO AUTH) ==============
+
+@api_router.get("/public/company-settings")
+async def get_public_company_settings():
+    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0})
+    if not settings:
+        return None
+    
+    has_logo = await db.company_settings.find_one({'logo_webp': {'$ne': None}}, {'_id': 1})
+    
+    return {
+        'company_name': settings['company_name'],
+        'address': settings['address'],
+        'email': settings['email'],
+        'gst_number': settings['gst_number'],
+        'drug_license': settings['drug_license'],
+        'logo_url': "/api/company-settings/logo" if has_logo else None,
+        'terms_conditions': settings.get('terms_conditions')
+    }
+
+@api_router.get("/public/items")
+async def get_public_items():
+    """Get all items grouped by category for public showcase"""
+    items = await db.items.find({}, {'_id': 0, 'image_webp': 0, 'created_by': 0}).sort('category', 1).to_list(1000)
+    
+    # Group by category
+    categories = {}
+    uncategorized = []
+    
+    for item in items:
+        has_image = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
+        item_data = {
+            'id': item['id'],
+            'item_code': item['item_code'],
+            'item_name': item['item_name'],
+            'composition': item.get('composition'),
+            'offer': item.get('offer'),
+            'mrp': item['mrp'],
+            'rate': item['rate'],
+            'gst': item.get('gst', 0),
+            'image_url': f"/api/items/{item['id']}/image" if has_image else None
+        }
+        
+        category = item.get('category')
+        if category:
+            if category not in categories:
+                categories[category] = []
+            categories[category].append(item_data)
+        else:
+            uncategorized.append(item_data)
+    
+    result = []
+    for cat_name, cat_items in sorted(categories.items()):
+        result.append({'category': cat_name, 'items': cat_items})
+    
+    if uncategorized:
+        result.append({'category': 'Other Products', 'items': uncategorized})
+    
+    return result
+
+@api_router.get("/public/doctor/{mobile}")
+async def get_doctor_by_mobile(mobile: str):
+    """Get doctor details by mobile number for auto-fill"""
+    # Clean mobile number (remove spaces, dashes, etc.)
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    
+    # Search with various formats
+    doctor = await db.doctors.find_one(
+        {'$or': [
+            {'phone': {'$regex': clean_mobile[-10:], '$options': 'i'}},
+            {'phone': clean_mobile},
+            {'phone': f"+91{clean_mobile[-10:]}"},
+            {'phone': f"91{clean_mobile[-10:]}"}
+        ]},
+        {'_id': 0}
+    )
+    
+    if not doctor:
+        return None
+    
+    return {
+        'id': doctor['id'],
+        'name': doctor['name'],
+        'phone': doctor['phone'],
+        'email': doctor['email'],
+        'address': doctor['address'],
+        'customer_code': doctor['customer_code']
+    }
+
+# ============== OTP & ORDER ROUTES ==============
+
+async def send_whatsapp_otp(mobile: str, otp: str):
+    """Send OTP via WhatsApp API"""
+    sender_id = "919944472488"
+    auth_token = "password"  # Will be configured
+    
+    # Ensure mobile has 91 prefix
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    message = f"Your VMP CRM verification code is: {otp}. Valid for 5 minutes."
+    
+    url = f"https://api.botmastersender.com/api/v1/"
+    params = {
+        'action': 'send',
+        'senderId': sender_id,
+        'authToken': auth_token,
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params, timeout=30)
+            logger.info(f"WhatsApp OTP sent to {clean_mobile}: {response.status_code}")
+            return response.status_code == 200
+    except Exception as e:
+        logger.error(f"WhatsApp OTP error: {str(e)}")
+        return False
+
+async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str):
+    """Send order confirmation via WhatsApp"""
+    sender_id = "919944472488"
+    auth_token = "password"
+    
+    clean_mobile = ''.join(filter(str.isdigit, mobile))
+    if not clean_mobile.startswith('91'):
+        clean_mobile = f"91{clean_mobile[-10:]}"
+    
+    # Build order message
+    items_text = "\n".join([f"- {item.item_name}: {item.quantity}" for item in items if item.quantity])
+    message = f"Order #{order_number}\n\nItems:\n{items_text}\n\nThank you for your order!"
+    
+    url = f"https://api.botmastersender.com/api/v1/"
+    params = {
+        'action': 'send',
+        'senderId': sender_id,
+        'authToken': auth_token,
+        'messageText': message,
+        'receiverId': clean_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(url, params=params, timeout=30)
+    except Exception as e:
+        logger.error(f"WhatsApp order message error: {str(e)}")
+
+@api_router.post("/public/send-otp")
+async def send_otp(request: OTPRequest):
+    """Send OTP to mobile number via WhatsApp"""
+    clean_mobile = ''.join(filter(str.isdigit, request.mobile))
+    if len(clean_mobile) < 10:
+        raise HTTPException(status_code=400, detail="Invalid mobile number")
+    
+    # Generate 6-digit OTP
+    otp = str(random.randint(100000, 999999))
+    
+    # Store OTP with expiry (5 minutes)
+    otp_doc = {
+        'mobile': clean_mobile[-10:],
+        'otp': otp,
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'expires_at': (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+        'verified': False
+    }
+    
+    # Delete old OTPs for this mobile
+    await db.otps.delete_many({'mobile': clean_mobile[-10:]})
+    await db.otps.insert_one(otp_doc)
+    
+    # Send OTP via WhatsApp
+    sent = await send_whatsapp_otp(request.mobile, otp)
+    
+    # For development/testing, also log the OTP
+    logger.info(f"OTP for {clean_mobile}: {otp}")
+    
+    return {"message": "OTP sent successfully", "sent": sent}
+
+@api_router.post("/public/verify-otp", response_model=OrderResponse)
+async def verify_otp_and_submit_order(request: OTPVerify):
+    """Verify OTP and submit order"""
+    clean_mobile = ''.join(filter(str.isdigit, request.mobile))[-10:]
+    
+    # Find OTP
+    otp_doc = await db.otps.find_one({
+        'mobile': clean_mobile,
+        'otp': request.otp,
+        'verified': False
+    }, {'_id': 0})
+    
+    if not otp_doc:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Check expiry
+    expires_at = datetime.fromisoformat(otp_doc['expires_at'].replace('Z', '+00:00'))
+    if datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="OTP expired")
+    
+    # Mark OTP as verified
+    await db.otps.update_one({'mobile': clean_mobile}, {'$set': {'verified': True}})
+    
+    # Get doctor details if exists
+    doctor = await db.doctors.find_one(
+        {'$or': [
+            {'phone': {'$regex': clean_mobile, '$options': 'i'}},
+            {'phone': f"+91{clean_mobile}"},
+            {'phone': f"91{clean_mobile}"}
+        ]},
+        {'_id': 0}
+    )
+    
+    # Generate order number
+    order_count = await db.orders.count_documents({})
+    order_number = f"ORD-{str(order_count + 1).zfill(6)}"
+    
+    order_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Filter items with quantity
+    valid_items = [item for item in request.items if item.quantity and item.quantity.strip()]
+    
+    order_doc = {
+        'id': order_id,
+        'order_number': order_number,
+        'doctor_id': doctor['id'] if doctor else None,
+        'doctor_name': doctor['name'] if doctor else None,
+        'doctor_phone': request.mobile,
+        'doctor_email': doctor['email'] if doctor else None,
+        'doctor_address': doctor['address'] if doctor else None,
+        'doctor_customer_code': doctor['customer_code'] if doctor else None,
+        'items': [item.model_dump() for item in valid_items],
+        'status': 'pending',
+        'ip_address': request.ip_address,
+        'location': request.location,
+        'device_info': request.device_info,
+        'created_at': now.isoformat()
+    }
+    
+    await db.orders.insert_one(order_doc)
+    
+    # Send order confirmation via WhatsApp
+    await send_whatsapp_order(request.mobile, valid_items, order_number)
+    
+    return OrderResponse(
+        id=order_id,
+        order_number=order_number,
+        doctor_id=doctor['id'] if doctor else None,
+        doctor_name=doctor['name'] if doctor else None,
+        doctor_phone=request.mobile,
+        doctor_email=doctor['email'] if doctor else None,
+        doctor_address=doctor['address'] if doctor else None,
+        items=valid_items,
+        status='pending',
+        ip_address=request.ip_address,
+        location=request.location,
+        device_info=request.device_info,
+        created_at=now
+    )
+
+# ============== ORDERS ADMIN ROUTES ==============
+
+@api_router.get("/orders", response_model=List[OrderResponse])
+async def get_orders(
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query['status'] = status
+    
+    orders = await db.orders.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    
+    result = []
+    for order in orders:
+        created_at = order['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        items = [OrderItem(**item) for item in order.get('items', [])]
+        
+        result.append(OrderResponse(
+            id=order['id'],
+            order_number=order['order_number'],
+            doctor_id=order.get('doctor_id'),
+            doctor_name=order.get('doctor_name'),
+            doctor_phone=order['doctor_phone'],
+            doctor_email=order.get('doctor_email'),
+            doctor_address=order.get('doctor_address'),
+            items=items,
+            status=order['status'],
+            ip_address=order.get('ip_address'),
+            location=order.get('location'),
+            device_info=order.get('device_info'),
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.put("/orders/{order_id}/status")
+async def update_order_status(order_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    result = await db.orders.update_one(
+        {'id': order_id},
+        {'$set': {'status': status, 'updated_at': datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order status updated"}
+
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/")

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { itemsAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Separator } from '../components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import { 
   Plus, 
@@ -15,42 +16,61 @@ import {
   Package,
   X,
   Save,
-  PlusCircle
+  PlusCircle,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { formatDate } from '../lib/utils';
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 export const Items = () => {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Form state
   const [formData, setFormData] = useState({
     item_name: '',
+    item_code: '',
+    category: '',
     composition: '',
     offer: '',
     mrp: '',
     rate: '',
     gst: '',
     custom_fields: [],
+    image_base64: null,
   });
+
+  // Image preview state
+  const [imagePreview, setImagePreview] = useState(null);
 
   // New custom field state
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
 
+  // New category input
+  const [newCategory, setNewCategory] = useState('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
+
   useEffect(() => {
     fetchItems();
-  }, [search]);
+    fetchCategories();
+  }, [search, categoryFilter]);
 
   const fetchItems = async () => {
     try {
       const params = {};
       if (search) params.search = search;
+      if (categoryFilter && categoryFilter !== 'all') params.category = categoryFilter;
       const response = await itemsAPI.getAll(params);
       setItems(response.data);
     } catch (error) {
@@ -60,31 +80,50 @@ export const Items = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await itemsAPI.getCategories();
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Failed to fetch categories');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       item_name: '',
+      item_code: '',
+      category: '',
       composition: '',
       offer: '',
       mrp: '',
       rate: '',
       gst: '',
       custom_fields: [],
+      image_base64: null,
     });
+    setImagePreview(null);
     setNewFieldName('');
     setNewFieldValue('');
+    setNewCategory('');
+    setShowNewCategory(false);
   };
 
   const handleSelectItem = (item) => {
     setSelectedItem(item);
     setFormData({
       item_name: item.item_name,
+      item_code: item.item_code || '',
+      category: item.category || '',
       composition: item.composition || '',
       offer: item.offer || '',
       mrp: item.mrp.toString(),
       rate: item.rate.toString(),
       gst: item.gst.toString(),
       custom_fields: item.custom_fields || [],
+      image_base64: null,
     });
+    setImagePreview(item.image_url ? `${API_URL}${item.image_url}` : null);
     setIsEditing(false);
     setIsCreating(false);
   };
@@ -109,14 +148,54 @@ export const Items = () => {
       if (selectedItem) {
         setFormData({
           item_name: selectedItem.item_name,
+          item_code: selectedItem.item_code || '',
+          category: selectedItem.category || '',
           composition: selectedItem.composition || '',
           offer: selectedItem.offer || '',
           mrp: selectedItem.mrp.toString(),
           rate: selectedItem.rate.toString(),
           gst: selectedItem.gst.toString(),
           custom_fields: selectedItem.custom_fields || [],
+          image_base64: null,
         });
+        setImagePreview(selectedItem.image_url ? `${API_URL}${selectedItem.image_url}` : null);
       }
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Read and convert to base64
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target.result.split(',')[1]; // Remove data URL prefix
+      setFormData({ ...formData, image_base64: base64 });
+      setImagePreview(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = async () => {
+    if (selectedItem && !isCreating) {
+      try {
+        await itemsAPI.deleteImage(selectedItem.id);
+        toast.success('Image removed');
+      } catch (error) {
+        console.error('Failed to delete image');
+      }
+    }
+    setFormData({ ...formData, image_base64: null });
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -148,6 +227,16 @@ export const Items = () => {
     setFormData({ ...formData, custom_fields: updated });
   };
 
+  const handleCategoryChange = (value) => {
+    if (value === '__new__') {
+      setShowNewCategory(true);
+      setFormData({ ...formData, category: '' });
+    } else {
+      setShowNewCategory(false);
+      setFormData({ ...formData, category: value });
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.item_name.trim()) {
       toast.error('Item name is required');
@@ -162,6 +251,8 @@ export const Items = () => {
     try {
       const payload = {
         item_name: formData.item_name,
+        item_code: formData.item_code || null,
+        category: showNewCategory ? newCategory : (formData.category || null),
         composition: formData.composition || null,
         offer: formData.offer || null,
         mrp: parseFloat(formData.mrp),
@@ -170,18 +261,26 @@ export const Items = () => {
         custom_fields: formData.custom_fields,
       };
 
+      // Only include image if a new one was uploaded
+      if (formData.image_base64) {
+        payload.image_base64 = formData.image_base64;
+      }
+
       if (isCreating) {
         const response = await itemsAPI.create(payload);
         toast.success('Item created successfully');
         setSelectedItem(response.data);
         setIsCreating(false);
+        setImagePreview(response.data.image_url ? `${API_URL}${response.data.image_url}` : null);
       } else {
         const response = await itemsAPI.update(selectedItem.id, payload);
         toast.success('Item updated successfully');
         setSelectedItem(response.data);
         setIsEditing(false);
+        setImagePreview(response.data.image_url ? `${API_URL}${response.data.image_url}` : null);
       }
       fetchItems();
+      fetchCategories();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to save item');
     } finally {
@@ -203,6 +302,7 @@ export const Items = () => {
       setSelectedItem(null);
       resetForm();
       fetchItems();
+      fetchCategories();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete item');
     } finally {
@@ -233,15 +333,30 @@ export const Items = () => {
                 Add
               </Button>
             </div>
-            <div className="relative mt-3">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Search items..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-                data-testid="search-items-input"
-              />
+            <div className="space-y-2 mt-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search items..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                  data-testid="search-items-input"
+                />
+              </div>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger data-testid="category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.name} value={cat.name}>
+                      {cat.name} ({cat.count})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto p-0">
@@ -261,12 +376,27 @@ export const Items = () => {
                     data-testid={`item-row-${item.id}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Package className="w-5 h-5 text-slate-500" />
-                      </div>
+                      {item.image_url ? (
+                        <img 
+                          src={`${API_URL}${item.image_url}`} 
+                          alt={item.item_name}
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Package className="w-5 h-5 text-slate-500" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-900 truncate">{item.item_name}</p>
-                        <p className="text-xs text-slate-500">{item.item_code}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">{item.item_code}</span>
+                          {item.category && (
+                            <span className="text-xs px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
+                              {item.category}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-slate-900">₹{item.rate}</p>
@@ -329,12 +459,110 @@ export const Items = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Item Code (read-only) */}
-                {selectedItem && !isCreating && (
-                  <div className="inline-flex items-center px-3 py-1 bg-slate-100 rounded-full">
-                    <span className="text-sm font-mono font-medium text-slate-700">{selectedItem.item_code}</span>
+                {/* Image Upload Section */}
+                <div className="flex items-start gap-6">
+                  <div className="flex flex-col items-center">
+                    <div className="w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg overflow-hidden flex items-center justify-center bg-slate-50 relative">
+                      {imagePreview ? (
+                        <>
+                          <img 
+                            src={imagePreview} 
+                            alt="Item" 
+                            className="w-full h-full object-cover"
+                          />
+                          {isFormMode && (
+                            <button
+                              onClick={handleRemoveImage}
+                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-slate-300" />
+                      )}
+                    </div>
+                    {isFormMode && (
+                      <>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          ref={fileInputRef}
+                          className="hidden"
+                          data-testid="image-upload-input"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload className="w-4 h-4 mr-1" />
+                          Upload
+                        </Button>
+                        <p className="text-xs text-slate-400 mt-1">100x100 WebP, &lt;25KB</p>
+                      </>
+                    )}
                   </div>
-                )}
+
+                  {/* Item Code Display/Input */}
+                  <div className="flex-1 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="item_code">Item Code</Label>
+                      <Input
+                        id="item_code"
+                        value={formData.item_code}
+                        onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
+                        placeholder="Auto-generated if empty (e.g., ITM-0001)"
+                        disabled={!isFormMode}
+                        data-testid="item-code-input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category</Label>
+                      {isFormMode ? (
+                        showNewCategory ? (
+                          <div className="flex gap-2">
+                            <Input
+                              value={newCategory}
+                              onChange={(e) => setNewCategory(e.target.value)}
+                              placeholder="Enter new category"
+                              data-testid="new-category-input"
+                            />
+                            <Button variant="outline" size="sm" onClick={() => setShowNewCategory(false)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Select value={formData.category} onValueChange={handleCategoryChange}>
+                            <SelectTrigger data-testid="item-category-select">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((cat) => (
+                                <SelectItem key={cat.name} value={cat.name}>
+                                  {cat.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="__new__">
+                                <span className="text-blue-600">+ Add New Category</span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )
+                      ) : (
+                        <Input
+                          value={formData.category || '-'}
+                          disabled
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
 
                 {/* Basic Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

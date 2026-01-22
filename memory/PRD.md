@@ -31,6 +31,37 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Dashboard with statistics
 - [x] Search and filter functionality
 
+## Items/Products Management (Iteration 2-3)
+- [x] Items CRUD with fields: name, composition, offer, MRP, Rate, GST
+- [x] Item categories
+- [x] Custom item codes
+- [x] Image uploads (100x100px, WebP compressed <25KB)
+- [x] Special offers with styling
+
+## Public Showcase & Ordering (Iteration 4-6)
+- [x] Public product showcase page (mobile-responsive)
+- [x] Editable company header (logo, name, address)
+- [x] Products grouped by category
+- [x] Order form with quantity input
+- [x] WhatsApp OTP verification for orders
+- [x] Order confirmation via WhatsApp
+- [x] Dynamic WhatsApp API configuration
+
+## Order Management & Transport (Iteration 7-9) - COMPLETED Jan 22, 2026
+- [x] Transport provider management (CRUD)
+- [x] Order tracking with transport details
+- [x] Payment status tracking (To Pay/Paid)
+- [x] **WhatsApp notifications for status changes:**
+  - Confirmed: Order confirmation message
+  - Shipped: Full transport details, package counts, invoice info
+  - Delivered: Delivery confirmation
+  - Cancelled: Cancellation with reason
+- [x] **Conditional fields based on status:**
+  - Shipped: Transport, tracking, delivery station, payment mode, package counts (boxes/cans/bags), invoice details
+  - Cancelled: Cancellation reason (required)
+- [x] Package details: Boxes, Cans, Bags counts
+- [x] Invoice details: Number, Date, Value
+
 ## Architecture
 
 ### Backend (FastAPI)

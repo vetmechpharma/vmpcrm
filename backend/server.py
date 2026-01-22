@@ -190,6 +190,70 @@ class CategoryResponse(BaseModel):
     name: str
     count: int
 
+# ============== COMPANY SETTINGS MODELS ==============
+
+class CompanySettingsCreate(BaseModel):
+    company_name: str
+    address: str
+    email: EmailStr
+    gst_number: str
+    drug_license: str
+    logo_base64: Optional[str] = None
+    terms_conditions: Optional[str] = None
+
+class CompanySettingsResponse(BaseModel):
+    id: str
+    company_name: str
+    address: str
+    email: str
+    gst_number: str
+    drug_license: str
+    logo_url: Optional[str] = None
+    terms_conditions: Optional[str] = None
+    updated_at: datetime
+
+# ============== ORDER MODELS ==============
+
+class OrderItem(BaseModel):
+    item_id: str
+    item_code: str
+    item_name: str
+    quantity: str  # Can be "10" or "10+2" format
+    mrp: float
+    rate: float
+
+class OrderCreate(BaseModel):
+    mobile: str
+    items: List[OrderItem]
+    terms_accepted: bool = True
+
+class OTPRequest(BaseModel):
+    mobile: str
+    items: List[OrderItem]
+
+class OTPVerify(BaseModel):
+    mobile: str
+    otp: str
+    items: List[OrderItem]
+    ip_address: Optional[str] = None
+    location: Optional[str] = None
+    device_info: Optional[str] = None
+
+class OrderResponse(BaseModel):
+    id: str
+    order_number: str
+    doctor_id: Optional[str] = None
+    doctor_name: Optional[str] = None
+    doctor_phone: str
+    doctor_email: Optional[str] = None
+    doctor_address: Optional[str] = None
+    items: List[OrderItem]
+    status: str
+    ip_address: Optional[str] = None
+    location: Optional[str] = None
+    device_info: Optional[str] = None
+    created_at: datetime
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

@@ -60,8 +60,11 @@ export const Orders = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingItemsForOrder, setPendingItemsForOrder] = useState([]);
+  const [existingDoctor, setExistingDoctor] = useState(null);
+  const [lookingUpDoctor, setLookingUpDoctor] = useState(false);
 
   // Transport form
   const [newTransport, setNewTransport] = useState({
@@ -73,6 +76,15 @@ export const Orders = () => {
   // Edit order items form
   const [editItems, setEditItems] = useState([]);
   const [itemsToMarkPending, setItemsToMarkPending] = useState({});
+
+  // Customer edit form
+  const [customerForm, setCustomerForm] = useState({
+    doctor_name: '',
+    doctor_email: '',
+    doctor_address: '',
+    doctor_phone: '',
+    link_to_doctor: false
+  });
 
   // Order update form with new fields
   const [updateForm, setUpdateForm] = useState({

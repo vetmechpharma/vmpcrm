@@ -944,6 +944,7 @@ async def get_items(
             category=item.get('category'),
             composition=item.get('composition'),
             offer=item.get('offer'),
+            special_offer=item.get('special_offer'),
             mrp=item['mrp'],
             rate=item['rate'],
             gst=item.get('gst', 0),

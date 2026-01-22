@@ -495,7 +495,7 @@ export const Orders = () => {
 
       {/* Update Order Modal */}
       <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Update Order - {selectedOrder?.order_number}</DialogTitle>
           </DialogHeader>
@@ -504,7 +504,7 @@ export const Orders = () => {
             <div className="space-y-2">
               <Label>Order Status</Label>
               <Select value={updateForm.status} onValueChange={(v) => setUpdateForm({...updateForm, status: v})}>
-                <SelectTrigger>
+                <SelectTrigger data-testid="order-status-select">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -515,70 +515,190 @@ export const Orders = () => {
               </Select>
             </div>
 
-            {/* Transport */}
-            <div className="space-y-2">
-              <Label>Transport</Label>
-              <Select value={updateForm.transport_id} onValueChange={handleTransportChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select transport" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transports.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} {t.is_local && '(Local)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* SHIPPED STATUS - Show transport & invoice fields */}
+            {updateForm.status === 'shipped' && (
+              <>
+                {/* Transport Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Truck className="w-4 h-4" /> Transport Details
+                  </h4>
+                  
+                  {/* Transport */}
+                  <div className="space-y-2 mb-3">
+                    <Label>Transport</Label>
+                    <Select value={updateForm.transport_id} onValueChange={handleTransportChange}>
+                      <SelectTrigger data-testid="transport-select">
+                        <SelectValue placeholder="Select transport" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transports.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} {t.is_local && '(Local)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            {/* Tracking Number - Only if not local */}
-            {updateForm.transport_id && !isLocalSupply && (
-              <div className="space-y-2">
-                <Label>Tracking Number</Label>
-                <Input
-                  value={updateForm.tracking_number}
-                  onChange={(e) => handleTrackingNumberChange(e.target.value)}
-                  placeholder="Enter tracking number"
-                />
-                {updateForm.tracking_url && (
-                  <a href={updateForm.tracking_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                    Preview tracking link <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
+                  {/* Tracking Number - Only if not local */}
+                  {updateForm.transport_id && !isLocalSupply && (
+                    <div className="space-y-2 mb-3">
+                      <Label>Tracking Number</Label>
+                      <Input
+                        data-testid="tracking-number-input"
+                        value={updateForm.tracking_number}
+                        onChange={(e) => handleTrackingNumberChange(e.target.value)}
+                        placeholder="Enter tracking number"
+                      />
+                      {updateForm.tracking_url && (
+                        <a href={updateForm.tracking_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                          Preview tracking link <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Delivery Station */}
+                  <div className="space-y-2 mb-3">
+                    <Label>Delivery Station</Label>
+                    <Input
+                      data-testid="delivery-station-input"
+                      value={updateForm.delivery_station}
+                      onChange={(e) => setUpdateForm({...updateForm, delivery_station: e.target.value})}
+                      placeholder="Enter delivery station"
+                    />
+                  </div>
+
+                  {/* Payment Mode */}
+                  <div className="space-y-2">
+                    <Label>Payment Mode</Label>
+                    <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v})}>
+                      <SelectTrigger data-testid="payment-mode-select">
+                        <SelectValue placeholder="Select payment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_MODES.map((mode) => (
+                          <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Package Counts Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Box className="w-4 h-4" /> Package Details
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label>Boxes</Label>
+                      <Input
+                        data-testid="boxes-count-input"
+                        type="number"
+                        min="0"
+                        value={updateForm.boxes_count}
+                        onChange={(e) => setUpdateForm({...updateForm, boxes_count: parseInt(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cans</Label>
+                      <Input
+                        data-testid="cans-count-input"
+                        type="number"
+                        min="0"
+                        value={updateForm.cans_count}
+                        onChange={(e) => setUpdateForm({...updateForm, cans_count: parseInt(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bags</Label>
+                      <Input
+                        data-testid="bags-count-input"
+                        type="number"
+                        min="0"
+                        value={updateForm.bags_count}
+                        onChange={(e) => setUpdateForm({...updateForm, bags_count: parseInt(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invoice Section */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" /> Invoice Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="space-y-2">
+                      <Label>Invoice Number</Label>
+                      <Input
+                        data-testid="invoice-number-input"
+                        value={updateForm.invoice_number}
+                        onChange={(e) => setUpdateForm({...updateForm, invoice_number: e.target.value})}
+                        placeholder="INV-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Invoice Date</Label>
+                      <Input
+                        data-testid="invoice-date-input"
+                        type="date"
+                        value={updateForm.invoice_date}
+                        onChange={(e) => setUpdateForm({...updateForm, invoice_date: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Invoice Value (₹)</Label>
+                    <Input
+                      data-testid="invoice-value-input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={updateForm.invoice_value}
+                      onChange={(e) => setUpdateForm({...updateForm, invoice_value: parseFloat(e.target.value) || ''})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Delivery Station */}
-            <div className="space-y-2">
-              <Label>Delivery Station</Label>
-              <Input
-                value={updateForm.delivery_station}
-                onChange={(e) => setUpdateForm({...updateForm, delivery_station: e.target.value})}
-                placeholder="Enter delivery station"
-              />
-            </div>
-
-            {/* Payment Mode */}
-            <div className="space-y-2">
-              <Label>Payment Mode</Label>
-              <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select payment mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_MODES.map((mode) => (
-                    <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* CANCELLED STATUS - Show cancellation reason */}
+            {updateForm.status === 'cancelled' && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium flex items-center gap-2 mb-3 text-red-600">
+                  <XCircle className="w-4 h-4" /> Cancellation Details
+                </h4>
+                <div className="space-y-2">
+                  <Label>Reason for Cancellation *</Label>
+                  <Textarea
+                    data-testid="cancellation-reason-input"
+                    value={updateForm.cancellation_reason}
+                    onChange={(e) => setUpdateForm({...updateForm, cancellation_reason: e.target.value})}
+                    placeholder="Enter reason for cancellation..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUpdateModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveOrder} disabled={saving}>
+            <Button 
+              onClick={handleSaveOrder} 
+              disabled={saving}
+              data-testid="save-order-btn"
+              className={updateForm.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Save
+              {updateForm.status === 'shipped' ? 'Ship Order' : updateForm.status === 'cancelled' ? 'Cancel Order' : 'Update'}
             </Button>
           </DialogFooter>
         </DialogContent>

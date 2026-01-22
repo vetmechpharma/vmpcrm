@@ -914,6 +914,98 @@ export const Orders = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Order Items Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5" />
+              Edit Order Items - {selectedOrder?.order_number}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div className="text-sm text-amber-700">
+                  <p className="font-medium">Remove unavailable items</p>
+                  <p>Check "Mark as Pending" to track items for customer follow-up when stock is available.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {editItems.map((item, index) => (
+                <div 
+                  key={index} 
+                  className={`p-4 rounded-lg border ${item.remove ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-800">{item.item_name}</p>
+                      <p className="text-sm text-slate-500">{item.item_code} | Qty: {item.quantity}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={item.remove ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleRemoveItem(index, !item.remove)}
+                        className={item.remove ? "bg-red-600 hover:bg-red-700" : ""}
+                      >
+                        {item.remove ? 'Removed' : 'Remove'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Mark as Pending option - only show when item is removed */}
+                  {item.remove && (
+                    <div className="mt-3 pt-3 border-t border-red-200">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`pending-${index}`}
+                          checked={itemsToMarkPending[index] || false}
+                          onCheckedChange={(checked) => handleMarkPending(index, checked)}
+                        />
+                        <label 
+                          htmlFor={`pending-${index}`} 
+                          className="text-sm text-red-700 cursor-pointer"
+                        >
+                          Mark as Pending (for customer follow-up)
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {editItems.filter(item => item.remove).length > 0 && (
+              <div className="mt-4 p-3 bg-slate-100 rounded-lg">
+                <p className="text-sm text-slate-600">
+                  <strong>{editItems.filter(item => item.remove).length}</strong> item(s) will be removed.
+                  {Object.values(itemsToMarkPending).filter(Boolean).length > 0 && (
+                    <> <strong>{Object.values(itemsToMarkPending).filter(Boolean).length}</strong> will be marked as pending.</>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveEditedItems} 
+              disabled={saving}
+              data-testid="save-edited-items"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

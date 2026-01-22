@@ -89,6 +89,15 @@ export const ordersAPI = {
   getAll: (params) => api.get('/orders', { params }),
   updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   updateTransport: (id, data) => api.put(`/orders/${id}/transport`, data),
+  updateItems: (id, data) => api.put(`/orders/${id}/items`, data),
+};
+
+// Pending Items APIs
+export const pendingItemsAPI = {
+  getAll: () => api.get('/pending-items'),
+  getStats: () => api.get('/pending-items/stats'),
+  getByDoctor: (phone) => api.get(`/pending-items/doctor/${phone}`),
+  delete: (id) => api.delete(`/pending-items/${id}`),
 };
 
 // Transport APIs

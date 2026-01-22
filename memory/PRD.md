@@ -62,6 +62,20 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Package details: Boxes, Cans, Bags counts
 - [x] Invoice details: Number, Date, Value
 
+## Order Editing & Pending Items - COMPLETED Jan 22, 2026
+- [x] **Edit Order Items**: Remove items when out of stock
+- [x] **Pending Items Tracking**: Mark removed items as "pending" for customer follow-up
+- [x] **Pending Items Page**: Dedicated page showing all pending items grouped by doctor
+- [x] **Dashboard Alert**: Shows pending items count for follow-up
+- [x] **Sidebar Badge**: Shows pending items count in navigation
+- [x] **Order Details**: Shows pending items for the customer in order view
+
+## Customer/Doctor Info Management - COMPLETED Jan 22, 2026
+- [x] **Edit Customer from Order**: Edit customer info directly from order details
+- [x] **Auto-detect Existing Doctor**: Looks up existing doctor by phone number
+- [x] **Link/Create Doctor**: Option to create new doctor record or update existing
+- [x] **"Linked" Badge**: Shows when order is linked to a doctor record
+
 ## Architecture
 
 ### Backend (FastAPI)

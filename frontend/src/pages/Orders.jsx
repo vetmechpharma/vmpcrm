@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ordersAPI } from '../lib/api';
+import { ordersAPI, transportAPI } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -16,7 +20,12 @@ import {
   Clock,
   User,
   Phone,
-  Mail
+  Mail,
+  Truck,
+  Plus,
+  Trash2,
+  ExternalLink,
+  CreditCard
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 
@@ -24,19 +33,49 @@ const STATUS_CONFIG = {
   pending: { color: 'bg-amber-100 text-amber-700', label: 'Pending' },
   confirmed: { color: 'bg-blue-100 text-blue-700', label: 'Confirmed' },
   processing: { color: 'bg-purple-100 text-purple-700', label: 'Processing' },
-  completed: { color: 'bg-emerald-100 text-emerald-700', label: 'Completed' },
+  shipped: { color: 'bg-indigo-100 text-indigo-700', label: 'Shipped' },
+  delivered: { color: 'bg-emerald-100 text-emerald-700', label: 'Delivered' },
   cancelled: { color: 'bg-red-100 text-red-700', label: 'Cancelled' },
 };
 
+const PAYMENT_MODES = [
+  { value: 'to_pay', label: 'To Pay' },
+  { value: 'paid', label: 'Paid' },
+];
+
 export const Orders = () => {
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [transports, setTransports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showTransportModal, setShowTransportModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Transport form
+  const [newTransport, setNewTransport] = useState({
+    name: '',
+    tracking_url_template: '',
+    is_local: false
+  });
+
+  // Order update form
+  const [updateForm, setUpdateForm] = useState({
+    status: 'pending',
+    transport_id: '',
+    transport_name: '',
+    tracking_number: '',
+    tracking_url: '',
+    delivery_station: '',
+    payment_mode: ''
+  });
 
   useEffect(() => {
     fetchOrders();
+    fetchTransports();
   }, [statusFilter]);
 
   const fetchOrders = async () => {
@@ -53,13 +92,98 @@ export const Orders = () => {
     }
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
+  const fetchTransports = async () => {
     try {
-      await ordersAPI.updateStatus(orderId, newStatus);
-      toast.success('Order status updated');
+      const response = await transportAPI.getAll();
+      setTransports(response.data);
+    } catch (error) {
+      console.error('Failed to fetch transports');
+    }
+  };
+
+  const openUpdateModal = (order) => {
+    setSelectedOrder(order);
+    setUpdateForm({
+      status: order.status,
+      transport_id: order.transport_id || '',
+      transport_name: order.transport_name || '',
+      tracking_number: order.tracking_number || '',
+      tracking_url: order.tracking_url || '',
+      delivery_station: order.delivery_station || '',
+      payment_mode: order.payment_mode || ''
+    });
+    setShowUpdateModal(true);
+  };
+
+  const handleTransportChange = (transportId) => {
+    const transport = transports.find(t => t.id === transportId);
+    if (transport) {
+      setUpdateForm({
+        ...updateForm,
+        transport_id: transport.id,
+        transport_name: transport.name,
+        tracking_url: transport.is_local ? '' : (transport.tracking_url_template || '')
+      });
+    }
+  };
+
+  const handleTrackingNumberChange = (value) => {
+    const transport = transports.find(t => t.id === updateForm.transport_id);
+    let trackingUrl = '';
+    
+    if (transport && transport.tracking_url_template && value) {
+      trackingUrl = transport.tracking_url_template.replace('{tracking_number}', value);
+    }
+    
+    setUpdateForm({
+      ...updateForm,
+      tracking_number: value,
+      tracking_url: trackingUrl
+    });
+  };
+
+  const handleSaveOrder = async () => {
+    setSaving(true);
+    try {
+      await ordersAPI.updateTransport(selectedOrder.id, updateForm);
+      toast.success('Order updated successfully');
+      setShowUpdateModal(false);
       fetchOrders();
     } catch (error) {
-      toast.error('Failed to update status');
+      toast.error('Failed to update order');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddTransport = async () => {
+    if (!newTransport.name.trim()) {
+      toast.error('Please enter transport name');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await transportAPI.create(newTransport);
+      toast.success('Transport added successfully');
+      setNewTransport({ name: '', tracking_url_template: '', is_local: false });
+      fetchTransports();
+    } catch (error) {
+      toast.error('Failed to add transport');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTransport = async (id) => {
+    if (!window.confirm('Delete this transport?')) return;
+    
+    try {
+      await transportAPI.delete(id);
+      toast.success('Transport deleted');
+      fetchTransports();
+    } catch (error) {
+      toast.error('Failed to delete transport');
     }
   };
 
@@ -68,14 +192,23 @@ export const Orders = () => {
     setShowDetailModal(true);
   };
 
+  const selectedTransport = transports.find(t => t.id === updateForm.transport_id);
+  const isLocalSupply = selectedTransport?.is_local;
+
   return (
     <div className="space-y-6 animate-fade-in" data-testid="orders-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Orders</h1>
-          <p className="text-slate-500 mt-1">Manage orders from product showcase</p>
+          <p className="text-slate-500 mt-1">Manage orders and shipping</p>
         </div>
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setShowTransportModal(true)}>
+              <Truck className="w-4 h-4 mr-2" />
+              Transports
+            </Button>
+          )}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by status" />
@@ -109,6 +242,8 @@ export const Orders = () => {
                     <th>Customer</th>
                     <th>Items</th>
                     <th>Status</th>
+                    <th>Transport</th>
+                    <th>Payment</th>
                     <th>Date</th>
                     <th>Actions</th>
                   </tr>
@@ -133,19 +268,34 @@ export const Orders = () => {
                           <span className="text-sm">{order.items?.length || 0} items</span>
                         </td>
                         <td>
-                          <Select
-                            value={order.status}
-                            onValueChange={(value) => handleStatusChange(order.id, value)}
-                          >
-                            <SelectTrigger className="w-32 h-8">
-                              <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                                <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                        </td>
+                        <td>
+                          {order.transport_name ? (
+                            <div>
+                              <p className="text-sm font-medium">{order.transport_name}</p>
+                              {order.tracking_number && (
+                                <p className="text-xs text-slate-500">
+                                  {order.tracking_url ? (
+                                    <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                      {order.tracking_number} <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                  ) : order.tracking_number}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td>
+                          {order.payment_mode ? (
+                            <Badge className={order.payment_mode === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
+                              {order.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
                         </td>
                         <td>
                           <span className="text-sm text-slate-500">
@@ -153,14 +303,22 @@ export const Orders = () => {
                           </span>
                         </td>
                         <td>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => viewOrderDetails(order)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => viewOrderDetails(order)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openUpdateModal(order)}
+                            >
+                              <Truck className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -238,6 +396,47 @@ export const Orders = () => {
                 </CardContent>
               </Card>
 
+              {/* Transport Info */}
+              {selectedOrder.transport_name && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Shipping Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-slate-400" />
+                      <span className="font-medium">{selectedOrder.transport_name}</span>
+                    </div>
+                    {selectedOrder.tracking_number && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500">Tracking:</span>
+                        {selectedOrder.tracking_url ? (
+                          <a href={selectedOrder.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                            {selectedOrder.tracking_number} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span>{selectedOrder.tracking_number}</span>
+                        )}
+                      </div>
+                    )}
+                    {selectedOrder.delivery_station && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <span>{selectedOrder.delivery_station}</span>
+                      </div>
+                    )}
+                    {selectedOrder.payment_mode && (
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-slate-400" />
+                        <Badge className={selectedOrder.payment_mode === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
+                          {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Device Info */}
               <Card>
                 <CardHeader className="pb-3">
@@ -260,16 +459,180 @@ export const Orders = () => {
                       <span>Location: {selectedOrder.location}</span>
                     </div>
                   )}
-                  {selectedOrder.device_info && (
-                    <div className="flex items-start gap-2">
-                      <Monitor className="w-4 h-4 text-slate-400 mt-0.5" />
-                      <span className="break-all">Device: {selectedOrder.device_info}</span>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Order Modal */}
+      <Dialog open={showUpdateModal} onOpenChange={setShowUpdateModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Order - {selectedOrder?.order_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Status */}
+            <div className="space-y-2">
+              <Label>Order Status</Label>
+              <Select value={updateForm.status} onValueChange={(v) => setUpdateForm({...updateForm, status: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Transport */}
+            <div className="space-y-2">
+              <Label>Transport</Label>
+              <Select value={updateForm.transport_id} onValueChange={handleTransportChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select transport" />
+                </SelectTrigger>
+                <SelectContent>
+                  {transports.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} {t.is_local && '(Local)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tracking Number - Only if not local */}
+            {updateForm.transport_id && !isLocalSupply && (
+              <div className="space-y-2">
+                <Label>Tracking Number</Label>
+                <Input
+                  value={updateForm.tracking_number}
+                  onChange={(e) => handleTrackingNumberChange(e.target.value)}
+                  placeholder="Enter tracking number"
+                />
+                {updateForm.tracking_url && (
+                  <a href={updateForm.tracking_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                    Preview tracking link <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Delivery Station */}
+            <div className="space-y-2">
+              <Label>Delivery Station</Label>
+              <Input
+                value={updateForm.delivery_station}
+                onChange={(e) => setUpdateForm({...updateForm, delivery_station: e.target.value})}
+                placeholder="Enter delivery station"
+              />
+            </div>
+
+            {/* Payment Mode */}
+            <div className="space-y-2">
+              <Label>Payment Mode</Label>
+              <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_MODES.map((mode) => (
+                    <SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpdateModal(false)}>Cancel</Button>
+            <Button onClick={handleSaveOrder} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transport Management Modal */}
+      <Dialog open={showTransportModal} onOpenChange={setShowTransportModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Manage Transports</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Add New Transport */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Add New Transport</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Transport Name *</Label>
+                  <Input
+                    value={newTransport.name}
+                    onChange={(e) => setNewTransport({...newTransport, name: e.target.value})}
+                    placeholder="e.g., Blue Dart, DTDC, Local Supply"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_local"
+                    checked={newTransport.is_local}
+                    onChange={(e) => setNewTransport({...newTransport, is_local: e.target.checked, tracking_url_template: ''})}
+                    className="rounded"
+                  />
+                  <label htmlFor="is_local" className="text-sm">Local Supply (no tracking)</label>
+                </div>
+                {!newTransport.is_local && (
+                  <div className="space-y-2">
+                    <Label>Tracking URL Template</Label>
+                    <Input
+                      value={newTransport.tracking_url_template}
+                      onChange={(e) => setNewTransport({...newTransport, tracking_url_template: e.target.value})}
+                      placeholder="https://track.com/?awb={tracking_number}"
+                    />
+                    <p className="text-xs text-slate-500">Use {'{tracking_number}'} as placeholder</p>
+                  </div>
+                )}
+                <Button onClick={handleAddTransport} disabled={saving} className="w-full">
+                  {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Transport
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Existing Transports */}
+            <div className="space-y-2">
+              <Label>Existing Transports</Label>
+              {transports.length > 0 ? (
+                <div className="space-y-2">
+                  {transports.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{t.name}</p>
+                        {t.is_local ? (
+                          <p className="text-xs text-slate-500">Local Supply</p>
+                        ) : t.tracking_url_template ? (
+                          <p className="text-xs text-slate-500 truncate max-w-[250px]">{t.tracking_url_template}</p>
+                        ) : null}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTransport(t.id)} className="text-red-500 hover:text-red-700">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No transports added yet</p>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

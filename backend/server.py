@@ -1233,10 +1233,21 @@ async def get_doctor_by_mobile(mobile: str):
 
 # ============== OTP & ORDER ROUTES ==============
 
+async def get_whatsapp_config():
+    """Get WhatsApp config from database"""
+    config = await db.whatsapp_config.find_one({}, {'_id': 0})
+    if not config:
+        # Default config
+        return {
+            'api_url': 'https://api.botmastersender.com/api/v1/',
+            'auth_token': '1d97fa5b-b9f8-4b1c-9479-cae962594d5f',
+            'sender_id': '919944472488'
+        }
+    return config
+
 async def send_whatsapp_otp(mobile: str, otp: str):
     """Send OTP via WhatsApp API"""
-    sender_id = "919944472488"
-    auth_token = "password"  # Will be configured
+    config = await get_whatsapp_config()
     
     # Ensure mobile has 91 prefix
     clean_mobile = ''.join(filter(str.isdigit, mobile))
@@ -1245,18 +1256,17 @@ async def send_whatsapp_otp(mobile: str, otp: str):
     
     message = f"Your VMP CRM verification code is: {otp}. Valid for 5 minutes."
     
-    url = f"https://api.botmastersender.com/api/v1/"
     params = {
         'action': 'send',
-        'senderId': sender_id,
-        'authToken': auth_token,
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
         'messageText': message,
         'receiverId': clean_mobile
     }
     
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params, timeout=30)
+            response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"WhatsApp OTP sent to {clean_mobile}: {response.status_code}")
             return response.status_code == 200
     except Exception as e:
@@ -1265,8 +1275,7 @@ async def send_whatsapp_otp(mobile: str, otp: str):
 
 async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str):
     """Send order confirmation via WhatsApp"""
-    sender_id = "919944472488"
-    auth_token = "password"
+    config = await get_whatsapp_config()
     
     clean_mobile = ''.join(filter(str.isdigit, mobile))
     if not clean_mobile.startswith('91'):
@@ -1276,18 +1285,17 @@ async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number:
     items_text = "\n".join([f"- {item.item_name}: {item.quantity}" for item in items if item.quantity])
     message = f"Order #{order_number}\n\nItems:\n{items_text}\n\nThank you for your order!"
     
-    url = f"https://api.botmastersender.com/api/v1/"
     params = {
         'action': 'send',
-        'senderId': sender_id,
-        'authToken': auth_token,
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
         'messageText': message,
         'receiverId': clean_mobile
     }
     
     try:
         async with httpx.AsyncClient() as client:
-            await client.get(url, params=params, timeout=30)
+            await client.get(config['api_url'], params=params, timeout=30)
     except Exception as e:
         logger.error(f"WhatsApp order message error: {str(e)}")
 

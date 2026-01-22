@@ -78,4 +78,25 @@ export const itemsAPI = {
   getCategories: () => api.get('/item-categories'),
 };
 
+// Company Settings APIs
+export const companyAPI = {
+  getSettings: () => api.get('/company-settings'),
+  saveSettings: (data) => api.post('/company-settings', data),
+};
+
+// Orders APIs
+export const ordersAPI = {
+  getAll: (params) => api.get('/orders', { params }),
+  updateStatus: (id, status) => api.put(`/orders/${id}/status?status=${status}`),
+};
+
+// Public APIs (no auth required)
+export const publicAPI = {
+  getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),
+  getItems: () => axios.get(`${API_URL}/api/public/items`),
+  getDoctorByMobile: (mobile) => axios.get(`${API_URL}/api/public/doctor/${mobile}`),
+  sendOTP: (data) => axios.post(`${API_URL}/api/public/send-otp`, data),
+  verifyOTP: (data) => axios.post(`${API_URL}/api/public/verify-otp`, data),
+};
+
 export default api;

@@ -1802,6 +1802,138 @@ async def update_order_transport(order_id: str, transport_data: OrderStatusUpdat
     """Legacy endpoint - redirects to status update"""
     return await update_order_status(order_id, transport_data, background_tasks, current_user)
 
+@api_router.put("/orders/{order_id}/items")
+async def update_order_items(order_id: str, update_data: OrderItemsUpdate, current_user: dict = Depends(get_current_user)):
+    """Update order items and optionally create pending items for removed items"""
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Update order items
+    items_data = [item.dict() for item in update_data.items]
+    await db.orders.update_one(
+        {'id': order_id},
+        {'$set': {
+            'items': items_data,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Create pending items if any
+    if update_data.pending_items:
+        now = datetime.now(timezone.utc)
+        order_date = order.get('created_at')
+        if isinstance(order_date, str):
+            order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+        
+        for pending_item in update_data.pending_items:
+            pending_doc = {
+                'id': str(uuid.uuid4()),
+                'doctor_phone': order.get('doctor_phone'),
+                'doctor_name': order.get('doctor_name'),
+                'item_id': pending_item.get('item_id'),
+                'item_code': pending_item.get('item_code'),
+                'item_name': pending_item.get('item_name'),
+                'quantity': pending_item.get('quantity'),
+                'original_order_id': order_id,
+                'original_order_number': order.get('order_number'),
+                'original_order_date': order_date.isoformat() if isinstance(order_date, datetime) else order_date,
+                'created_at': now.isoformat()
+            }
+            await db.pending_items.insert_one(pending_doc)
+    
+    return {"message": "Order items updated successfully"}
+
+# ============== PENDING ITEMS ROUTES ==============
+
+@api_router.get("/pending-items")
+async def get_all_pending_items(current_user: dict = Depends(get_current_user)):
+    """Get all pending items"""
+    pending_items = await db.pending_items.find({}, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    
+    result = []
+    for item in pending_items:
+        created_at = item.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        order_date = item.get('original_order_date')
+        if isinstance(order_date, str):
+            order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+        
+        result.append(PendingItemResponse(
+            id=item['id'],
+            doctor_phone=item['doctor_phone'],
+            doctor_name=item.get('doctor_name'),
+            item_id=item['item_id'],
+            item_code=item['item_code'],
+            item_name=item['item_name'],
+            quantity=item['quantity'],
+            original_order_id=item['original_order_id'],
+            original_order_number=item['original_order_number'],
+            original_order_date=order_date,
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.get("/pending-items/stats")
+async def get_pending_items_stats(current_user: dict = Depends(get_current_user)):
+    """Get pending items statistics"""
+    total_count = await db.pending_items.count_documents({})
+    
+    # Get unique doctors with pending items
+    pipeline = [
+        {"$group": {"_id": "$doctor_phone", "count": {"$sum": 1}}},
+        {"$count": "unique_doctors"}
+    ]
+    doctors_result = await db.pending_items.aggregate(pipeline).to_list(1)
+    unique_doctors = doctors_result[0]['unique_doctors'] if doctors_result else 0
+    
+    return {
+        "total_pending_items": total_count,
+        "doctors_with_pending": unique_doctors
+    }
+
+@api_router.get("/pending-items/doctor/{phone}")
+async def get_pending_items_by_doctor(phone: str, current_user: dict = Depends(get_current_user)):
+    """Get pending items for a specific doctor by phone"""
+    pending_items = await db.pending_items.find({'doctor_phone': phone}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    
+    result = []
+    for item in pending_items:
+        created_at = item.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        order_date = item.get('original_order_date')
+        if isinstance(order_date, str):
+            order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+        
+        result.append(PendingItemResponse(
+            id=item['id'],
+            doctor_phone=item['doctor_phone'],
+            doctor_name=item.get('doctor_name'),
+            item_id=item['item_id'],
+            item_code=item['item_code'],
+            item_name=item['item_name'],
+            quantity=item['quantity'],
+            original_order_id=item['original_order_id'],
+            original_order_number=item['original_order_number'],
+            original_order_date=order_date,
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.delete("/pending-items/{item_id}")
+async def delete_pending_item(item_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a pending item after customer contact"""
+    result = await db.pending_items.delete_one({'id': item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pending item not found")
+    return {"message": "Pending item deleted successfully"}
+
 # ============== TRANSPORT ROUTES ==============
 
 @api_router.post("/transports", response_model=TransportResponse)

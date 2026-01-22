@@ -69,6 +69,11 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Dashboard Alert**: Shows pending items count for follow-up
 - [x] **Sidebar Badge**: Shows pending items count in navigation
 - [x] **Order Details**: Shows pending items for the customer in order view
+- [x] **WhatsApp Out of Stock Notification**: Auto-sends message when items are marked as pending with:
+  - ⚠️ Stock Update notification
+  - List of out of stock items
+  - Apology and assurance message
+  - Company contact info
 
 ## Customer/Doctor Info Management - COMPLETED Jan 22, 2026
 - [x] **Edit Customer from Order**: Edit customer info directly from order details

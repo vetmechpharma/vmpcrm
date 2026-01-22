@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardAPI } from '../lib/api';
+import { dashboardAPI, pendingItemsAPI } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -14,7 +14,9 @@ import {
   Mail,
   Plus,
   ArrowRight,
-  Loader2
+  Loader2,
+  Package,
+  AlertTriangle
 } from 'lucide-react';
 import { getStatusColor, formatDate } from '../lib/utils';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
@@ -37,10 +39,12 @@ const STATUS_ICONS = {
 
 export const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [pendingStats, setPendingStats] = useState({ total_pending_items: 0, doctors_with_pending: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchPendingStats();
   }, []);
 
   const fetchStats = async () => {
@@ -51,6 +55,15 @@ export const Dashboard = () => {
       console.error('Failed to fetch stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingStats = async () => {
+    try {
+      const response = await pendingItemsAPI.getStats();
+      setPendingStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch pending stats:', error);
     }
   };
 

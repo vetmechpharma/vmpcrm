@@ -124,7 +124,14 @@ export const Orders = () => {
       tracking_number: order.tracking_number || '',
       tracking_url: order.tracking_url || '',
       delivery_station: order.delivery_station || '',
-      payment_mode: order.payment_mode || ''
+      payment_mode: order.payment_mode || '',
+      boxes_count: order.boxes_count || 0,
+      cans_count: order.cans_count || 0,
+      bags_count: order.bags_count || 0,
+      invoice_number: order.invoice_number || '',
+      invoice_date: order.invoice_date || '',
+      invoice_value: order.invoice_value || '',
+      cancellation_reason: order.cancellation_reason || ''
     });
     setShowUpdateModal(true);
   };

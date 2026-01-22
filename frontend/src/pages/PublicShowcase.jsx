@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { 
@@ -128,10 +128,6 @@ export const PublicShowcase = () => {
 
     setSubmitting(true);
     try {
-      // Get device info
-      const deviceInfo = `${navigator.userAgent}`;
-      
-      // Try to get location
       let location = null;
       try {
         const pos = await new Promise((resolve, reject) => {
@@ -142,7 +138,6 @@ export const PublicShowcase = () => {
         console.log('Location not available');
       }
 
-      // Get IP (will be captured by server)
       let ipAddress = null;
       try {
         const ipRes = await fetch('https://api.ipify.org?format=json');
@@ -158,7 +153,7 @@ export const PublicShowcase = () => {
         items: getSelectedItems(),
         ip_address: ipAddress,
         location,
-        device_info: deviceInfo
+        device_info: navigator.userAgent
       });
 
       setOrderNumber(response.data.order_number);
@@ -197,7 +192,7 @@ export const PublicShowcase = () => {
             <p className="text-sm text-slate-500">
               You will receive a confirmation on WhatsApp shortly.
             </p>
-            <Button className="mt-6" onClick={() => window.location.reload()}>
+            <Button className="mt-6 w-full" onClick={() => window.location.reload()}>
               Place Another Order
             </Button>
           </CardContent>
@@ -206,216 +201,216 @@ export const PublicShowcase = () => {
     );
   }
 
+  // Count items with qty
+  const selectedCount = getSelectedItems().length;
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
+      {/* Header - Mobile Optimized */}
       {company && (
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-          <div className="max-w-6xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+          <div className="px-3 py-3">
+            <div className="flex items-center gap-3">
               {company.logo_url && (
                 <img 
                   src={`${API_URL}${company.logo_url}`} 
                   alt={company.company_name}
-                  className="w-16 h-16 object-contain"
+                  className="w-12 h-12 object-contain rounded-lg"
                 />
               )}
-              <div className="flex-1">
-                <h1 className="text-xl font-bold text-slate-900">{company.company_name}</h1>
-                <p className="text-sm text-slate-500">{company.address}</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold text-slate-900 truncate">{company.company_name}</h1>
+                <p className="text-xs text-slate-500 truncate">{company.address}</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
-              <span>Email: {company.email}</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px] text-slate-500">
+              <span>📧 {company.email}</span>
               <span>GST: {company.gst_number}</span>
-              <span>Drug License: {company.drug_license}</span>
+              <span>DL: {company.drug_license}</span>
             </div>
           </div>
         </header>
       )}
 
-      {/* Products */}
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      {/* Products - Mobile Optimized Table */}
+      <main className="px-2 py-4 pb-48">
         {categories.length > 0 ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {categories.map((category) => (
               <div key={category.category}>
-                <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">
-                  {category.category}
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="text-left p-3 font-semibold">Code</th>
-                        <th className="text-left p-3 font-semibold">Item</th>
-                        <th className="text-left p-3 font-semibold">Image</th>
-                        <th className="text-left p-3 font-semibold">Composition & Offer</th>
-                        <th className="text-right p-3 font-semibold">MRP</th>
-                        <th className="text-right p-3 font-semibold">Rate</th>
-                        <th className="text-center p-3 font-semibold w-32">Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {category.items.map((item) => (
-                        <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
-                          <td className="p-3 font-mono text-xs">{item.item_code}</td>
-                          <td className="p-3 font-medium">{item.item_name}</td>
-                          <td className="p-3">
-                            {item.image_url ? (
-                              <img 
-                                src={`${API_URL}${item.image_url}`} 
-                                alt={item.item_name}
-                                className="w-12 h-12 object-cover rounded"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 bg-slate-100 rounded flex items-center justify-center">
-                                <Package className="w-5 h-5 text-slate-400" />
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <p className="text-slate-600">{item.composition || '-'}</p>
-                            {item.offer && (
-                              <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
-                                {item.offer}
-                              </span>
-                            )}
-                            {item.gst > 0 && (
-                              <span className="inline-block mt-1 ml-1 text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
-                                GST: {item.gst}%
-                              </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-right font-medium">₹{item.mrp}</td>
-                          <td className="p-3 text-right font-bold text-emerald-600">₹{item.rate}</td>
-                          <td className="p-3">
-                            <Input
-                              placeholder="e.g., 10, 10+2"
-                              value={quantities[item.id] || ''}
-                              onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                              className="text-center h-9"
-                              data-testid={`qty-${item.id}`}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Category Header */}
+                <div className="bg-slate-800 text-white px-3 py-2 rounded-t-lg">
+                  <h2 className="text-sm font-bold">{category.category}</h2>
+                </div>
+                
+                {/* Mobile Table */}
+                <div className="bg-white rounded-b-lg shadow-sm overflow-hidden">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-12 gap-1 bg-slate-100 px-2 py-2 text-[10px] font-semibold text-slate-600 uppercase">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-4">Item</div>
+                    <div className="col-span-2 text-right">Rate</div>
+                    <div className="col-span-2 text-center">Offer</div>
+                    <div className="col-span-3 text-center">Qty</div>
+                  </div>
+                  
+                  {/* Table Body */}
+                  {category.items.map((item, index) => (
+                    <div 
+                      key={item.id} 
+                      className={`grid grid-cols-12 gap-1 px-2 py-2 items-center border-b border-slate-100 ${
+                        quantities[item.id] ? 'bg-emerald-50' : ''
+                      }`}
+                    >
+                      {/* S.No */}
+                      <div className="col-span-1 text-xs text-slate-400">
+                        {index + 1}
+                      </div>
+                      
+                      {/* Item Name & Composition */}
+                      <div className="col-span-4">
+                        <p className="text-xs font-medium text-slate-900 leading-tight">
+                          {item.item_name}
+                        </p>
+                        {item.composition && (
+                          <p className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">
+                            {item.composition}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Rate */}
+                      <div className="col-span-2 text-right">
+                        <p className="text-xs font-bold text-emerald-600">₹{item.rate}</p>
+                      </div>
+                      
+                      {/* Offer */}
+                      <div className="col-span-2 text-center">
+                        {item.offer ? (
+                          <span className="inline-block text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">
+                            {item.offer}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )}
+                      </div>
+                      
+                      {/* Qty Input */}
+                      <div className="col-span-3">
+                        <Input
+                          placeholder="Qty"
+                          value={quantities[item.id] || ''}
+                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                          className="h-8 text-xs text-center px-1"
+                          data-testid={`qty-${item.id}`}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-16 text-slate-400">
-            <Package className="w-16 h-16 mx-auto mb-4" />
-            <p>No products available</p>
+            <Package className="w-12 h-12 mx-auto mb-3" />
+            <p className="text-sm">No products available</p>
           </div>
         )}
+      </main>
 
-        {/* Order Form */}
-        <Card className="mt-8 sticky bottom-0 shadow-lg border-t-4 border-blue-500">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Mobile & Doctor Info */}
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile Number *</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      id="mobile"
-                      placeholder="Enter your mobile number"
-                      value={mobile}
-                      onChange={(e) => handleMobileChange(e.target.value)}
-                      className="pl-10"
-                      data-testid="mobile-input"
-                    />
-                  </div>
-                </div>
-                {doctorInfo && (
-                  <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <p className="text-sm font-medium text-emerald-800">{doctorInfo.name}</p>
-                    <p className="text-xs text-emerald-600">{doctorInfo.customer_code}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Terms */}
-              <div className="space-y-3">
-                <Label>Terms & Conditions</Label>
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="terms"
-                    checked={termsAccepted}
-                    onCheckedChange={setTermsAccepted}
-                    data-testid="terms-checkbox"
-                  />
-                  <label htmlFor="terms" className="text-sm text-slate-600 cursor-pointer">
-                    I accept the terms and conditions
-                  </label>
-                </div>
-                {company?.terms_conditions && (
-                  <p className="text-xs text-slate-500 max-h-20 overflow-y-auto p-2 bg-slate-50 rounded">
-                    {company.terms_conditions}
-                  </p>
-                )}
-              </div>
-
-              {/* Submit */}
-              <div className="flex flex-col justify-end">
-                <div className="text-sm text-slate-500 mb-2">
-                  {getSelectedItems().length} items selected
-                </div>
-                <Button 
-                  size="lg" 
-                  onClick={handleSendOTP}
-                  disabled={submitting || !mobile || !termsAccepted || getSelectedItems().length === 0}
-                  className="w-full"
-                  data-testid="submit-order-btn"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                  )}
-                  Send OTP & Submit Order
-                </Button>
-                <p className="text-xs text-slate-400 mt-2 text-center">
-                  OTP will be sent to your WhatsApp
-                </p>
+      {/* Fixed Bottom Order Form - Mobile Optimized */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-20">
+        <div className="px-3 py-3 space-y-3">
+          {/* Mobile Number & Doctor Info */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Label className="text-xs text-slate-500 mb-1 block">Mobile Number</Label>
+              <div className="relative">
+                <Phone className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Enter mobile number"
+                  value={mobile}
+                  onChange={(e) => handleMobileChange(e.target.value)}
+                  className="pl-8 h-10 text-sm"
+                  data-testid="mobile-input"
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </main>
+            {doctorInfo && (
+              <div className="px-2 py-1 bg-emerald-50 rounded border border-emerald-200 max-w-[120px]">
+                <p className="text-xs font-medium text-emerald-800 truncate">{doctorInfo.name}</p>
+                <p className="text-[10px] text-emerald-600">{doctorInfo.customer_code}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Terms & Submit */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={setTermsAccepted}
+                data-testid="terms-checkbox"
+              />
+              <label htmlFor="terms" className="text-xs text-slate-600">
+                Accept T&C
+              </label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {selectedCount > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                  {selectedCount} items
+                </span>
+              )}
+              <Button 
+                onClick={handleSendOTP}
+                disabled={submitting || !mobile || !termsAccepted || selectedCount === 0}
+                className="h-10 px-4"
+                data-testid="submit-order-btn"
+              >
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <ShoppingCart className="w-4 h-4 mr-1" />
+                    <span className="text-sm">Order</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* OTP Modal */}
       <Dialog open={showOTPModal} onOpenChange={setShowOTPModal}>
-        <DialogContent>
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>Enter OTP</DialogTitle>
+            <DialogTitle className="text-center">Enter OTP</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-sm text-slate-500">
-              We've sent a 6-digit OTP to your WhatsApp ({mobile})
+            <p className="text-sm text-slate-500 text-center">
+              OTP sent to WhatsApp ({mobile})
             </p>
             <Input
               placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              className="text-center text-2xl tracking-widest"
+              className="text-center text-2xl tracking-widest h-14"
               maxLength={6}
               data-testid="otp-input"
             />
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOTPModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleVerifyOTP} disabled={submitting || otp.length !== 6}>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button onClick={handleVerifyOTP} disabled={submitting || otp.length !== 6} className="w-full">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
               Verify & Submit
+            </Button>
+            <Button variant="outline" onClick={() => setShowOTPModal(false)} className="w-full">
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

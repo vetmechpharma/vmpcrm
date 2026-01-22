@@ -260,6 +260,16 @@ class OrderResponse(BaseModel):
     tracking_url: Optional[str] = None
     delivery_station: Optional[str] = None
     payment_mode: Optional[str] = None
+    # Shipping package details
+    boxes_count: Optional[int] = None
+    cans_count: Optional[int] = None
+    bags_count: Optional[int] = None
+    # Invoice details
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    invoice_value: Optional[float] = None
+    # Cancellation
+    cancellation_reason: Optional[str] = None
     ip_address: Optional[str] = None
     location: Optional[str] = None
     device_info: Optional[str] = None

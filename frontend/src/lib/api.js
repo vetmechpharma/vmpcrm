@@ -90,6 +90,8 @@ export const ordersAPI = {
   updateStatus: (id, data) => api.put(`/orders/${id}/status`, data),
   updateTransport: (id, data) => api.put(`/orders/${id}/transport`, data),
   updateItems: (id, data) => api.put(`/orders/${id}/items`, data),
+  updateCustomer: (id, data) => api.put(`/orders/${id}/customer`, data),
+  lookupDoctor: (id) => api.get(`/orders/${id}/lookup-doctor`),
 };
 
 // Pending Items APIs

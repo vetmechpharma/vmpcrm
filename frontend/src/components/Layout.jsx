@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { pendingItemsAPI } from '../lib/api';
 import { 
   LayoutDashboard, 
   Users, 
@@ -12,7 +13,8 @@ import {
   ChevronRight,
   Package,
   ShoppingCart,
-  Building2
+  Building2,
+  Clock
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -22,6 +24,7 @@ const navItems = [
   { path: '/doctors', icon: Users, label: 'Doctors' },
   { path: '/items', icon: Package, label: 'Items' },
   { path: '/orders', icon: ShoppingCart, label: 'Orders' },
+  { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/company-settings', icon: Building2, label: 'Company' },
   { path: '/settings', icon: Settings, label: 'SMTP Settings' },

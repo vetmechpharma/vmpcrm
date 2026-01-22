@@ -163,24 +163,15 @@ export const Orders = () => {
       setUpdateForm({
         ...updateForm,
         transport_id: transport.id,
-        transport_name: transport.name,
-        tracking_url: transport.is_local ? '' : (transport.tracking_url_template || '')
+        transport_name: transport.name
       });
     }
   };
 
   const handleTrackingNumberChange = (value) => {
-    const transport = transports.find(t => t.id === updateForm.transport_id);
-    let trackingUrl = '';
-    
-    if (transport && transport.tracking_url_template && value) {
-      trackingUrl = transport.tracking_url_template.replace('{tracking_number}', value);
-    }
-    
     setUpdateForm({
       ...updateForm,
-      tracking_number: value,
-      tracking_url: trackingUrl
+      tracking_number: value
     });
   };
 
@@ -440,13 +431,7 @@ export const Orders = () => {
                             <div>
                               <p className="text-sm font-medium">{order.transport_name}</p>
                               {order.tracking_number && (
-                                <p className="text-xs text-slate-500">
-                                  {order.tracking_url ? (
-                                    <a href={order.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                                      {order.tracking_number} <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                  ) : order.tracking_number}
-                                </p>
+                                <p className="text-xs text-slate-500">{order.tracking_number}</p>
                               )}
                             </div>
                           ) : (
@@ -600,13 +585,7 @@ export const Orders = () => {
                     {selectedOrder.tracking_number && (
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500">Tracking:</span>
-                        {selectedOrder.tracking_url ? (
-                          <a href={selectedOrder.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                            {selectedOrder.tracking_number} <ExternalLink className="w-3 h-3" />
-                          </a>
-                        ) : (
-                          <span>{selectedOrder.tracking_number}</span>
-                        )}
+                        <span>{selectedOrder.tracking_number}</span>
                       </div>
                     )}
                     {selectedOrder.delivery_station && (
@@ -971,13 +950,12 @@ export const Orders = () => {
                 </div>
                 {!newTransport.is_local && (
                   <div className="space-y-2">
-                    <Label>Tracking URL Template</Label>
+                    <Label>Transport URL</Label>
                     <Input
                       value={newTransport.tracking_url_template}
                       onChange={(e) => setNewTransport({...newTransport, tracking_url_template: e.target.value})}
-                      placeholder="https://track.com/?awb={tracking_number}"
+                      placeholder="https://transport-website.com"
                     />
-                    <p className="text-xs text-slate-500">Use {'{tracking_number}'} as placeholder</p>
                   </div>
                 )}
                 <Button onClick={handleAddTransport} disabled={saving} className="w-full">

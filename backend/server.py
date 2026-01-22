@@ -711,8 +711,8 @@ async def update_doctor(doctor_id: str, doctor_data: DoctorUpdate, current_user:
     
     updated_doctor = await db.doctors.find_one({'id': doctor_id}, {'_id': 0})
     
-    created_at = updated_doctor['created_at']
-    updated_at = updated_doctor['updated_at']
+    created_at = updated_doctor.get('created_at')
+    updated_at = updated_doctor.get('updated_at') or updated_doctor.get('created_at')
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
     if isinstance(updated_at, str):
@@ -722,11 +722,11 @@ async def update_doctor(doctor_id: str, doctor_data: DoctorUpdate, current_user:
         id=updated_doctor['id'],
         customer_code=updated_doctor['customer_code'],
         name=updated_doctor['name'],
-        reg_no=updated_doctor['reg_no'],
-        address=updated_doctor['address'],
-        email=updated_doctor['email'],
+        reg_no=updated_doctor.get('reg_no', ''),
+        address=updated_doctor.get('address', ''),
+        email=updated_doctor.get('email', ''),
         phone=updated_doctor['phone'],
-        lead_status=updated_doctor['lead_status'],
+        lead_status=updated_doctor.get('lead_status', 'Pipeline'),
         dob=updated_doctor.get('dob'),
         priority=updated_doctor.get('priority'),
         last_contact_date=updated_doctor.get('last_contact_date'),

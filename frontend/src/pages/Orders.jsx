@@ -59,7 +59,9 @@ export const Orders = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showTransportModal, setShowTransportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingItemsForOrder, setPendingItemsForOrder] = useState([]);
 
   // Transport form
   const [newTransport, setNewTransport] = useState({
@@ -67,6 +69,10 @@ export const Orders = () => {
     tracking_url_template: '',
     is_local: false
   });
+
+  // Edit order items form
+  const [editItems, setEditItems] = useState([]);
+  const [itemsToMarkPending, setItemsToMarkPending] = useState({});
 
   // Order update form with new fields
   const [updateForm, setUpdateForm] = useState({

@@ -986,13 +986,18 @@ export const Orders = () => {
                 <div className="space-y-2">
                   {transports.map((t) => (
                     <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium">{t.name}</p>
                         {t.is_local ? (
                           <p className="text-xs text-slate-500">Local Supply</p>
                         ) : t.tracking_url_template ? (
                           <p className="text-xs text-slate-500 truncate max-w-[250px]">{t.tracking_url_template}</p>
                         ) : null}
+                        {(t.contact_number || t.alternate_number) && (
+                          <p className="text-xs text-slate-600 mt-1">
+                            📞 {t.contact_number || '-'}{t.alternate_number && ` / ${t.alternate_number}`}
+                          </p>
+                        )}
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => handleDeleteTransport(t.id)} className="text-red-500 hover:text-red-700">
                         <Trash2 className="w-4 h-4" />

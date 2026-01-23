@@ -70,7 +70,9 @@ export const Orders = () => {
   const [newTransport, setNewTransport] = useState({
     name: '',
     tracking_url_template: '',
-    is_local: false
+    is_local: false,
+    contact_number: '',
+    alternate_number: ''
   });
 
   // Edit order items form

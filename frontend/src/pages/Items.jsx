@@ -261,7 +261,6 @@ export const Items = () => {
         setImagePreview(response.data.image_url ? `${API_URL}${response.data.image_url}` : null);
       }
       fetchItems();
-      fetchCategories();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to save item');
     } finally {
@@ -283,7 +282,6 @@ export const Items = () => {
       setSelectedItem(null);
       resetForm();
       fetchItems();
-      fetchCategories();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to delete item');
     } finally {

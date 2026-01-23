@@ -1282,6 +1282,8 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         'item_code': item_code,
         'item_name': item_data.item_name,
         'category': item_data.category,
+        'main_category': item_data.main_category,
+        'subcategories': item_data.subcategories or [],
         'composition': item_data.composition,
         'offer': item_data.offer,
         'special_offer': item_data.special_offer,
@@ -1302,6 +1304,8 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         item_code=item_code,
         item_name=item_data.item_name,
         category=item_data.category,
+        main_category=item_data.main_category,
+        subcategories=item_data.subcategories or [],
         composition=item_data.composition,
         offer=item_data.offer,
         special_offer=item_data.special_offer,
@@ -1310,8 +1314,7 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         gst=item_data.gst,
         custom_fields=item_data.custom_fields or [],
         image_url=f"/api/items/{item_id}/image" if processed_image else None,
-        created_at=now,
-        updated_at=now
+        created_at=now
     )
 
 @api_router.get("/items/{item_id}/image")

@@ -1454,11 +1454,8 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     updated_item = await db.items.find_one({'id': item_id}, {'_id': 0, 'image_webp': 0})
     
     created_at = updated_item['created_at']
-    updated_at = updated_item['updated_at']
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-    if isinstance(updated_at, str):
-        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
     
     custom_fields = [CustomField(**cf) for cf in updated_item.get('custom_fields', [])]
     
@@ -1470,6 +1467,8 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         item_code=updated_item['item_code'],
         item_name=updated_item['item_name'],
         category=updated_item.get('category'),
+        main_category=updated_item.get('main_category'),
+        subcategories=updated_item.get('subcategories', []),
         composition=updated_item.get('composition'),
         offer=updated_item.get('offer'),
         special_offer=updated_item.get('special_offer'),
@@ -1478,8 +1477,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         gst=updated_item.get('gst', 0),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item_id}/image" if has_image else None,
-        created_at=created_at,
-        updated_at=updated_at
+        created_at=created_at
     )
 
 @api_router.delete("/items/{item_id}/image")

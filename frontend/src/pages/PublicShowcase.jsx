@@ -307,7 +307,7 @@ export const PublicShowcase = () => {
             <p className="text-sm text-slate-400">Try selecting a different category</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
             {items.map((item) => (
               <div 
                 key={item.id} 

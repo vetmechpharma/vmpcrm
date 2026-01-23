@@ -140,7 +140,8 @@ export const whatsappAPI = {
 // Public APIs (no auth required)
 export const publicAPI = {
   getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),
-  getItems: () => axios.get(`${API_URL}/api/public/items`),
+  getItems: (params) => axios.get(`${API_URL}/api/public/items`, { params }),
+  getCategories: () => axios.get(`${API_URL}/api/public/categories`),
   getDoctorByMobile: (mobile) => axios.get(`${API_URL}/api/public/doctor/${mobile}`),
   sendOTP: (data) => axios.post(`${API_URL}/api/public/send-otp`, data),
   verifyOTP: (data) => axios.post(`${API_URL}/api/public/verify-otp`, data),

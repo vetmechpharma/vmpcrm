@@ -731,7 +731,6 @@ export const Items = () => {
                     <Separator />
                     <div className="flex items-center gap-6 text-sm text-slate-500">
                       <span>Created: {formatDate(selectedItem.created_at)}</span>
-                      <span>Updated: {formatDate(selectedItem.updated_at)}</span>
                     </div>
                   </>
                 )}

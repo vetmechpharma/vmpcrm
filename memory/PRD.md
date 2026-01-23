@@ -57,18 +57,17 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **New Order Status: Ready to Despatch**:
   - Added between Confirmed and Shipped statuses
   - Captures: Transport, Delivery Station, Payment Mode, Package Details (Box/Can/Bag), Invoice Details
-  - Sends WhatsApp to **Transporter** with complete billing info (using transport contact number)
-  - Sends WhatsApp to **Customer** with ready to despatch notification
-- [x] **Simplified Shipped Status**:
-  - Only requires Tracking Number entry
-  - Shows existing transport info from Ready to Despatch status
-  - Sends short WhatsApp with tracking details to customer
+  - Sends WhatsApp to **Transporter ONLY** with complete billing info (using transport contact number)
+  - NO message sent to customer at this stage
+- [x] **Shipped Status with Full Details**:
+  - Only requires Tracking Number entry (other details from Ready to Despatch)
+  - Sends WhatsApp to **Customer** with: Tracking Number + Package Details + Invoice Details
 - [x] **WhatsApp notifications for status changes:**
-  - Confirmed: Order confirmation message
-  - Ready to Despatch: Full details to transporter + customer notification
-  - Shipped: Tracking info only (transport details already sent)
-  - Delivered: Delivery confirmation
-  - Cancelled: Cancellation with reason
+  - Confirmed: Order confirmation message to customer
+  - Ready to Despatch: Full billing details to **transporter only**
+  - Shipped: Full details (tracking, package, invoice) to **customer**
+  - Delivered: Delivery confirmation to customer
+  - Cancelled: Cancellation with reason to customer
 - [x] **Conditional fields based on status:**
   - Ready to Despatch: Transport, delivery station, payment mode, package counts (boxes/cans/bags), invoice details
   - Shipped: Tracking number only (transport info shown if already set)

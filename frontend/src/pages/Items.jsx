@@ -56,6 +56,13 @@ export const Items = () => {
   // New custom field state
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
+  
+  // New subcategory state
+  const [newSubcategory, setNewSubcategory] = useState('');
+  const [showNewSubcategory, setShowNewSubcategory] = useState(false);
+  
+  // Default subcategories
+  const defaultSubcategories = ['Injection', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Tablets', 'Syrups', 'Vaccines'];
 
   useEffect(() => {
     fetchItems();

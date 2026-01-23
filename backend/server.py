@@ -2636,7 +2636,7 @@ async def get_pending_items_grouped_by_item(current_user: dict = Depends(get_cur
                         "created_at": "$created_at"
                     }
                 },
-                "total_quantity": {"$sum": {"$toInt": "$quantity"}},
+                "total_quantity": {"$sum": 1},  # Count of pending requests (quantity is text)
                 "doctor_count": {"$sum": 1}
             }
         },

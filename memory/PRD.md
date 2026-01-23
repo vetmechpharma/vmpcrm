@@ -49,8 +49,11 @@ Build a simple CRM for managing doctor leads. Features include:
   - Subcategories appear when main category selected: Injection, Liquids, Bolus, Powder, etc.
   - **Items can have MULTIPLE main categories** (e.g., Tetracycline for both Large Animals and Poultry)
   - Items can have multiple subcategories
+  - **Add New Subcategory** option in Items management
 - [x] **Product Cards with**:
   - Image with MRP tag overlay
+  - **Composition overlay on image tap** (shows composition text on dark background)
+  - "Tap for composition" hint on images
   - Special offer badge (sparkle icon)
   - Name, Rate, Offer badge
   - Special offer text
@@ -64,6 +67,7 @@ Build a simple CRM for managing doctor leads. Features include:
   - Removed legacy Category field
   - Added main_categories (multiple selection checkboxes)
   - Added subcategories (multiple selection checkboxes)
+  - Added "Add New Subcategory" option
 
 ## Order Management & Transport (Iteration 7-9) - UPDATED Jan 23, 2026
 - [x] Transport provider management (CRUD)

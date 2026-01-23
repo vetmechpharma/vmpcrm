@@ -1597,20 +1597,25 @@ async def get_public_company_settings():
     }
 
 @api_router.get("/public/items")
-async def get_public_items():
-    """Get all items grouped by category for public showcase"""
-    items = await db.items.find({}, {'_id': 0, 'image_webp': 0, 'created_by': 0}).sort('category', 1).to_list(1000)
+async def get_public_items(main_category: Optional[str] = None, subcategory: Optional[str] = None):
+    """Get all items with category filters for public showcase"""
+    query = {}
+    if main_category:
+        query['main_category'] = main_category
+    if subcategory:
+        query['subcategories'] = subcategory
     
-    # Group by category
-    categories = {}
-    uncategorized = []
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0, 'created_by': 0}).sort('item_name', 1).to_list(1000)
     
+    result = []
     for item in items:
         has_image = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
         item_data = {
             'id': item['id'],
             'item_code': item['item_code'],
             'item_name': item['item_name'],
+            'main_category': item.get('main_category'),
+            'subcategories': item.get('subcategories', []),
             'composition': item.get('composition'),
             'offer': item.get('offer'),
             'special_offer': item.get('special_offer'),
@@ -1619,23 +1624,31 @@ async def get_public_items():
             'gst': item.get('gst', 0),
             'image_url': f"/api/items/{item['id']}/image" if has_image else None
         }
-        
-        category = item.get('category')
-        if category:
-            if category not in categories:
-                categories[category] = []
-            categories[category].append(item_data)
-        else:
-            uncategorized.append(item_data)
-    
-    result = []
-    for cat_name, cat_items in sorted(categories.items()):
-        result.append({'category': cat_name, 'items': cat_items})
-    
-    if uncategorized:
-        result.append({'category': 'Other Products', 'items': uncategorized})
+        result.append(item_data)
     
     return result
+
+@api_router.get("/public/categories")
+async def get_public_categories():
+    """Get all main categories and subcategories for filters"""
+    items = await db.items.find({}, {'main_category': 1, 'subcategories': 1, '_id': 0}).to_list(1000)
+    
+    main_categories = set()
+    subcategories_map = {}
+    
+    for item in items:
+        main_cat = item.get('main_category')
+        if main_cat:
+            main_categories.add(main_cat)
+            if main_cat not in subcategories_map:
+                subcategories_map[main_cat] = set()
+            for sub in item.get('subcategories', []):
+                subcategories_map[main_cat].add(sub)
+    
+    return {
+        'main_categories': sorted(list(main_categories)),
+        'subcategories': {k: sorted(list(v)) for k, v in subcategories_map.items()}
+    }
 
 @api_router.get("/public/doctor/{mobile}")
 async def get_doctor_by_mobile(mobile: str):

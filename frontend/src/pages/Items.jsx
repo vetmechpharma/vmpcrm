@@ -40,8 +40,7 @@ export const Items = () => {
   const [formData, setFormData] = useState({
     item_name: '',
     item_code: '',
-    category: '',
-    main_category: '',
+    main_categories: [],
     subcategories: [],
     composition: '',
     offer: '',

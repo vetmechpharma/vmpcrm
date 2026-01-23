@@ -38,14 +38,25 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Image uploads (100x100px, WebP compressed <25KB)
 - [x] Special offers with styling
 
-## Public Showcase & Ordering (Iteration 4-6)
+## Public Showcase & Ordering (Iteration 4-6) - UPDATED Jan 23, 2026
 - [x] Public product showcase page (mobile-responsive)
-- [x] Editable company header (logo, name, address)
-- [x] Products grouped by category
+- [x] **New Two-Column Grid Layout**: 4 products visible per screen with scroll
+- [x] **Category Filter System**:
+  - Main categories at top: Large Animals, Poultry, Pets (horizontal scrollable pills)
+  - Subcategories appear when main category selected: Injection, Liquids, Bolus, Powder, etc.
+  - Items can have multiple subcategories
+- [x] **Product Cards with**:
+  - Image with MRP tag overlay
+  - Special offer badge (sparkle icon)
+  - Name, Rate, Offer badge
+  - Special offer text
+  - Qty add controls (+/- buttons)
+- [x] **Floating Cart Summary** at bottom with mobile input and order button
 - [x] Order form with quantity input
 - [x] WhatsApp OTP verification for orders
 - [x] Order confirmation via WhatsApp
 - [x] Dynamic WhatsApp API configuration
+- [x] **Items Management**: Added main_category and subcategories fields for showcase filtering
 
 ## Order Management & Transport (Iteration 7-9) - UPDATED Jan 23, 2026
 - [x] Transport provider management (CRUD)

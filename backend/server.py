@@ -2194,7 +2194,7 @@ async def get_orders(
 
 @api_router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, status_data: OrderStatusUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
-    """Update order status with optional transport details (for shipped) or cancellation reason"""
+    """Update order status with optional transport details (for ready_to_despatch/shipped) or cancellation reason"""
     order = await db.orders.find_one({'id': order_id}, {'_id': 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -2205,16 +2205,12 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
         'updated_at': datetime.now(timezone.utc).isoformat()
     }
     
-    # Only add transport/shipping details if status is 'shipped'
-    if new_status == 'shipped':
+    # Add transport/shipping details if status is 'ready_to_despatch'
+    if new_status == 'ready_to_despatch':
         if status_data.transport_id:
             update_data['transport_id'] = status_data.transport_id
         if status_data.transport_name:
             update_data['transport_name'] = status_data.transport_name
-        if status_data.tracking_number:
-            update_data['tracking_number'] = status_data.tracking_number
-        if status_data.tracking_url:
-            update_data['tracking_url'] = status_data.tracking_url
         if status_data.delivery_station:
             update_data['delivery_station'] = status_data.delivery_station
         if status_data.payment_mode:
@@ -2234,6 +2230,18 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
         if status_data.invoice_value is not None:
             update_data['invoice_value'] = status_data.invoice_value
     
+    # Only add tracking number if status is 'shipped'
+    if new_status == 'shipped':
+        if status_data.tracking_number:
+            update_data['tracking_number'] = status_data.tracking_number
+        if status_data.tracking_url:
+            update_data['tracking_url'] = status_data.tracking_url
+        # Also update transport if provided (for cases where ready_to_despatch was skipped)
+        if status_data.transport_id:
+            update_data['transport_id'] = status_data.transport_id
+        if status_data.transport_name:
+            update_data['transport_name'] = status_data.transport_name
+    
     # Only add cancellation reason if status is 'cancelled'
     if new_status == 'cancelled' and status_data.cancellation_reason:
         update_data['cancellation_reason'] = status_data.cancellation_reason
@@ -2241,8 +2249,12 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
     await db.orders.update_one({'id': order_id}, {'$set': update_data})
     
     # Send WhatsApp notification for status change
-    if new_status in ['confirmed', 'shipped', 'delivered', 'cancelled']:
-        background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
+    if new_status in ['confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'cancelled']:
+        # For ready_to_despatch, we need to send to both transporter and customer
+        if new_status == 'ready_to_despatch':
+            background_tasks.add_task(send_whatsapp_ready_to_despatch, order, update_data)
+        else:
+            background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
     
     return {"message": f"Order status updated to {new_status}"}
 

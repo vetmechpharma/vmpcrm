@@ -216,16 +216,6 @@ export const Items = () => {
     setFormData({ ...formData, custom_fields: updated });
   };
 
-  const handleCategoryChange = (value) => {
-    if (value === '__new__') {
-      setShowNewCategory(true);
-      setFormData({ ...formData, category: '' });
-    } else {
-      setShowNewCategory(false);
-      setFormData({ ...formData, category: value });
-    }
-  };
-
   const handleSave = async () => {
     if (!formData.item_name.trim()) {
       toast.error('Item name is required');

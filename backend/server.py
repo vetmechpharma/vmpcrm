@@ -1798,28 +1798,16 @@ Regards,
 📞 +{company_phone}"""
 
     elif new_status == 'shipped':
-        transport_name = update_data.get('transport_name', 'N/A') if update_data else 'N/A'
-        tracking_number = update_data.get('tracking_number', 'N/A') if update_data else 'N/A'
-        delivery_station = update_data.get('delivery_station', 'N/A') if update_data else 'N/A'
-        payment_mode = update_data.get('payment_mode', '') if update_data else ''
+        # Get tracking number from update_data (new) or order (existing)
+        tracking_number = update_data.get('tracking_number') if update_data else None
+        if not tracking_number:
+            tracking_number = order.get('tracking_number', 'N/A')
+        
+        # Get transport info from order (set during ready_to_despatch) or update_data
+        transport_name = order.get('transport_name') or (update_data.get('transport_name') if update_data else None) or 'N/A'
+        delivery_station = order.get('delivery_station') or (update_data.get('delivery_station') if update_data else None) or 'N/A'
+        payment_mode = order.get('payment_mode') or (update_data.get('payment_mode') if update_data else None) or ''
         payment_text = "To Pay" if payment_mode == 'to_pay' else "Paid" if payment_mode == 'paid' else 'N/A'
-        
-        # Package details
-        boxes = update_data.get('boxes_count', 0) if update_data else 0
-        cans = update_data.get('cans_count', 0) if update_data else 0
-        bags = update_data.get('bags_count', 0) if update_data else 0
-        
-        package_parts = []
-        if boxes: package_parts.append(f"{boxes} Box(es)")
-        if cans: package_parts.append(f"{cans} Can(s)")
-        if bags: package_parts.append(f"{bags} Bag(s)")
-        package_text = ", ".join(package_parts) if package_parts else "N/A"
-        
-        # Invoice details
-        invoice_number = update_data.get('invoice_number', 'N/A') if update_data else 'N/A'
-        invoice_date = update_data.get('invoice_date', 'N/A') if update_data else 'N/A'
-        invoice_value = update_data.get('invoice_value', 0) if update_data else 0
-        invoice_value_text = f"₹{invoice_value:,.2f}" if invoice_value else 'N/A'
         
         message = f"""{greeting},
 
@@ -1827,24 +1815,13 @@ Regards,
 
 📋 *Order No:* {order_number}
 
-*Order Details:*
-{items_text}
-
-*Shipping Information:*
+*Tracking Information:*
 🚛 Transport: {transport_name}
 📦 Tracking No: {tracking_number}
 📍 Delivery Station: {delivery_station}
 💰 Payment: {payment_text}
 
-*Package Details:*
-📦 {package_text}
-
-*Invoice Details:*
-🧾 Invoice No: {invoice_number}
-📅 Invoice Date: {invoice_date}
-💵 Invoice Value: {invoice_value_text}
-
-Thank you for your order!
+Your order is on its way! Thank you for your order.
 
 Regards,
 *{company_name}*

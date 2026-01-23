@@ -1981,57 +1981,6 @@ From: *{company_name}*
                     logger.info(f"Ready to despatch notification sent to transporter {clean_transporter_mobile}")
             except Exception as e:
                 logger.error(f"WhatsApp transporter notification error: {str(e)}")
-    
-    # 2. Send message to CUSTOMER
-    customer_mobile = doctor_phone
-    clean_customer_mobile = ''.join(filter(str.isdigit, customer_mobile))
-    if not clean_customer_mobile.startswith('91'):
-        clean_customer_mobile = f"91{clean_customer_mobile[-10:]}"
-    
-    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
-    
-    customer_message = f"""{greeting},
-
-📦 Your order is *READY TO DESPATCH*!
-
-📋 *Order No:* {order_number}
-
-*Order Details:*
-{items_text}
-
-*Shipping Information:*
-🚛 Transport: {transport_name}
-📍 Delivery Station: {delivery_station}
-💰 Payment: {payment_text}
-
-*Package Details:*
-📦 {package_text}
-
-*Invoice Details:*
-🧾 Invoice No: {invoice_number}
-📅 Invoice Date: {invoice_date}
-💵 Invoice Value: {invoice_value_text}
-
-Your order will be shipped soon. We will share tracking details once dispatched.
-
-Regards,
-*{company_name}*
-📞 +{company_phone}"""
-    
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': customer_message,
-        'receiverId': clean_customer_mobile
-    }
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.get(config['api_url'], params=params, timeout=30)
-            logger.info(f"Ready to despatch notification sent to customer {clean_customer_mobile}")
-    except Exception as e:
-        logger.error(f"WhatsApp customer notification error: {str(e)}")
 
 async def send_whatsapp_out_of_stock(order: dict, out_of_stock_items: list):
     """Send WhatsApp notification for out of stock items"""

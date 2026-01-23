@@ -121,6 +121,8 @@ export const Items = () => {
       item_name: item.item_name,
       item_code: item.item_code || '',
       category: item.category || '',
+      main_category: item.main_category || '',
+      subcategories: item.subcategories || [],
       composition: item.composition || '',
       offer: item.offer || '',
       special_offer: item.special_offer || '',

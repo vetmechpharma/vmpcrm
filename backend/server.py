@@ -1969,22 +1969,18 @@ async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
             transporter_message = f"""📦 *NEW SHIPMENT READY*
 
 *Delivery Details:*
-👤 Customer: {doctor_name}
-📍 Delivery Station: {delivery_station}
-📞 Customer Phone: {doctor_phone}
-🏠 Address: {doctor_address}
+👤 {doctor_name}
+📍 {delivery_station}
 
-*Payment:* {payment_text}
+*Invoice Details:*
+🧾 {invoice_number}
+📅 {invoice_date}
+💵 {invoice_value_text}
 
 *Package Details:*
 📦 {package_text}
 
-*Invoice Details:*
-🧾 Invoice No: {invoice_number}
-📅 Invoice Date: {invoice_date}
-💵 Invoice Value: {invoice_value_text}
-
-Please arrange pickup."""
+*Payment:* {payment_text}"""
             
             params = {
                 'action': 'send',

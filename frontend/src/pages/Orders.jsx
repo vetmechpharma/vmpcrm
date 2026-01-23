@@ -974,10 +974,10 @@ export const Orders = () => {
               onClick={handleSaveOrder} 
               disabled={saving}
               data-testid="save-order-btn"
-              className={updateForm.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : ''}
+              className={updateForm.status === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : updateForm.status === 'ready_to_despatch' ? 'bg-purple-600 hover:bg-purple-700' : ''}
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {updateForm.status === 'shipped' ? 'Ship Order' : updateForm.status === 'cancelled' ? 'Cancel Order' : 'Update'}
+              {updateForm.status === 'ready_to_despatch' ? 'Ready to Despatch' : updateForm.status === 'shipped' ? 'Ship Order' : updateForm.status === 'cancelled' ? 'Cancel Order' : 'Update'}
             </Button>
           </DialogFooter>
         </DialogContent>

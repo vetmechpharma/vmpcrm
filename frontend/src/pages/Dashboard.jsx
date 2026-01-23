@@ -14,12 +14,16 @@ import {
   Mail,
   Plus,
   ArrowRight,
+  ArrowUpRight,
   Loader2,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  TrendingUp,
+  ShoppingCart,
+  Truck,
+  Calendar
 } from 'lucide-react';
 import { getStatusColor, formatDate } from '../lib/utils';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const STATUS_COLORS = {
   'Customer': '#10b981',
@@ -69,245 +73,327 @@ export const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mx-auto mb-4" />
+          <p className="text-slate-500">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
-  const chartData = stats ? Object.entries(stats.by_status).map(([name, value]) => ({
-    name,
-    value,
-    color: STATUS_COLORS[name] || '#64748b',
-  })) : [];
+  const totalOrders = stats?.total_orders || 0;
+  const totalDoctors = stats?.total_doctors || 0;
+  const customers = stats?.by_status?.Customer || 0;
+  const pipeline = stats?.by_status?.Pipeline || 0;
 
   return (
-    <div className="space-y-8 animate-fade-in" data-testid="dashboard-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Overview of your doctor leads</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100" data-testid="dashboard-page">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-8 md:py-12">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"30\" height=\"30\" viewBox=\"0 0 30 30\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cpath d=\"M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z\" fill=\"rgba(255,255,255,0.07)\"%3E%3C/path%3E%3C/svg%3E')] opacity-100"></div>
+        <div className="relative max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                Welcome back! 👋
+              </h1>
+              <p className="text-emerald-100 text-sm md:text-base">
+                Here's what's happening with your business today
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Link to="/orders">
+                <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Orders
+                </Button>
+              </Link>
+              <Link to="/doctors">
+                <Button className="bg-white text-emerald-600 hover:bg-emerald-50">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Doctor
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Stats in Header */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{totalDoctors}</p>
+                  <p className="text-emerald-100 text-xs">Total Doctors</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{customers}</p>
+                  <p className="text-emerald-100 text-xs">Customers</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <ShoppingCart className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{totalOrders}</p>
+                  <p className="text-emerald-100 text-xs">Total Orders</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-white">{pipeline}</p>
+                  <p className="text-emerald-100 text-xs">In Pipeline</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <Link to="/doctors">
-          <Button data-testid="add-doctor-btn">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Doctor
-          </Button>
-        </Link>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="card-hover" data-testid="stat-total-doctors">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Total Doctors</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">{stats?.total_doctors || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-slate-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover" data-testid="stat-customers">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Customers</p>
-                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats?.by_status?.Customer || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover" data-testid="stat-pipeline">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">In Pipeline</p>
-                <p className="text-3xl font-bold text-amber-600 mt-1">{stats?.by_status?.Pipeline || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-hover" data-testid="stat-emails">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Emails (7 days)</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats?.recent_emails || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Mail className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Pending Items Alert */}
-      {pendingStats.total_pending_items > 0 && (
-        <Link to="/pending-items">
-          <Card className="bg-orange-50 border-orange-200 cursor-pointer hover:shadow-md transition-shadow" data-testid="pending-items-alert">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8 -mt-4">
+        {/* Pending Items Alert */}
+        {pendingStats.total_pending_items > 0 && (
+          <Link to="/pending-items" className="block mb-6">
+            <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-5 shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all group" data-testid="pending-items-alert">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+              <div className="absolute right-8 bottom-0 w-20 h-20 bg-white/10 rounded-full -mb-10"></div>
+              <div className="relative flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6 text-orange-600" />
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <AlertTriangle className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-orange-700">
+                    <p className="text-xl font-bold text-white">
                       {pendingStats.total_pending_items} Pending Item{pendingStats.total_pending_items > 1 ? 's' : ''} 
                     </p>
-                    <p className="text-sm text-orange-600">
-                      {pendingStats.doctors_with_pending} doctor{pendingStats.doctors_with_pending > 1 ? 's' : ''} waiting for stock - Follow up required!
+                    <p className="text-orange-100 text-sm">
+                      {pendingStats.doctors_with_pending} doctor{pendingStats.doctors_with_pending > 1 ? 's' : ''} waiting for stock
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      )}
-
-      {/* Charts and Recent */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Distribution Chart */}
-        <Card data-testid="status-chart">
-          <CardHeader>
-            <CardTitle className="text-lg">Lead Status Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {chartData.length > 0 && chartData.some(d => d.value > 0) ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}
-                    labelLine={false}
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                <Users className="w-12 h-12 mb-2" />
-                <p>No data available</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Status Breakdown */}
-        <Card data-testid="status-breakdown">
-          <CardHeader>
-            <CardTitle className="text-lg">Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Object.entries(STATUS_COLORS).map(([status, color]) => {
-                const Icon = STATUS_ICONS[status];
-                const count = stats?.by_status?.[status] || 0;
-                const total = stats?.total_doctors || 1;
-                const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-                
-                return (
-                  <div key={status} className="flex items-center gap-4">
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${color}20` }}
-                    >
-                      <Icon className="w-5 h-5" style={{ color }} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-slate-700">{status}</span>
-                        <span className="text-sm text-slate-500">{count} ({percentage}%)</span>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%`, backgroundColor: color }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Doctors */}
-      <Card data-testid="recent-doctors">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Recent Doctors</CardTitle>
-          <Link to="/doctors">
-            <Button variant="ghost" size="sm">
-              View All <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {stats?.recent_doctors?.length > 0 ? (
-            <div className="space-y-3">
-              {stats.recent_doctors.map((doctor) => (
-                <div 
-                  key={doctor.id}
-                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-semibold text-slate-600">
-                        {doctor.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{doctor.name}</p>
-                      <p className="text-sm text-slate-500">{doctor.customer_code}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className={getStatusColor(doctor.lead_status)}>
-                      {doctor.lead_status}
-                    </Badge>
-                    <span className="text-sm text-slate-400">{formatDate(doctor.created_at)}</span>
-                  </div>
+                <div className="bg-white/20 rounded-full p-2 group-hover:bg-white/30 transition-colors">
+                  <ArrowRight className="w-5 h-5 text-white" />
                 </div>
-              ))}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              <Users className="w-12 h-12 mx-auto mb-2" />
-              <p>No doctors added yet</p>
+          </Link>
+        )}
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* Lead Status Card */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden" data-testid="status-breakdown">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">Lead Status Overview</h3>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {Object.entries(STATUS_COLORS).map(([status, color]) => {
+                  const Icon = STATUS_ICONS[status];
+                  const count = stats?.by_status?.[status] || 0;
+                  const total = stats?.total_doctors || 1;
+                  const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
+                  
+                  return (
+                    <div 
+                      key={status} 
+                      className="relative group cursor-pointer"
+                    >
+                      <div 
+                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ backgroundColor: `${color}10` }}
+                      />
+                      <div className="relative p-4 text-center">
+                        <div 
+                          className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center transition-transform group-hover:scale-110"
+                          style={{ backgroundColor: `${color}15` }}
+                        >
+                          <Icon className="w-6 h-6" style={{ color }} />
+                        </div>
+                        <p className="text-2xl font-bold text-slate-800">{count}</p>
+                        <p className="text-xs text-slate-500 mt-1">{status}</p>
+                        <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${percentage}%`, backgroundColor: color }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">Quick Actions</h3>
+            </div>
+            <div className="p-4 space-y-2">
+              <Link to="/doctors" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-700 text-sm">Manage Doctors</p>
+                  <p className="text-xs text-slate-400">{totalDoctors} doctors</p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+              </Link>
+              
+              <Link to="/orders" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ShoppingCart className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-700 text-sm">View Orders</p>
+                  <p className="text-xs text-slate-400">{totalOrders} orders</p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              </Link>
+              
+              <Link to="/items" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Package className="w-5 h-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-700 text-sm">Manage Items</p>
+                  <p className="text-xs text-slate-400">Products catalog</p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+              </Link>
+              
+              <Link to="/showcase" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Truck className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-slate-700 text-sm">Product Showcase</p>
+                  <p className="text-xs text-slate-400">Public ordering page</p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 transition-colors" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Doctors */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden" data-testid="recent-doctors">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">Recent Doctors</h3>
+              <Link to="/doctors">
+                <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                  View All <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {stats?.recent_doctors?.length > 0 ? (
+                stats.recent_doctors.slice(0, 5).map((doctor, index) => (
+                  <div 
+                    key={doctor.id}
+                    className="px-6 py-4 hover:bg-slate-50 transition-colors flex items-center gap-4"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      {doctor.name?.charAt(0)?.toUpperCase() || 'D'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-800 truncate">{doctor.name}</p>
+                      <p className="text-xs text-slate-400 truncate">{doctor.mobile}</p>
+                    </div>
+                    <Badge 
+                      variant="secondary"
+                      className="text-xs"
+                      style={{ 
+                        backgroundColor: `${STATUS_COLORS[doctor.status] || '#64748b'}15`,
+                        color: STATUS_COLORS[doctor.status] || '#64748b'
+                      }}
+                    >
+                      {doctor.status}
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <div className="px-6 py-12 text-center">
+                  <Users className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400">No doctors added yet</p>
+                  <Link to="/doctors">
+                    <Button variant="link" className="text-emerald-600 mt-2">
+                      Add your first doctor
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Activity / Tips Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">Activity Summary</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl">
+                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">{customers} Active Customers</p>
+                  <p className="text-sm text-slate-500">
+                    {totalDoctors > 0 ? Math.round((customers / totalDoctors) * 100) : 0}% conversion rate
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                  <Mail className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">{stats?.recent_emails || 0} Emails Sent</p>
+                  <p className="text-sm text-slate-500">In the last 7 days</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl">
+                <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">{pipeline} In Pipeline</p>
+                  <p className="text-sm text-slate-500">Potential customers to follow up</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
+
+export default Dashboard;

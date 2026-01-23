@@ -50,6 +50,7 @@ Build a simple CRM for managing doctor leads. Features include:
 ## Order Management & Transport (Iteration 7-9) - UPDATED Jan 22, 2026
 - [x] Transport provider management (CRUD)
 - [x] **Transport URL**: Simple URL field for transport provider website (no tracking number template)
+- [x] **Transport Contact Numbers**: Incharge contact number + alternate number for each transport
 - [x] Order tracking with transport details
 - [x] **Transport Display**: Orders page shows transport name + tracking number as plain text (no clickable links)
 - [x] Payment status tracking (To Pay/Paid)

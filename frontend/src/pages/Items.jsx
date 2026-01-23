@@ -97,6 +97,8 @@ export const Items = () => {
       item_name: '',
       item_code: '',
       category: '',
+      main_category: '',
+      subcategories: [],
       composition: '',
       offer: '',
       special_offer: '',

@@ -277,12 +277,12 @@ class OrderCreate(BaseModel):
 
 class OTPRequest(BaseModel):
     mobile: str
-    items: List[OrderItem]
 
 class OTPVerify(BaseModel):
     mobile: str
     otp: str
     items: List[OrderItem]
+    doctor_info: Optional[dict] = None
     ip_address: Optional[str] = None
     location: Optional[str] = None
     device_info: Optional[str] = None

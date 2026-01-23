@@ -257,8 +257,7 @@ export const Items = () => {
       const payload = {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
-        category: showNewCategory ? newCategory : (formData.category || null),
-        main_category: formData.main_category || null,
+        main_categories: formData.main_categories || [],
         subcategories: formData.subcategories || [],
         composition: formData.composition || null,
         offer: formData.offer || null,

@@ -316,8 +316,11 @@ export const PublicShowcase = () => {
                 key={item.id} 
                 className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100"
               >
-                {/* Image with MRP tag */}
-                <div className="relative aspect-square bg-slate-100">
+                {/* Image with MRP tag - Click for composition */}
+                <div 
+                  className="relative aspect-square bg-slate-100 cursor-pointer"
+                  onClick={() => item.composition && setShowComposition(showComposition === item.id ? null : item.id)}
+                >
                   {item.image_url ? (
                     <img 
                       src={`${API_URL}${item.image_url}`} 
@@ -329,6 +332,26 @@ export const PublicShowcase = () => {
                       <span className="text-4xl">📦</span>
                     </div>
                   )}
+                  
+                  {/* Composition Overlay */}
+                  {showComposition === item.id && item.composition && (
+                    <div className="absolute inset-0 bg-black/80 p-3 flex items-center justify-center">
+                      <div className="text-white text-xs text-center">
+                        <p className="font-semibold mb-1 text-amber-400">Composition</p>
+                        <p className="leading-relaxed">{item.composition}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Tap for composition hint */}
+                  {item.composition && showComposition !== item.id && (
+                    <div className="absolute bottom-1 left-1 right-1 text-center">
+                      <span className="text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full">
+                        Tap for composition
+                      </span>
+                    </div>
+                  )}
+                  
                   {/* MRP Tag */}
                   <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm">
                     <span className="text-xs text-slate-500">MRP</span>

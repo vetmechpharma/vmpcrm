@@ -106,43 +106,34 @@ export const PublicShowcase = () => {
   };
 
   const handleQuantityChange = (itemId, value) => {
-    const qty = parseInt(value) || 0;
-    if (qty >= 0) {
-      setQuantities({ ...quantities, [itemId]: qty });
-    }
-  };
-
-  const incrementQty = (itemId) => {
-    setQuantities({ ...quantities, [itemId]: (quantities[itemId] || 0) + 1 });
-  };
-
-  const decrementQty = (itemId) => {
-    const current = quantities[itemId] || 0;
-    if (current > 0) {
-      setQuantities({ ...quantities, [itemId]: current - 1 });
-    }
+    // Allow any text input for flexible quantity entry
+    setQuantities({ ...quantities, [itemId]: value });
   };
 
   const getSelectedItems = () => {
-    return items.filter(item => quantities[item.id] > 0).map(item => ({
+    return items.filter(item => quantities[item.id] && quantities[item.id].toString().trim() !== '').map(item => ({
       item_id: item.id,
       item_code: item.item_code,
       item_name: item.item_name,
-      quantity: quantities[item.id],
+      quantity: quantities[item.id],  // Can be text like "10+5", "1 case", "50 pcs"
       rate: item.rate,
       mrp: item.mrp
     }));
   };
 
   const getTotalAmount = () => {
+    // Try to parse numeric values for total, ignore text-only entries
     return items.reduce((sum, item) => {
-      const qty = quantities[item.id] || 0;
+      const qtyStr = quantities[item.id]?.toString() || '';
+      // Try to extract first number from the string
+      const match = qtyStr.match(/\d+/);
+      const qty = match ? parseInt(match[0]) : 0;
       return sum + (item.rate * qty);
     }, 0);
   };
 
   const getCartCount = () => {
-    return Object.values(quantities).reduce((sum, qty) => sum + (qty || 0), 0);
+    return Object.values(quantities).filter(qty => qty && qty.toString().trim() !== '').length;
   };
 
   const handleSubmitOrder = async () => {

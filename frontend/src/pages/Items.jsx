@@ -589,19 +589,6 @@ export const Items = () => {
                 </div>
 
                 <Separator />
-                              />
-                              {sub}
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <Input value={formData.subcategories?.join(', ') || '-'} disabled />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
 
                 {/* Basic Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

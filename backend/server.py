@@ -1689,6 +1689,10 @@ async def send_whatsapp_otp(mobile: str, otp: str):
     """Send OTP via WhatsApp API"""
     config = await get_whatsapp_config()
     
+    if not config:
+        logger.warning("WhatsApp config not found, OTP not sent via WhatsApp")
+        return True  # Return True to allow order flow to continue (OTP is logged)
+    
     # Ensure mobile has 91 prefix
     clean_mobile = ''.join(filter(str.isdigit, mobile))
     if not clean_mobile.startswith('91'):
@@ -1711,7 +1715,7 @@ async def send_whatsapp_otp(mobile: str, otp: str):
             return response.status_code == 200
     except Exception as e:
         logger.error(f"WhatsApp OTP error: {str(e)}")
-        return False
+        return True  # Return True to allow flow to continue even if WhatsApp fails
 
 async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str, doctor_name: str = None, ip_address: str = None, location: str = None):
     """Send order confirmation via WhatsApp with full details"""

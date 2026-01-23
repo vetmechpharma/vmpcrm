@@ -526,25 +526,66 @@ export const Items = () => {
                     <div className="space-y-2">
                       <Label>Subcategories</Label>
                       {isFormMode ? (
-                        <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-slate-50">
-                          {['Injection', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Tablets', 'Syrups', 'Vaccines'].map((sub) => (
-                            <label key={sub} className="flex items-center gap-1 text-sm cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={formData.subcategories?.includes(sub) || false}
-                                onChange={(e) => {
-                                  const current = formData.subcategories || [];
-                                  if (e.target.checked) {
-                                    setFormData({ ...formData, subcategories: [...current, sub] });
-                                  } else {
-                                    setFormData({ ...formData, subcategories: current.filter(s => s !== sub) });
+                        <div className="p-3 border rounded-lg bg-slate-50">
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {[...new Set([...defaultSubcategories, ...(formData.subcategories || [])])].map((sub) => (
+                              <label key={sub} className="flex items-center gap-1 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.subcategories?.includes(sub) || false}
+                                  onChange={(e) => {
+                                    const current = formData.subcategories || [];
+                                    if (e.target.checked) {
+                                      setFormData({ ...formData, subcategories: [...current, sub] });
+                                    } else {
+                                      setFormData({ ...formData, subcategories: current.filter(s => s !== sub) });
+                                    }
+                                  }}
+                                  className="rounded border-slate-300"
+                                />
+                                {sub}
+                              </label>
+                            ))}
+                          </div>
+                          {showNewSubcategory ? (
+                            <div className="flex gap-2">
+                              <Input
+                                value={newSubcategory}
+                                onChange={(e) => setNewSubcategory(e.target.value)}
+                                placeholder="Enter new subcategory"
+                                className="flex-1"
+                              />
+                              <Button 
+                                type="button" 
+                                size="sm"
+                                onClick={() => {
+                                  if (newSubcategory.trim()) {
+                                    const current = formData.subcategories || [];
+                                    if (!current.includes(newSubcategory.trim())) {
+                                      setFormData({ ...formData, subcategories: [...current, newSubcategory.trim()] });
+                                    }
+                                    setNewSubcategory('');
+                                    setShowNewSubcategory(false);
                                   }
                                 }}
-                                className="rounded border-slate-300"
-                              />
-                              {sub}
-                            </label>
-                          ))}
+                              >
+                                Add
+                              </Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => { setShowNewSubcategory(false); setNewSubcategory(''); }}>
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-blue-600"
+                              onClick={() => setShowNewSubcategory(true)}
+                            >
+                              + Add New Subcategory
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <Input value={formData.subcategories?.join(', ') || '-'} disabled />

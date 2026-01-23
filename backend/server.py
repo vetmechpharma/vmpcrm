@@ -333,14 +333,18 @@ class WhatsAppConfigResponse(BaseModel):
 
 class TransportCreate(BaseModel):
     name: str
-    tracking_url_template: Optional[str] = None  # e.g., "https://track.com/?id={tracking_number}"
+    tracking_url_template: Optional[str] = None  # Transport website URL
     is_local: bool = False  # Local supply - no tracking needed
+    contact_number: Optional[str] = None  # Transport incharge contact number
+    alternate_number: Optional[str] = None  # Alternate contact number
 
 class TransportResponse(BaseModel):
     id: str
     name: str
     tracking_url_template: Optional[str] = None
     is_local: bool
+    contact_number: Optional[str] = None
+    alternate_number: Optional[str] = None
     created_at: datetime
 
 class OrderStatusUpdate(BaseModel):

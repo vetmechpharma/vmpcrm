@@ -1588,7 +1588,7 @@ async def get_public_items(main_category: Optional[str] = None, subcategory: Opt
     """Get all items with category filters for public showcase"""
     query = {}
     if main_category:
-        query['main_category'] = main_category
+        query['main_categories'] = main_category
     if subcategory:
         query['subcategories'] = subcategory
     
@@ -1601,7 +1601,7 @@ async def get_public_items(main_category: Optional[str] = None, subcategory: Opt
             'id': item['id'],
             'item_code': item['item_code'],
             'item_name': item['item_name'],
-            'main_category': item.get('main_category'),
+            'main_categories': item.get('main_categories', []) or ([item.get('main_category')] if item.get('main_category') else []),
             'subcategories': item.get('subcategories', []),
             'composition': item.get('composition'),
             'offer': item.get('offer'),
@@ -1618,19 +1618,24 @@ async def get_public_items(main_category: Optional[str] = None, subcategory: Opt
 @api_router.get("/public/categories")
 async def get_public_categories():
     """Get all main categories and subcategories for filters"""
-    items = await db.items.find({}, {'main_category': 1, 'subcategories': 1, '_id': 0}).to_list(1000)
+    items = await db.items.find({}, {'main_categories': 1, 'main_category': 1, 'subcategories': 1, '_id': 0}).to_list(1000)
     
     main_categories = set()
     subcategories_map = {}
     
     for item in items:
-        main_cat = item.get('main_category')
-        if main_cat:
-            main_categories.add(main_cat)
-            if main_cat not in subcategories_map:
-                subcategories_map[main_cat] = set()
-            for sub in item.get('subcategories', []):
-                subcategories_map[main_cat].add(sub)
+        # Handle both old (main_category) and new (main_categories) field names
+        main_cats = item.get('main_categories', [])
+        if not main_cats and item.get('main_category'):
+            main_cats = [item.get('main_category')]
+        
+        for main_cat in main_cats:
+            if main_cat:
+                main_categories.add(main_cat)
+                if main_cat not in subcategories_map:
+                    subcategories_map[main_cat] = set()
+                for sub in item.get('subcategories', []):
+                    subcategories_map[main_cat].add(sub)
     
     return {
         'main_categories': sorted(list(main_categories)),

@@ -955,6 +955,22 @@ export const Orders = () => {
                     />
                   </div>
                 )}
+                <div className="space-y-2">
+                  <Label>Incharge Contact Number</Label>
+                  <Input
+                    value={newTransport.contact_number}
+                    onChange={(e) => setNewTransport({...newTransport, contact_number: e.target.value})}
+                    placeholder="Primary contact number"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Alternate Number</Label>
+                  <Input
+                    value={newTransport.alternate_number}
+                    onChange={(e) => setNewTransport({...newTransport, alternate_number: e.target.value})}
+                    placeholder="Alternate contact number (optional)"
+                  />
+                </div>
                 <Button onClick={handleAddTransport} disabled={saving} className="w-full">
                   {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   <Plus className="w-4 h-4 mr-2" />

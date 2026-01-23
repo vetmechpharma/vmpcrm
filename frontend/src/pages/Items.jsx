@@ -95,8 +95,7 @@ export const Items = () => {
     setFormData({
       item_name: '',
       item_code: '',
-      category: '',
-      main_category: '',
+      main_categories: [],
       subcategories: [],
       composition: '',
       offer: '',
@@ -110,8 +109,6 @@ export const Items = () => {
     setImagePreview(null);
     setNewFieldName('');
     setNewFieldValue('');
-    setNewCategory('');
-    setShowNewCategory(false);
   };
 
   const handleSelectItem = (item) => {

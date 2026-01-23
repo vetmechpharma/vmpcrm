@@ -263,6 +263,8 @@ export const Items = () => {
         item_name: formData.item_name,
         item_code: formData.item_code || null,
         category: showNewCategory ? newCategory : (formData.category || null),
+        main_category: formData.main_category || null,
+        subcategories: formData.subcategories || [],
         composition: formData.composition || null,
         offer: formData.offer || null,
         special_offer: formData.special_offer || null,

@@ -731,8 +731,8 @@ export const Orders = () => {
               </Select>
             </div>
 
-            {/* SHIPPED STATUS - Show transport & invoice fields */}
-            {updateForm.status === 'shipped' && (
+            {/* READY TO DESPATCH STATUS - Show transport, delivery, payment, package & invoice fields */}
+            {updateForm.status === 'ready_to_despatch' && (
               <>
                 {/* Transport Section */}
                 <div className="border-t pt-4 mt-4">
@@ -742,7 +742,7 @@ export const Orders = () => {
                   
                   {/* Transport */}
                   <div className="space-y-2 mb-3">
-                    <Label>Transport</Label>
+                    <Label>Transport *</Label>
                     <Select value={updateForm.transport_id} onValueChange={handleTransportChange}>
                       <SelectTrigger data-testid="transport-select">
                         <SelectValue placeholder="Select transport" />
@@ -757,19 +757,6 @@ export const Orders = () => {
                     </Select>
                   </div>
 
-                  {/* Tracking Number - Only if not local */}
-                  {updateForm.transport_id && !isLocalSupply && (
-                    <div className="space-y-2 mb-3">
-                      <Label>Tracking Number</Label>
-                      <Input
-                        data-testid="tracking-number-input"
-                        value={updateForm.tracking_number}
-                        onChange={(e) => handleTrackingNumberChange(e.target.value)}
-                        placeholder="Enter tracking number"
-                      />
-                    </div>
-                  )}
-
                   {/* Delivery Station */}
                   <div className="space-y-2 mb-3">
                     <Label>Delivery Station</Label>
@@ -783,7 +770,7 @@ export const Orders = () => {
 
                   {/* Payment Mode */}
                   <div className="space-y-2">
-                    <Label>Payment Mode</Label>
+                    <Label>Payment Mode *</Label>
                     <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v})}>
                       <SelectTrigger data-testid="payment-mode-select">
                         <SelectValue placeholder="Select payment mode" />
@@ -878,6 +865,58 @@ export const Orders = () => {
                   </div>
                 </div>
               </>
+            )}
+
+            {/* SHIPPED STATUS - Only show tracking number (transport details already captured in Ready to Despatch) */}
+            {updateForm.status === 'shipped' && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium flex items-center gap-2 mb-3">
+                  <Truck className="w-4 h-4" /> Shipping Details
+                </h4>
+                
+                {/* Show existing transport info if available */}
+                {selectedOrder?.transport_name && (
+                  <div className="bg-slate-50 p-3 rounded-lg mb-3">
+                    <p className="text-sm"><span className="text-slate-500">Transport:</span> <span className="font-medium">{selectedOrder.transport_name}</span></p>
+                    {selectedOrder.delivery_station && (
+                      <p className="text-sm"><span className="text-slate-500">Delivery Station:</span> {selectedOrder.delivery_station}</p>
+                    )}
+                    {selectedOrder.payment_mode && (
+                      <p className="text-sm"><span className="text-slate-500">Payment:</span> {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}</p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Transport - only show if not already set */}
+                {!selectedOrder?.transport_name && (
+                  <div className="space-y-2 mb-3">
+                    <Label>Transport *</Label>
+                    <Select value={updateForm.transport_id} onValueChange={handleTransportChange}>
+                      <SelectTrigger data-testid="transport-select">
+                        <SelectValue placeholder="Select transport" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {transports.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} {t.is_local && '(Local)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Tracking Number */}
+                <div className="space-y-2">
+                  <Label>Tracking Number {!isLocalSupply && '*'}</Label>
+                  <Input
+                    data-testid="tracking-number-input"
+                    value={updateForm.tracking_number}
+                    onChange={(e) => handleTrackingNumberChange(e.target.value)}
+                    placeholder="Enter tracking number"
+                  />
+                </div>
+              </div>
             )}
 
             {/* CANCELLED STATUS - Show cancellation reason */}

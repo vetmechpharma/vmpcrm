@@ -743,3 +743,5 @@ export const Items = () => {
     </div>
   );
 };
+
+export default Items;

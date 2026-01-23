@@ -207,7 +207,7 @@ export const Orders = () => {
     try {
       await transportAPI.create(newTransport);
       toast.success('Transport added successfully');
-      setNewTransport({ name: '', tracking_url_template: '', is_local: false });
+      setNewTransport({ name: '', tracking_url_template: '', is_local: false, contact_number: '', alternate_number: '' });
       fetchTransports();
     } catch (error) {
       toast.error('Failed to add transport');

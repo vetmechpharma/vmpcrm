@@ -387,40 +387,15 @@ export const PublicShowcase = () => {
                     </p>
                   )}
                   
-                  {/* Quantity Controls */}
-                  <div className="flex items-center justify-between mt-2">
-                    {quantities[item.id] > 0 ? (
-                      <div className="flex items-center gap-2 w-full">
-                        <button
-                          onClick={() => decrementQty(item.id)}
-                          className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
-                        >
-                          <Minus className="w-4 h-4 text-slate-600" />
-                        </button>
-                        <input
-                          type="number"
-                          value={quantities[item.id] || 0}
-                          onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          className="w-12 text-center font-semibold text-slate-800 border rounded-lg py-1"
-                        />
-                        <button
-                          onClick={() => incrementQty(item.id)}
-                          className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center hover:bg-emerald-200 transition-colors"
-                        >
-                          <Plus className="w-4 h-4 text-emerald-600" />
-                        </button>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => incrementQty(item.id)}
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add
-                      </Button>
-                    )}
+                  {/* Quantity Input - Text field for flexible entry */}
+                  <div className="mt-2">
+                    <Input
+                      type="text"
+                      value={quantities[item.id] || ''}
+                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                      placeholder="Qty (e.g. 10, 1 case)"
+                      className="w-full text-center text-sm h-9"
+                    />
                   </div>
                 </div>
               </div>

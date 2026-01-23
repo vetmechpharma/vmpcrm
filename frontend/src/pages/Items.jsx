@@ -532,7 +532,7 @@ export const Items = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
+                      <Label htmlFor="category">Category (Legacy)</Label>
                       {isFormMode ? (
                         showNewCategory ? (
                           <div className="flex gap-2">
@@ -568,6 +568,57 @@ export const Items = () => {
                           value={formData.category || '-'}
                           disabled
                         />
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Main Category & Subcategories for Showcase */}
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">
+                      <Label>Main Category (Showcase)</Label>
+                      {isFormMode ? (
+                        <Select 
+                          value={formData.main_category} 
+                          onValueChange={(v) => setFormData({ ...formData, main_category: v, subcategories: [] })}
+                        >
+                          <SelectTrigger data-testid="main-category-select">
+                            <SelectValue placeholder="Select main category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Large Animals">Large Animals</SelectItem>
+                            <SelectItem value="Poultry">Poultry</SelectItem>
+                            <SelectItem value="Pets">Pets</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input value={formData.main_category || '-'} disabled />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Subcategories</Label>
+                      {isFormMode ? (
+                        <div className="flex flex-wrap gap-2">
+                          {['Injection', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Tablets', 'Syrups', 'Vaccines'].map((sub) => (
+                            <label key={sub} className="flex items-center gap-1 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={formData.subcategories?.includes(sub) || false}
+                                onChange={(e) => {
+                                  const current = formData.subcategories || [];
+                                  if (e.target.checked) {
+                                    setFormData({ ...formData, subcategories: [...current, sub] });
+                                  } else {
+                                    setFormData({ ...formData, subcategories: current.filter(s => s !== sub) });
+                                  }
+                                }}
+                                className="rounded border-slate-300"
+                              />
+                              {sub}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <Input value={formData.subcategories?.join(', ') || '-'} disabled />
                       )}
                     </div>
                   </div>

@@ -236,7 +236,6 @@ class ItemResponse(BaseModel):
     custom_fields: List[CustomField] = []
     image_url: Optional[str] = None
     created_at: datetime
-    updated_at: datetime
 
 class CategoryResponse(BaseModel):
     name: str

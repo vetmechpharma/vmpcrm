@@ -13,8 +13,6 @@ import {
   CheckCircle,
   Send,
   Sparkles,
-  Plus,
-  Minus,
   Filter
 } from 'lucide-react';
 

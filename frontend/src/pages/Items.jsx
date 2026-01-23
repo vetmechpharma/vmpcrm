@@ -323,19 +323,6 @@ export const Items = () => {
                   data-testid="search-items-input"
                 />
               </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger data-testid="category-filter">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.name} value={cat.name}>
-                      {cat.name} ({cat.count})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto p-0">

@@ -527,75 +527,43 @@ export const Items = () => {
                         data-testid="item-code-input"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category (Legacy)</Label>
-                      {isFormMode ? (
-                        showNewCategory ? (
-                          <div className="flex gap-2">
-                            <Input
-                              value={newCategory}
-                              onChange={(e) => setNewCategory(e.target.value)}
-                              placeholder="Enter new category"
-                              data-testid="new-category-input"
-                            />
-                            <Button variant="outline" size="sm" onClick={() => setShowNewCategory(false)}>
-                              Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <Select value={formData.category} onValueChange={handleCategoryChange}>
-                            <SelectTrigger data-testid="item-category-select">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((cat) => (
-                                <SelectItem key={cat.name} value={cat.name}>
-                                  {cat.name}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="__new__">
-                                <span className="text-blue-600">+ Add New Category</span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )
-                      ) : (
-                        <Input
-                          value={formData.category || '-'}
-                          disabled
-                        />
-                      )}
-                    </div>
                   </div>
                   
-                  {/* Main Category & Subcategories for Showcase */}
-                  <div className="grid grid-cols-2 gap-4 mt-4">
+                  {/* Main Categories & Subcategories for Showcase */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div className="space-y-2">
-                      <Label>Main Category (Showcase)</Label>
+                      <Label>Main Categories</Label>
                       {isFormMode ? (
-                        <Select 
-                          value={formData.main_category} 
-                          onValueChange={(v) => setFormData({ ...formData, main_category: v, subcategories: [] })}
-                        >
-                          <SelectTrigger data-testid="main-category-select">
-                            <SelectValue placeholder="Select main category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Large Animals">Large Animals</SelectItem>
-                            <SelectItem value="Poultry">Poultry</SelectItem>
-                            <SelectItem value="Pets">Pets</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex flex-wrap gap-3 p-3 border rounded-lg bg-slate-50">
+                          {['Large Animals', 'Poultry', 'Pets'].map((cat) => (
+                            <label key={cat} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.main_categories?.includes(cat) || false}
+                                onChange={(e) => {
+                                  const current = formData.main_categories || [];
+                                  if (e.target.checked) {
+                                    setFormData({ ...formData, main_categories: [...current, cat] });
+                                  } else {
+                                    setFormData({ ...formData, main_categories: current.filter(c => c !== cat) });
+                                  }
+                                }}
+                                className="rounded border-slate-300 w-4 h-4"
+                              />
+                              <span className="font-medium">{cat}</span>
+                            </label>
+                          ))}
+                        </div>
                       ) : (
-                        <Input value={formData.main_category || '-'} disabled />
+                        <Input value={formData.main_categories?.join(', ') || '-'} disabled />
                       )}
                     </div>
                     <div className="space-y-2">
                       <Label>Subcategories</Label>
                       {isFormMode ? (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-slate-50">
                           {['Injection', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Tablets', 'Syrups', 'Vaccines'].map((sub) => (
-                            <label key={sub} className="flex items-center gap-1 text-sm">
+                            <label key={sub} className="flex items-center gap-1 text-sm cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={formData.subcategories?.includes(sub) || false}
@@ -608,6 +576,19 @@ export const Items = () => {
                                   }
                                 }}
                                 className="rounded border-slate-300"
+                              />
+                              {sub}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <Input value={formData.subcategories?.join(', ') || '-'} disabled />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
                               />
                               {sub}
                             </label>

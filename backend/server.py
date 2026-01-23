@@ -1907,6 +1907,155 @@ Regards,
     except Exception as e:
         logger.error(f"WhatsApp status update error: {str(e)}")
 
+async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
+    """Send WhatsApp notification for Ready to Despatch status - to both transporter and customer"""
+    config = await get_whatsapp_config()
+    if not config:
+        logger.warning("WhatsApp config not found, skipping notification")
+        return
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    company_phone = config.get('sender_id', '')
+    
+    order_number = order.get('order_number', '')
+    doctor_name = order.get('doctor_name', 'Customer')
+    doctor_phone = order.get('doctor_phone', '')
+    doctor_address = order.get('doctor_address', 'N/A')
+    
+    # Get transport details
+    transport_name = update_data.get('transport_name', 'N/A')
+    delivery_station = update_data.get('delivery_station', 'N/A')
+    payment_mode = update_data.get('payment_mode', '')
+    payment_text = "To Pay" if payment_mode == 'to_pay' else "Paid" if payment_mode == 'paid' else 'N/A'
+    
+    # Package details
+    boxes = update_data.get('boxes_count', 0) or 0
+    cans = update_data.get('cans_count', 0) or 0
+    bags = update_data.get('bags_count', 0) or 0
+    
+    package_parts = []
+    if boxes: package_parts.append(f"{boxes} Box(es)")
+    if cans: package_parts.append(f"{cans} Can(s)")
+    if bags: package_parts.append(f"{bags} Bag(s)")
+    package_text = ", ".join(package_parts) if package_parts else "N/A"
+    
+    # Invoice details
+    invoice_number = update_data.get('invoice_number', 'N/A') or 'N/A'
+    invoice_date = update_data.get('invoice_date', 'N/A') or 'N/A'
+    invoice_value = update_data.get('invoice_value', 0) or 0
+    invoice_value_text = f"₹{invoice_value:,.2f}" if invoice_value else 'N/A'
+    
+    # Build items list
+    items = order.get('items', [])
+    items_text = "\n".join([f"• {item.get('item_name', '')} - Qty: {item.get('quantity', '')}" for item in items])
+    
+    # 1. Send message to TRANSPORTER
+    transport_id = update_data.get('transport_id')
+    if transport_id:
+        transport = await db.transports.find_one({'id': transport_id}, {'_id': 0})
+        if transport and transport.get('contact_number'):
+            transporter_mobile = transport.get('contact_number', '')
+            clean_transporter_mobile = ''.join(filter(str.isdigit, transporter_mobile))
+            if not clean_transporter_mobile.startswith('91'):
+                clean_transporter_mobile = f"91{clean_transporter_mobile[-10:]}"
+            
+            transporter_message = f"""📦 *NEW SHIPMENT READY*
+
+*Order No:* {order_number}
+*Company:* {company_name}
+
+*Delivery Details:*
+👤 Customer: {doctor_name}
+📍 Delivery Station: {delivery_station}
+📞 Customer Phone: {doctor_phone}
+🏠 Address: {doctor_address}
+
+*Payment:* {payment_text}
+
+*Package Details:*
+📦 {package_text}
+
+*Invoice Details:*
+🧾 Invoice No: {invoice_number}
+📅 Invoice Date: {invoice_date}
+💵 Invoice Value: {invoice_value_text}
+
+*Order Items:*
+{items_text}
+
+Please arrange pickup.
+
+From: *{company_name}*
+📞 +{company_phone}"""
+            
+            params = {
+                'action': 'send',
+                'senderId': config['sender_id'],
+                'authToken': config['auth_token'],
+                'messageText': transporter_message,
+                'receiverId': clean_transporter_mobile
+            }
+            
+            try:
+                async with httpx.AsyncClient() as client:
+                    await client.get(config['api_url'], params=params, timeout=30)
+                    logger.info(f"Ready to despatch notification sent to transporter {clean_transporter_mobile}")
+            except Exception as e:
+                logger.error(f"WhatsApp transporter notification error: {str(e)}")
+    
+    # 2. Send message to CUSTOMER
+    customer_mobile = doctor_phone
+    clean_customer_mobile = ''.join(filter(str.isdigit, customer_mobile))
+    if not clean_customer_mobile.startswith('91'):
+        clean_customer_mobile = f"91{clean_customer_mobile[-10:]}"
+    
+    greeting = f"Dear Dr. {doctor_name}" if doctor_name else "Dear Customer"
+    
+    customer_message = f"""{greeting},
+
+📦 Your order is *READY TO DESPATCH*!
+
+📋 *Order No:* {order_number}
+
+*Order Details:*
+{items_text}
+
+*Shipping Information:*
+🚛 Transport: {transport_name}
+📍 Delivery Station: {delivery_station}
+💰 Payment: {payment_text}
+
+*Package Details:*
+📦 {package_text}
+
+*Invoice Details:*
+🧾 Invoice No: {invoice_number}
+📅 Invoice Date: {invoice_date}
+💵 Invoice Value: {invoice_value_text}
+
+Your order will be shipped soon. We will share tracking details once dispatched.
+
+Regards,
+*{company_name}*
+📞 +{company_phone}"""
+    
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': customer_message,
+        'receiverId': clean_customer_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.get(config['api_url'], params=params, timeout=30)
+            logger.info(f"Ready to despatch notification sent to customer {clean_customer_mobile}")
+    except Exception as e:
+        logger.error(f"WhatsApp customer notification error: {str(e)}")
+
 async def send_whatsapp_out_of_stock(order: dict, out_of_stock_items: list):
     """Send WhatsApp notification for out of stock items"""
     if not out_of_stock_items:

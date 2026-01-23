@@ -1331,6 +1331,8 @@ async def get_item_image(item_id: str):
 async def get_items(
     search: Optional[str] = None,
     category: Optional[str] = None,
+    main_category: Optional[str] = None,
+    subcategory: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -1345,16 +1347,19 @@ async def get_items(
     if category:
         query['category'] = category
     
+    if main_category:
+        query['main_category'] = main_category
+    
+    if subcategory:
+        query['subcategories'] = subcategory
+    
     items = await db.items.find(query, {'_id': 0, 'image_webp': 0}).sort('created_at', -1).to_list(1000)
     
     result = []
     for item in items:
         created_at = item['created_at']
-        updated_at = item['updated_at']
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-        if isinstance(updated_at, str):
-            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
         
         custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
         
@@ -1366,6 +1371,8 @@ async def get_items(
             item_code=item['item_code'],
             item_name=item['item_name'],
             category=item.get('category'),
+            main_category=item.get('main_category'),
+            subcategories=item.get('subcategories', []),
             composition=item.get('composition'),
             offer=item.get('offer'),
             special_offer=item.get('special_offer'),
@@ -1374,8 +1381,7 @@ async def get_items(
             gst=item.get('gst', 0),
             custom_fields=custom_fields,
             image_url=f"/api/items/{item['id']}/image" if has_image else None,
-            created_at=created_at,
-            updated_at=updated_at
+            created_at=created_at
         ))
     
     return result
@@ -1387,11 +1393,8 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         raise HTTPException(status_code=404, detail="Item not found")
     
     created_at = item['created_at']
-    updated_at = item['updated_at']
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-    if isinstance(updated_at, str):
-        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
     
     custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
     
@@ -1403,6 +1406,8 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         item_code=item['item_code'],
         item_name=item['item_name'],
         category=item.get('category'),
+        main_category=item.get('main_category'),
+        subcategories=item.get('subcategories', []),
         composition=item.get('composition'),
         offer=item.get('offer'),
         special_offer=item.get('special_offer'),
@@ -1411,8 +1416,7 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         gst=item.get('gst', 0),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item['id']}/image" if has_image else None,
-        created_at=created_at,
-        updated_at=updated_at
+        created_at=created_at
     )
 
 @api_router.put("/items/{item_id}", response_model=ItemResponse)

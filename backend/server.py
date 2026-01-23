@@ -2620,6 +2620,8 @@ async def create_transport(transport: TransportCreate, current_user: dict = Depe
         'name': transport.name,
         'tracking_url_template': transport.tracking_url_template if not transport.is_local else None,
         'is_local': transport.is_local,
+        'contact_number': transport.contact_number,
+        'alternate_number': transport.alternate_number,
         'created_at': now.isoformat()
     }
     
@@ -2630,6 +2632,8 @@ async def create_transport(transport: TransportCreate, current_user: dict = Depe
         name=transport.name,
         tracking_url_template=transport.tracking_url_template if not transport.is_local else None,
         is_local=transport.is_local,
+        contact_number=transport.contact_number,
+        alternate_number=transport.alternate_number,
         created_at=now
     )
 
@@ -2648,6 +2652,8 @@ async def get_transports(current_user: dict = Depends(get_current_user)):
             name=t['name'],
             tracking_url_template=t.get('tracking_url_template'),
             is_local=t.get('is_local', False),
+            contact_number=t.get('contact_number'),
+            alternate_number=t.get('alternate_number'),
             created_at=created_at
         ))
     

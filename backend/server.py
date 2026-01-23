@@ -193,8 +193,7 @@ class CustomField(BaseModel):
 class ItemCreate(BaseModel):
     item_name: str
     item_code: Optional[str] = None  # Custom item code, auto-generated if not provided
-    category: Optional[str] = None  # Legacy single category
-    main_category: Optional[str] = None  # Main category: Large Animals, Poultry, Pets
+    main_categories: Optional[List[str]] = []  # Main categories: Large Animals, Poultry, Pets (multiple)
     subcategories: Optional[List[str]] = []  # Subcategories: Injection, Liquids, Bolus, Powder
     composition: Optional[str] = None
     offer: Optional[str] = None
@@ -208,8 +207,7 @@ class ItemCreate(BaseModel):
 class ItemUpdate(BaseModel):
     item_name: Optional[str] = None
     item_code: Optional[str] = None
-    category: Optional[str] = None
-    main_category: Optional[str] = None
+    main_categories: Optional[List[str]] = None
     subcategories: Optional[List[str]] = None
     composition: Optional[str] = None
     offer: Optional[str] = None
@@ -224,8 +222,7 @@ class ItemResponse(BaseModel):
     id: str
     item_code: str
     item_name: str
-    category: Optional[str] = None
-    main_category: Optional[str] = None
+    main_categories: List[str] = []
     subcategories: List[str] = []
     composition: Optional[str] = None
     offer: Optional[str] = None

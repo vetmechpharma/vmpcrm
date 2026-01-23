@@ -116,8 +116,7 @@ export const Items = () => {
     setFormData({
       item_name: item.item_name,
       item_code: item.item_code || '',
-      category: item.category || '',
-      main_category: item.main_category || '',
+      main_categories: item.main_categories || [],
       subcategories: item.subcategories || [],
       composition: item.composition || '',
       offer: item.offer || '',

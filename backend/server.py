@@ -1324,7 +1324,6 @@ async def get_item_image(item_id: str):
 @api_router.get("/items", response_model=List[ItemResponse])
 async def get_items(
     search: Optional[str] = None,
-    category: Optional[str] = None,
     main_category: Optional[str] = None,
     subcategory: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
@@ -1338,11 +1337,8 @@ async def get_items(
             {'composition': {'$regex': search, '$options': 'i'}}
         ]
     
-    if category:
-        query['category'] = category
-    
     if main_category:
-        query['main_category'] = main_category
+        query['main_categories'] = main_category
     
     if subcategory:
         query['subcategories'] = subcategory
@@ -1364,8 +1360,7 @@ async def get_items(
             id=item['id'],
             item_code=item['item_code'],
             item_name=item['item_name'],
-            category=item.get('category'),
-            main_category=item.get('main_category'),
+            main_categories=item.get('main_categories', []) or item.get('main_category', []) if isinstance(item.get('main_category'), list) else ([item.get('main_category')] if item.get('main_category') else []),
             subcategories=item.get('subcategories', []),
             composition=item.get('composition'),
             offer=item.get('offer'),

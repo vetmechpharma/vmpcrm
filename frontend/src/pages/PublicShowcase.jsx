@@ -47,6 +47,9 @@ export const PublicShowcase = () => {
   // Filters
   const [selectedMainCategory, setSelectedMainCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  
+  // Composition overlay
+  const [showComposition, setShowComposition] = useState(null);
 
   useEffect(() => {
     fetchData();

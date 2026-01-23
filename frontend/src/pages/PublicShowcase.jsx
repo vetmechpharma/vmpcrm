@@ -4,7 +4,6 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -13,7 +12,8 @@ import {
   CheckCircle,
   Send,
   Sparkles,
-  Filter
+  Filter,
+  ArrowLeft
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -48,6 +48,9 @@ export const PublicShowcase = () => {
   
   // Composition overlay
   const [showComposition, setShowComposition] = useState(null);
+  
+  // Checkout view
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -104,7 +107,6 @@ export const PublicShowcase = () => {
   };
 
   const handleQuantityChange = (itemId, value) => {
-    // Allow any text input for flexible quantity entry
     setQuantities({ ...quantities, [itemId]: value });
   };
 
@@ -113,21 +115,10 @@ export const PublicShowcase = () => {
       item_id: item.id,
       item_code: item.item_code,
       item_name: item.item_name,
-      quantity: quantities[item.id],  // Can be text like "10+5", "1 case", "50 pcs"
+      quantity: quantities[item.id],
       rate: item.rate,
       mrp: item.mrp
     }));
-  };
-
-  const getTotalAmount = () => {
-    // Try to parse numeric values for total, ignore text-only entries
-    return items.reduce((sum, item) => {
-      const qtyStr = quantities[item.id]?.toString() || '';
-      // Try to extract first number from the string
-      const match = qtyStr.match(/\d+/);
-      const qty = match ? parseInt(match[0]) : 0;
-      return sum + (item.rate * qty);
-    }, 0);
   };
 
   const getCartCount = () => {
@@ -179,6 +170,7 @@ export const PublicShowcase = () => {
       setOrderNumber(response.data.order_number);
       setOrderSuccess(true);
       setShowOTPModal(false);
+      setShowCheckout(false);
       setQuantities({});
       toast.success('Order placed successfully!');
     } catch (error) {
@@ -199,6 +191,7 @@ export const PublicShowcase = () => {
 
   const mainCats = categories.main_categories.length > 0 ? categories.main_categories : MAIN_CATEGORIES;
 
+  // Order Success Screen
   if (orderSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center p-4">
@@ -223,8 +216,138 @@ export const PublicShowcase = () => {
     );
   }
 
+  // Checkout Screen
+  if (showCheckout) {
+    const selectedItems = getSelectedItems();
+    
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {/* Header */}
+        <div className="sticky top-0 z-40 bg-white shadow-sm border-b">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+            <button 
+              onClick={() => setShowCheckout(false)}
+              className="p-2 hover:bg-slate-100 rounded-full"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-semibold">Checkout</h1>
+          </div>
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          {/* Selected Items Table */}
+          <div className="bg-white rounded-xl shadow-sm mb-6">
+            <div className="p-4 border-b">
+              <h2 className="font-semibold text-slate-800">Order Summary</h2>
+              <p className="text-sm text-slate-500">{selectedItems.length} items selected</p>
+            </div>
+            <div className="divide-y">
+              {/* Table Header */}
+              <div className="grid grid-cols-2 gap-4 px-4 py-3 bg-slate-50 text-sm font-medium text-slate-600">
+                <div>Item Name</div>
+                <div className="text-right">Quantity</div>
+              </div>
+              {/* Table Body */}
+              {selectedItems.map((item) => (
+                <div key={item.item_id} className="grid grid-cols-2 gap-4 px-4 py-3">
+                  <div className="text-sm text-slate-800">{item.item_name}</div>
+                  <div className="text-sm text-slate-600 text-right font-medium">{item.quantity}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Mobile Number */}
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <Label className="text-sm font-medium text-slate-700 mb-2 block">Mobile Number</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                type="tel"
+                placeholder="Enter mobile number"
+                value={mobile}
+                onChange={(e) => handleMobileChange(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {doctorInfo && (
+              <p className="text-sm text-emerald-600 mt-2">✓ Dr. {doctorInfo.name}</p>
+            )}
+          </div>
+
+          {/* Terms */}
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={setTermsAccepted}
+              />
+              <Label htmlFor="terms" className="text-sm text-slate-600">
+                I accept the terms and conditions
+              </Label>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleSubmitOrder}
+            disabled={submitting}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-base"
+          >
+            {submitting ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <Send className="w-5 h-5 mr-2" />
+            )}
+            Place Order via WhatsApp
+          </Button>
+        </div>
+
+        {/* OTP Modal */}
+        {showOTPModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Verify OTP</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Enter the 4-digit OTP sent to your WhatsApp
+              </p>
+              <Input
+                type="text"
+                maxLength={4}
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                className="text-center text-2xl tracking-widest mb-4"
+              />
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowOTPModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleVerifyOTP} 
+                  disabled={submitting}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                  Verify
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Main Showcase Screen
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pb-20">
       {/* Category Filter Header */}
       <div className="sticky top-0 z-40 bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -393,95 +516,20 @@ export const PublicShowcase = () => {
         )}
       </div>
 
-      {/* Floating Cart Summary */}
+      {/* Floating Checkout Button */}
       {getCartCount() > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-slate-600" />
-                <span className="font-medium text-slate-800">{getCartCount()} items</span>
-              </div>
-              <span className="text-lg font-bold text-emerald-600">₹{getTotalAmount().toLocaleString()}</span>
-            </div>
-            
-            {/* Mobile Input */}
-            <div className="flex gap-2 mb-3">
-              <div className="flex-1">
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input
-                    type="tel"
-                    placeholder="Enter mobile number"
-                    value={mobile}
-                    onChange={(e) => handleMobileChange(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                {doctorInfo && (
-                  <p className="text-xs text-emerald-600 mt-1">Dr. {doctorInfo.name}</p>
-                )}
-              </div>
-            </div>
-            
-            {/* Terms */}
-            <div className="flex items-center gap-2 mb-3">
-              <Checkbox
-                id="terms"
-                checked={termsAccepted}
-                onCheckedChange={setTermsAccepted}
-              />
-              <Label htmlFor="terms" className="text-xs text-slate-500">
-                I accept the terms and conditions
-              </Label>
-            </div>
-            
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+          <div className="max-w-md mx-auto">
             <Button
-              onClick={handleSubmitOrder}
-              disabled={submitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setShowCheckout(true)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 h-14 text-base rounded-full shadow-lg"
             >
-              {submitting ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Send className="w-4 h-4 mr-2" />
-              )}
-              Place Order via WhatsApp
+              <ShoppingCart className="w-5 h-5 mr-2" />
+              Checkout ({getCartCount()} items)
             </Button>
           </div>
         </div>
       )}
-
-      {/* OTP Modal */}
-      <Dialog open={showOTPModal} onOpenChange={setShowOTPModal}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Verify OTP</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-slate-500 mb-4">
-              Enter the 4-digit OTP sent to your WhatsApp
-            </p>
-            <Input
-              type="text"
-              maxLength={4}
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              className="text-center text-2xl tracking-widest"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOTPModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleVerifyOTP} disabled={submitting}>
-              {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Verify & Place Order
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -1809,17 +1809,45 @@ Regards,
         payment_mode = order.get('payment_mode') or (update_data.get('payment_mode') if update_data else None) or ''
         payment_text = "To Pay" if payment_mode == 'to_pay' else "Paid" if payment_mode == 'paid' else 'N/A'
         
+        # Get package details from order (set during ready_to_despatch)
+        boxes = order.get('boxes_count', 0) or 0
+        cans = order.get('cans_count', 0) or 0
+        bags = order.get('bags_count', 0) or 0
+        
+        package_parts = []
+        if boxes: package_parts.append(f"{boxes} Box(es)")
+        if cans: package_parts.append(f"{cans} Can(s)")
+        if bags: package_parts.append(f"{bags} Bag(s)")
+        package_text = ", ".join(package_parts) if package_parts else "N/A"
+        
+        # Get invoice details from order (set during ready_to_despatch)
+        invoice_number = order.get('invoice_number', 'N/A') or 'N/A'
+        invoice_date = order.get('invoice_date', 'N/A') or 'N/A'
+        invoice_value = order.get('invoice_value', 0) or 0
+        invoice_value_text = f"₹{invoice_value:,.2f}" if invoice_value else 'N/A'
+        
         message = f"""{greeting},
 
 🚚 Your order has been *SHIPPED*!
 
 📋 *Order No:* {order_number}
 
-*Tracking Information:*
+*Order Details:*
+{items_text}
+
+*Shipping Information:*
 🚛 Transport: {transport_name}
 📦 Tracking No: {tracking_number}
 📍 Delivery Station: {delivery_station}
 💰 Payment: {payment_text}
+
+*Package Details:*
+📦 {package_text}
+
+*Invoice Details:*
+🧾 Invoice No: {invoice_number}
+📅 Invoice Date: {invoice_date}
+💵 Invoice Value: {invoice_value_text}
 
 Your order is on its way! Thank you for your order.
 

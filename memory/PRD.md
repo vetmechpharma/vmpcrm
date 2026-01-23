@@ -47,20 +47,31 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Order confirmation via WhatsApp
 - [x] Dynamic WhatsApp API configuration
 
-## Order Management & Transport (Iteration 7-9) - UPDATED Jan 22, 2026
+## Order Management & Transport (Iteration 7-9) - UPDATED Jan 23, 2026
 - [x] Transport provider management (CRUD)
 - [x] **Transport URL**: Simple URL field for transport provider website (no tracking number template)
 - [x] **Transport Contact Numbers**: Incharge contact number + alternate number for each transport
 - [x] Order tracking with transport details
 - [x] **Transport Display**: Orders page shows transport name + tracking number as plain text (no clickable links)
 - [x] Payment status tracking (To Pay/Paid)
+- [x] **New Order Status: Ready to Despatch**:
+  - Added between Confirmed and Shipped statuses
+  - Captures: Transport, Delivery Station, Payment Mode, Package Details (Box/Can/Bag), Invoice Details
+  - Sends WhatsApp to **Transporter** with complete billing info (using transport contact number)
+  - Sends WhatsApp to **Customer** with ready to despatch notification
+- [x] **Simplified Shipped Status**:
+  - Only requires Tracking Number entry
+  - Shows existing transport info from Ready to Despatch status
+  - Sends short WhatsApp with tracking details to customer
 - [x] **WhatsApp notifications for status changes:**
   - Confirmed: Order confirmation message
-  - Shipped: Full transport details, package counts, invoice info
+  - Ready to Despatch: Full details to transporter + customer notification
+  - Shipped: Tracking info only (transport details already sent)
   - Delivered: Delivery confirmation
   - Cancelled: Cancellation with reason
 - [x] **Conditional fields based on status:**
-  - Shipped: Transport, tracking, delivery station, payment mode, package counts (boxes/cans/bags), invoice details
+  - Ready to Despatch: Transport, delivery station, payment mode, package counts (boxes/cans/bags), invoice details
+  - Shipped: Tracking number only (transport info shown if already set)
   - Cancelled: Cancellation reason (required)
 - [x] Package details: Boxes, Cans, Bags counts
 - [x] Invoice details: Number, Date, Value

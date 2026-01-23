@@ -75,14 +75,6 @@ export const Items = () => {
   };
 
   const fetchCategories = async () => {
-    try {
-      const response = await itemsAPI.getCategories();
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Failed to fetch categories');
-    }
-  };
-
   const resetForm = () => {
     setFormData({
       item_name: '',

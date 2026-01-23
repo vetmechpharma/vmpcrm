@@ -185,10 +185,39 @@ export const Orders = () => {
       return;
     }
     
+    // Validate transport and payment for ready_to_despatch
+    if (updateForm.status === 'ready_to_despatch') {
+      if (!updateForm.transport_id) {
+        toast.error('Please select a transport');
+        return;
+      }
+      if (!updateForm.payment_mode) {
+        toast.error('Please select a payment mode');
+        return;
+      }
+    }
+    
+    // Validate tracking number for shipped (if not local supply)
+    if (updateForm.status === 'shipped') {
+      const transport = transports.find(t => t.id === (updateForm.transport_id || selectedOrder?.transport_id));
+      const isLocal = transport?.is_local || selectedOrder?.transport_name === 'Local Supply';
+      if (!isLocal && !updateForm.tracking_number?.trim() && !selectedOrder?.tracking_number) {
+        toast.error('Please enter tracking number');
+        return;
+      }
+    }
+    
     setSaving(true);
     try {
       await ordersAPI.updateStatus(selectedOrder.id, updateForm);
-      toast.success(`Order ${updateForm.status === 'shipped' ? 'shipped' : 'updated'} successfully! WhatsApp notification sent.`);
+      const statusMessages = {
+        'ready_to_despatch': 'marked ready to despatch',
+        'shipped': 'shipped',
+        'delivered': 'delivered',
+        'cancelled': 'cancelled',
+        'confirmed': 'confirmed'
+      };
+      toast.success(`Order ${statusMessages[updateForm.status] || 'updated'} successfully! WhatsApp notification sent.`);
       setShowUpdateModal(false);
       fetchOrders();
     } catch (error) {

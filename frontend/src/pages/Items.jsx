@@ -26,10 +26,8 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export const Items = () => {
   const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedItem, setSelectedItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -59,20 +57,14 @@ export const Items = () => {
   const [newFieldName, setNewFieldName] = useState('');
   const [newFieldValue, setNewFieldValue] = useState('');
 
-  // New category input
-  const [newCategory, setNewCategory] = useState('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
-
   useEffect(() => {
     fetchItems();
-    fetchCategories();
-  }, [search, categoryFilter]);
+  }, [search]);
 
   const fetchItems = async () => {
     try {
       const params = {};
       if (search) params.search = search;
-      if (categoryFilter && categoryFilter !== 'all') params.category = categoryFilter;
       const response = await itemsAPI.getAll(params);
       setItems(response.data);
     } catch (error) {

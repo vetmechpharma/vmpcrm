@@ -74,7 +74,6 @@ export const Items = () => {
     }
   };
 
-  const fetchCategories = async () => {
   const resetForm = () => {
     setFormData({
       item_name: '',

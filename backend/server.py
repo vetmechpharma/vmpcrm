@@ -1503,13 +1503,23 @@ async def delete_agency_note(agency_id: str, note_id: str, current_user: dict = 
 # ============== TASKS ROUTES ==============
 
 @api_router.get("/tasks", response_model=List[TaskResponse])
-async def get_all_tasks(status: Optional[str] = None, doctor_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+async def get_all_tasks(
+    status: Optional[str] = None, 
+    doctor_id: Optional[str] = None, 
+    medical_id: Optional[str] = None,
+    agency_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     """Get all tasks with optional filters"""
     query = {}
     if status:
         query['status'] = status
     if doctor_id:
         query['doctor_id'] = doctor_id
+    if medical_id:
+        query['medical_id'] = medical_id
+    if agency_id:
+        query['agency_id'] = agency_id
     
     tasks = await db.tasks.find(query, {'_id': 0}).sort('due_date', 1).to_list(1000)
     
@@ -1519,13 +1529,22 @@ async def get_all_tasks(status: Optional[str] = None, doctor_id: Optional[str] =
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         
-        # Get doctor name
-        doctor = await db.doctors.find_one({'id': task['doctor_id']}, {'_id': 0, 'name': 1})
+        # Get entity name (doctor, medical, or agency)
+        entity_name = None
+        if task.get('doctor_id'):
+            entity = await db.doctors.find_one({'id': task['doctor_id']}, {'_id': 0, 'name': 1})
+            entity_name = entity['name'] if entity else None
+        elif task.get('medical_id'):
+            entity = await db.medicals.find_one({'id': task['medical_id']}, {'_id': 0, 'name': 1})
+            entity_name = entity['name'] if entity else None
+        elif task.get('agency_id'):
+            entity = await db.agencies.find_one({'id': task['agency_id']}, {'_id': 0, 'name': 1})
+            entity_name = entity['name'] if entity else None
         
         result.append(TaskResponse(
             id=task['id'],
-            doctor_id=task['doctor_id'],
-            doctor_name=doctor['name'] if doctor else None,
+            doctor_id=task.get('doctor_id', ''),
+            doctor_name=entity_name,
             title=task['title'],
             description=task.get('description'),
             due_date=task.get('due_date'),
@@ -1539,14 +1558,38 @@ async def get_all_tasks(status: Optional[str] = None, doctor_id: Optional[str] =
 @api_router.post("/tasks", response_model=TaskResponse)
 async def create_task(task_data: TaskCreate, current_user: dict = Depends(get_current_user)):
     """Create a new task"""
-    doctor = await db.doctors.find_one({'id': task_data.doctor_id}, {'_id': 0})
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
+    entity_name = None
+    entity_id = None
+    entity_type = None
+    
+    if task_data.doctor_id:
+        entity = await db.doctors.find_one({'id': task_data.doctor_id}, {'_id': 0})
+        if not entity:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        entity_name = entity['name']
+        entity_id = task_data.doctor_id
+        entity_type = 'doctor_id'
+    elif task_data.medical_id:
+        entity = await db.medicals.find_one({'id': task_data.medical_id}, {'_id': 0})
+        if not entity:
+            raise HTTPException(status_code=404, detail="Medical not found")
+        entity_name = entity['name']
+        entity_id = task_data.medical_id
+        entity_type = 'medical_id'
+    elif task_data.agency_id:
+        entity = await db.agencies.find_one({'id': task_data.agency_id}, {'_id': 0})
+        if not entity:
+            raise HTTPException(status_code=404, detail="Agency not found")
+        entity_name = entity['name']
+        entity_id = task_data.agency_id
+        entity_type = 'agency_id'
+    else:
+        raise HTTPException(status_code=400, detail="Either doctor_id, medical_id, or agency_id is required")
     
     now = datetime.now(timezone.utc)
     task_doc = {
         'id': str(uuid.uuid4()),
-        'doctor_id': task_data.doctor_id,
+        entity_type: entity_id,
         'title': task_data.title,
         'description': task_data.description,
         'due_date': task_data.due_date,
@@ -1559,8 +1602,8 @@ async def create_task(task_data: TaskCreate, current_user: dict = Depends(get_cu
     
     return TaskResponse(
         id=task_doc['id'],
-        doctor_id=task_doc['doctor_id'],
-        doctor_name=doctor['name'],
+        doctor_id=task_doc.get('doctor_id', ''),
+        doctor_name=entity_name,
         title=task_doc['title'],
         description=task_doc['description'],
         due_date=task_doc['due_date'],

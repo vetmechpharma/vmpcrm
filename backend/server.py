@@ -582,6 +582,38 @@ async def generate_customer_code() -> str:
         new_num = 1
     return f"VMP-{str(new_num).zfill(4)}"
 
+async def generate_medical_code() -> str:
+    last_medical = await db.medicals.find_one(
+        {'customer_code': {'$regex': '^MED-'}},
+        {'customer_code': 1},
+        sort=[('customer_code', -1)]
+    )
+    if last_medical and 'customer_code' in last_medical:
+        try:
+            last_num = int(last_medical['customer_code'].replace('MED-', ''))
+            new_num = last_num + 1
+        except ValueError:
+            new_num = 1
+    else:
+        new_num = 1
+    return f"MED-{str(new_num).zfill(4)}"
+
+async def generate_agency_code() -> str:
+    last_agency = await db.agencies.find_one(
+        {'customer_code': {'$regex': '^AGY-'}},
+        {'customer_code': 1},
+        sort=[('customer_code', -1)]
+    )
+    if last_agency and 'customer_code' in last_agency:
+        try:
+            last_num = int(last_agency['customer_code'].replace('AGY-', ''))
+            new_num = last_num + 1
+        except ValueError:
+            new_num = 1
+    else:
+        new_num = 1
+    return f"AGY-{str(new_num).zfill(4)}"
+
 async def generate_item_code() -> str:
     last_item = await db.items.find_one(
         {},

@@ -24,6 +24,8 @@ import { cn } from '../lib/utils';
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/doctors', icon: Users, label: 'Doctors' },
+  { path: '/medicals', icon: Store, label: 'Medicals' },
+  { path: '/agencies', icon: Building, label: 'Agencies' },
   { path: '/items', icon: Package, label: 'Items' },
   { path: '/orders', icon: ShoppingCart, label: 'Orders' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },

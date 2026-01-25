@@ -4,6 +4,8 @@ import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Doctors } from './pages/Doctors';
+import { Medicals } from './pages/Medicals';
+import { Agencies } from './pages/Agencies';
 import { Items } from './pages/Items';
 import { EmailLogs } from './pages/EmailLogs';
 import { Settings } from './pages/Settings';

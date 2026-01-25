@@ -63,6 +63,34 @@ export const tasksAPI = {
   delete: (id) => api.delete(`/tasks/${id}`),
 };
 
+// Medicals APIs
+export const medicalsAPI = {
+  getAll: (params) => api.get('/medicals', { params }),
+  getOne: (id) => api.get(`/medicals/${id}`),
+  create: (data) => api.post('/medicals', data),
+  update: (id, data) => api.put(`/medicals/${id}`, data),
+  delete: (id) => api.delete(`/medicals/${id}`),
+  updateContact: (id) => api.put(`/medicals/${id}/contact`),
+  // Notes
+  getNotes: (id) => api.get(`/medicals/${id}/notes`),
+  addNote: (id, data) => api.post(`/medicals/${id}/notes`, data),
+  deleteNote: (id, noteId) => api.delete(`/medicals/${id}/notes/${noteId}`),
+};
+
+// Agencies APIs
+export const agenciesAPI = {
+  getAll: (params) => api.get('/agencies', { params }),
+  getOne: (id) => api.get(`/agencies/${id}`),
+  create: (data) => api.post('/agencies', data),
+  update: (id, data) => api.put(`/agencies/${id}`, data),
+  delete: (id) => api.delete(`/agencies/${id}`),
+  updateContact: (id) => api.put(`/agencies/${id}/contact`),
+  // Notes
+  getNotes: (id) => api.get(`/agencies/${id}/notes`),
+  addNote: (id, data) => api.post(`/agencies/${id}/notes`, data),
+  deleteNote: (id, noteId) => api.delete(`/agencies/${id}/notes/${noteId}`),
+};
+
 // Reminders APIs
 export const remindersAPI = {
   getAll: () => api.get('/reminders'),

@@ -119,8 +119,140 @@ class DoctorNoteResponse(BaseModel):
     created_by: str
     created_at: datetime
 
+# ============== MEDICAL MODELS ==============
+
+class MedicalCreate(BaseModel):
+    name: str
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: str
+    alternate_phone: Optional[str] = None
+    lead_status: str = "Pipeline"
+
+class MedicalUpdate(BaseModel):
+    name: Optional[str] = None
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    lead_status: Optional[str] = None
+    priority: Optional[str] = None
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
+
+class MedicalResponse(BaseModel):
+    id: str
+    customer_code: str
+    name: str
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[str] = None
+    phone: str
+    alternate_phone: Optional[str] = None
+    lead_status: str
+    priority: Optional[str] = None
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class MedicalNoteCreate(BaseModel):
+    note: str
+
+class MedicalNoteResponse(BaseModel):
+    id: str
+    medical_id: str
+    note: str
+    created_by: str
+    created_at: datetime
+
+# ============== AGENCY MODELS ==============
+
+class AgencyCreate(BaseModel):
+    name: str
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: str
+    alternate_phone: Optional[str] = None
+    lead_status: str = "Pipeline"
+
+class AgencyUpdate(BaseModel):
+    name: Optional[str] = None
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    lead_status: Optional[str] = None
+    priority: Optional[str] = None
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
+
+class AgencyResponse(BaseModel):
+    id: str
+    customer_code: str
+    name: str
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    email: Optional[str] = None
+    phone: str
+    alternate_phone: Optional[str] = None
+    lead_status: str
+    priority: Optional[str] = None
+    last_contact_date: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class AgencyNoteCreate(BaseModel):
+    note: str
+
+class AgencyNoteResponse(BaseModel):
+    id: str
+    agency_id: str
+    note: str
+    created_by: str
+    created_at: datetime
+
+# ============== TASK MODELS ==============
+
 class TaskCreate(BaseModel):
-    doctor_id: str
+    doctor_id: Optional[str] = None
+    medical_id: Optional[str] = None
+    agency_id: Optional[str] = None
     title: str
     description: Optional[str] = None
     due_date: Optional[str] = None

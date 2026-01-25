@@ -85,6 +85,22 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/medicals" 
+        element={
+          <ProtectedRoute>
+            <Medicals />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/agencies" 
+        element={
+          <ProtectedRoute>
+            <Agencies />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/items" 
         element={
           <ProtectedRoute>

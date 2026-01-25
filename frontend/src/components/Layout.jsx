@@ -14,7 +14,9 @@ import {
   Package,
   ShoppingCart,
   Building2,
-  Clock
+  Clock,
+  Store,
+  Building
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';

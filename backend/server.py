@@ -972,6 +972,534 @@ async def delete_doctor_note(doctor_id: str, note_id: str, current_user: dict = 
         raise HTTPException(status_code=404, detail="Note not found")
     return {"message": "Note deleted successfully"}
 
+# ============== MEDICAL ROUTES ==============
+
+@api_router.post("/medicals", response_model=MedicalResponse)
+async def create_medical(medical_data: MedicalCreate, current_user: dict = Depends(get_current_user)):
+    medical_id = str(uuid.uuid4())
+    customer_code = await generate_medical_code()
+    now = datetime.now(timezone.utc)
+    
+    medical_doc = {
+        'id': medical_id,
+        'customer_code': customer_code,
+        'name': medical_data.name,
+        'proprietor_name': medical_data.proprietor_name,
+        'gst_number': medical_data.gst_number,
+        'drug_license': medical_data.drug_license,
+        'address': medical_data.address,
+        'state': medical_data.state,
+        'district': medical_data.district,
+        'pincode': medical_data.pincode,
+        'email': medical_data.email,
+        'phone': medical_data.phone,
+        'alternate_phone': medical_data.alternate_phone,
+        'lead_status': medical_data.lead_status,
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'created_by': current_user['id']
+    }
+    
+    await db.medicals.insert_one(medical_doc)
+    
+    return MedicalResponse(
+        id=medical_id,
+        customer_code=customer_code,
+        name=medical_data.name,
+        proprietor_name=medical_data.proprietor_name,
+        gst_number=medical_data.gst_number,
+        drug_license=medical_data.drug_license,
+        address=medical_data.address,
+        state=medical_data.state,
+        district=medical_data.district,
+        pincode=medical_data.pincode,
+        email=medical_data.email,
+        phone=medical_data.phone,
+        alternate_phone=medical_data.alternate_phone,
+        lead_status=medical_data.lead_status,
+        created_at=now,
+        updated_at=now
+    )
+
+@api_router.get("/medicals", response_model=List[MedicalResponse])
+async def get_medicals(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    
+    if search:
+        query['$or'] = [
+            {'name': {'$regex': search, '$options': 'i'}},
+            {'customer_code': {'$regex': search, '$options': 'i'}},
+            {'proprietor_name': {'$regex': search, '$options': 'i'}},
+            {'email': {'$regex': search, '$options': 'i'}},
+            {'phone': {'$regex': search, '$options': 'i'}},
+            {'gst_number': {'$regex': search, '$options': 'i'}}
+        ]
+    
+    if status and status != 'all':
+        query['lead_status'] = status
+    
+    medicals = await db.medicals.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    
+    result = []
+    for doc in medicals:
+        created_at = doc.get('created_at')
+        updated_at = doc.get('updated_at') or doc.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+        
+        result.append(MedicalResponse(
+            id=doc['id'],
+            customer_code=doc['customer_code'],
+            name=doc['name'],
+            proprietor_name=doc.get('proprietor_name'),
+            gst_number=doc.get('gst_number'),
+            drug_license=doc.get('drug_license'),
+            address=doc.get('address'),
+            state=doc.get('state'),
+            district=doc.get('district'),
+            pincode=doc.get('pincode'),
+            email=doc.get('email'),
+            phone=doc['phone'],
+            alternate_phone=doc.get('alternate_phone'),
+            lead_status=doc.get('lead_status', 'Pipeline'),
+            priority=doc.get('priority'),
+            last_contact_date=doc.get('last_contact_date'),
+            follow_up_date=doc.get('follow_up_date'),
+            created_at=created_at,
+            updated_at=updated_at
+        ))
+    
+    return result
+
+@api_router.get("/medicals/{medical_id}", response_model=MedicalResponse)
+async def get_medical(medical_id: str, current_user: dict = Depends(get_current_user)):
+    medical = await db.medicals.find_one({'id': medical_id}, {'_id': 0})
+    if not medical:
+        raise HTTPException(status_code=404, detail="Medical not found")
+    
+    created_at = medical.get('created_at')
+    updated_at = medical.get('updated_at') or medical.get('created_at')
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    return MedicalResponse(
+        id=medical['id'],
+        customer_code=medical['customer_code'],
+        name=medical['name'],
+        proprietor_name=medical.get('proprietor_name'),
+        gst_number=medical.get('gst_number'),
+        drug_license=medical.get('drug_license'),
+        address=medical.get('address'),
+        state=medical.get('state'),
+        district=medical.get('district'),
+        pincode=medical.get('pincode'),
+        email=medical.get('email'),
+        phone=medical['phone'],
+        alternate_phone=medical.get('alternate_phone'),
+        lead_status=medical.get('lead_status', 'Pipeline'),
+        priority=medical.get('priority'),
+        last_contact_date=medical.get('last_contact_date'),
+        follow_up_date=medical.get('follow_up_date'),
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.put("/medicals/{medical_id}", response_model=MedicalResponse)
+async def update_medical(medical_id: str, medical_data: MedicalUpdate, current_user: dict = Depends(get_current_user)):
+    medical = await db.medicals.find_one({'id': medical_id}, {'_id': 0})
+    if not medical:
+        raise HTTPException(status_code=404, detail="Medical not found")
+    
+    update_data = {k: v for k, v in medical_data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.medicals.update_one({'id': medical_id}, {'$set': update_data})
+    
+    updated = await db.medicals.find_one({'id': medical_id}, {'_id': 0})
+    created_at = updated.get('created_at')
+    updated_at = updated.get('updated_at')
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    return MedicalResponse(
+        id=updated['id'],
+        customer_code=updated['customer_code'],
+        name=updated['name'],
+        proprietor_name=updated.get('proprietor_name'),
+        gst_number=updated.get('gst_number'),
+        drug_license=updated.get('drug_license'),
+        address=updated.get('address'),
+        state=updated.get('state'),
+        district=updated.get('district'),
+        pincode=updated.get('pincode'),
+        email=updated.get('email'),
+        phone=updated['phone'],
+        alternate_phone=updated.get('alternate_phone'),
+        lead_status=updated.get('lead_status', 'Pipeline'),
+        priority=updated.get('priority'),
+        last_contact_date=updated.get('last_contact_date'),
+        follow_up_date=updated.get('follow_up_date'),
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.delete("/medicals/{medical_id}")
+async def delete_medical(medical_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.medicals.delete_one({'id': medical_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Medical not found")
+    # Also delete related notes
+    await db.medical_notes.delete_many({'medical_id': medical_id})
+    return {"message": "Medical deleted successfully"}
+
+@api_router.put("/medicals/{medical_id}/contact")
+async def update_medical_last_contact(medical_id: str, current_user: dict = Depends(get_current_user)):
+    """Update last contact date and set follow-up to 25 days from now"""
+    medical = await db.medicals.find_one({'id': medical_id}, {'_id': 0})
+    if not medical:
+        raise HTTPException(status_code=404, detail="Medical not found")
+    
+    now = datetime.now(timezone.utc)
+    follow_up = now + timedelta(days=25)
+    
+    await db.medicals.update_one(
+        {'id': medical_id},
+        {'$set': {
+            'last_contact_date': now.strftime('%Y-%m-%d'),
+            'follow_up_date': follow_up.strftime('%Y-%m-%d'),
+            'updated_at': now.isoformat()
+        }}
+    )
+    
+    return {"message": "Contact updated successfully", "follow_up_date": follow_up.strftime('%Y-%m-%d')}
+
+# Medical Notes
+@api_router.get("/medicals/{medical_id}/notes", response_model=List[MedicalNoteResponse])
+async def get_medical_notes(medical_id: str, current_user: dict = Depends(get_current_user)):
+    notes = await db.medical_notes.find({'medical_id': medical_id}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    
+    result = []
+    for note in notes:
+        created_at = note['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append(MedicalNoteResponse(
+            id=note['id'],
+            medical_id=note['medical_id'],
+            note=note['note'],
+            created_by=note['created_by'],
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.post("/medicals/{medical_id}/notes", response_model=MedicalNoteResponse)
+async def add_medical_note(medical_id: str, note_data: MedicalNoteCreate, current_user: dict = Depends(get_current_user)):
+    medical = await db.medicals.find_one({'id': medical_id}, {'_id': 0})
+    if not medical:
+        raise HTTPException(status_code=404, detail="Medical not found")
+    
+    now = datetime.now(timezone.utc)
+    note_doc = {
+        'id': str(uuid.uuid4()),
+        'medical_id': medical_id,
+        'note': note_data.note,
+        'created_by': current_user['name'],
+        'created_at': now.isoformat()
+    }
+    
+    await db.medical_notes.insert_one(note_doc)
+    
+    return MedicalNoteResponse(
+        id=note_doc['id'],
+        medical_id=medical_id,
+        note=note_doc['note'],
+        created_by=note_doc['created_by'],
+        created_at=now
+    )
+
+@api_router.delete("/medicals/{medical_id}/notes/{note_id}")
+async def delete_medical_note(medical_id: str, note_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.medical_notes.delete_one({'id': note_id, 'medical_id': medical_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"message": "Note deleted successfully"}
+
+# ============== AGENCY ROUTES ==============
+
+@api_router.post("/agencies", response_model=AgencyResponse)
+async def create_agency(agency_data: AgencyCreate, current_user: dict = Depends(get_current_user)):
+    agency_id = str(uuid.uuid4())
+    customer_code = await generate_agency_code()
+    now = datetime.now(timezone.utc)
+    
+    agency_doc = {
+        'id': agency_id,
+        'customer_code': customer_code,
+        'name': agency_data.name,
+        'proprietor_name': agency_data.proprietor_name,
+        'gst_number': agency_data.gst_number,
+        'drug_license': agency_data.drug_license,
+        'address': agency_data.address,
+        'state': agency_data.state,
+        'district': agency_data.district,
+        'pincode': agency_data.pincode,
+        'email': agency_data.email,
+        'phone': agency_data.phone,
+        'alternate_phone': agency_data.alternate_phone,
+        'lead_status': agency_data.lead_status,
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'created_by': current_user['id']
+    }
+    
+    await db.agencies.insert_one(agency_doc)
+    
+    return AgencyResponse(
+        id=agency_id,
+        customer_code=customer_code,
+        name=agency_data.name,
+        proprietor_name=agency_data.proprietor_name,
+        gst_number=agency_data.gst_number,
+        drug_license=agency_data.drug_license,
+        address=agency_data.address,
+        state=agency_data.state,
+        district=agency_data.district,
+        pincode=agency_data.pincode,
+        email=agency_data.email,
+        phone=agency_data.phone,
+        alternate_phone=agency_data.alternate_phone,
+        lead_status=agency_data.lead_status,
+        created_at=now,
+        updated_at=now
+    )
+
+@api_router.get("/agencies", response_model=List[AgencyResponse])
+async def get_agencies(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {}
+    
+    if search:
+        query['$or'] = [
+            {'name': {'$regex': search, '$options': 'i'}},
+            {'customer_code': {'$regex': search, '$options': 'i'}},
+            {'proprietor_name': {'$regex': search, '$options': 'i'}},
+            {'email': {'$regex': search, '$options': 'i'}},
+            {'phone': {'$regex': search, '$options': 'i'}},
+            {'gst_number': {'$regex': search, '$options': 'i'}}
+        ]
+    
+    if status and status != 'all':
+        query['lead_status'] = status
+    
+    agencies = await db.agencies.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
+    
+    result = []
+    for doc in agencies:
+        created_at = doc.get('created_at')
+        updated_at = doc.get('updated_at') or doc.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+        
+        result.append(AgencyResponse(
+            id=doc['id'],
+            customer_code=doc['customer_code'],
+            name=doc['name'],
+            proprietor_name=doc.get('proprietor_name'),
+            gst_number=doc.get('gst_number'),
+            drug_license=doc.get('drug_license'),
+            address=doc.get('address'),
+            state=doc.get('state'),
+            district=doc.get('district'),
+            pincode=doc.get('pincode'),
+            email=doc.get('email'),
+            phone=doc['phone'],
+            alternate_phone=doc.get('alternate_phone'),
+            lead_status=doc.get('lead_status', 'Pipeline'),
+            priority=doc.get('priority'),
+            last_contact_date=doc.get('last_contact_date'),
+            follow_up_date=doc.get('follow_up_date'),
+            created_at=created_at,
+            updated_at=updated_at
+        ))
+    
+    return result
+
+@api_router.get("/agencies/{agency_id}", response_model=AgencyResponse)
+async def get_agency(agency_id: str, current_user: dict = Depends(get_current_user)):
+    agency = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    
+    created_at = agency.get('created_at')
+    updated_at = agency.get('updated_at') or agency.get('created_at')
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    return AgencyResponse(
+        id=agency['id'],
+        customer_code=agency['customer_code'],
+        name=agency['name'],
+        proprietor_name=agency.get('proprietor_name'),
+        gst_number=agency.get('gst_number'),
+        drug_license=agency.get('drug_license'),
+        address=agency.get('address'),
+        state=agency.get('state'),
+        district=agency.get('district'),
+        pincode=agency.get('pincode'),
+        email=agency.get('email'),
+        phone=agency['phone'],
+        alternate_phone=agency.get('alternate_phone'),
+        lead_status=agency.get('lead_status', 'Pipeline'),
+        priority=agency.get('priority'),
+        last_contact_date=agency.get('last_contact_date'),
+        follow_up_date=agency.get('follow_up_date'),
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.put("/agencies/{agency_id}", response_model=AgencyResponse)
+async def update_agency(agency_id: str, agency_data: AgencyUpdate, current_user: dict = Depends(get_current_user)):
+    agency = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    
+    update_data = {k: v for k, v in agency_data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.agencies.update_one({'id': agency_id}, {'$set': update_data})
+    
+    updated = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    created_at = updated.get('created_at')
+    updated_at = updated.get('updated_at')
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    
+    return AgencyResponse(
+        id=updated['id'],
+        customer_code=updated['customer_code'],
+        name=updated['name'],
+        proprietor_name=updated.get('proprietor_name'),
+        gst_number=updated.get('gst_number'),
+        drug_license=updated.get('drug_license'),
+        address=updated.get('address'),
+        state=updated.get('state'),
+        district=updated.get('district'),
+        pincode=updated.get('pincode'),
+        email=updated.get('email'),
+        phone=updated['phone'],
+        alternate_phone=updated.get('alternate_phone'),
+        lead_status=updated.get('lead_status', 'Pipeline'),
+        priority=updated.get('priority'),
+        last_contact_date=updated.get('last_contact_date'),
+        follow_up_date=updated.get('follow_up_date'),
+        created_at=created_at,
+        updated_at=updated_at
+    )
+
+@api_router.delete("/agencies/{agency_id}")
+async def delete_agency(agency_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.agencies.delete_one({'id': agency_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    # Also delete related notes
+    await db.agency_notes.delete_many({'agency_id': agency_id})
+    return {"message": "Agency deleted successfully"}
+
+@api_router.put("/agencies/{agency_id}/contact")
+async def update_agency_last_contact(agency_id: str, current_user: dict = Depends(get_current_user)):
+    """Update last contact date and set follow-up to 25 days from now"""
+    agency = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    
+    now = datetime.now(timezone.utc)
+    follow_up = now + timedelta(days=25)
+    
+    await db.agencies.update_one(
+        {'id': agency_id},
+        {'$set': {
+            'last_contact_date': now.strftime('%Y-%m-%d'),
+            'follow_up_date': follow_up.strftime('%Y-%m-%d'),
+            'updated_at': now.isoformat()
+        }}
+    )
+    
+    return {"message": "Contact updated successfully", "follow_up_date": follow_up.strftime('%Y-%m-%d')}
+
+# Agency Notes
+@api_router.get("/agencies/{agency_id}/notes", response_model=List[AgencyNoteResponse])
+async def get_agency_notes(agency_id: str, current_user: dict = Depends(get_current_user)):
+    notes = await db.agency_notes.find({'agency_id': agency_id}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    
+    result = []
+    for note in notes:
+        created_at = note['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append(AgencyNoteResponse(
+            id=note['id'],
+            agency_id=note['agency_id'],
+            note=note['note'],
+            created_by=note['created_by'],
+            created_at=created_at
+        ))
+    
+    return result
+
+@api_router.post("/agencies/{agency_id}/notes", response_model=AgencyNoteResponse)
+async def add_agency_note(agency_id: str, note_data: AgencyNoteCreate, current_user: dict = Depends(get_current_user)):
+    agency = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    
+    now = datetime.now(timezone.utc)
+    note_doc = {
+        'id': str(uuid.uuid4()),
+        'agency_id': agency_id,
+        'note': note_data.note,
+        'created_by': current_user['name'],
+        'created_at': now.isoformat()
+    }
+    
+    await db.agency_notes.insert_one(note_doc)
+    
+    return AgencyNoteResponse(
+        id=note_doc['id'],
+        agency_id=agency_id,
+        note=note_doc['note'],
+        created_by=note_doc['created_by'],
+        created_at=now
+    )
+
+@api_router.delete("/agencies/{agency_id}/notes/{note_id}")
+async def delete_agency_note(agency_id: str, note_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.agency_notes.delete_one({'id': note_id, 'agency_id': agency_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return {"message": "Note deleted successfully"}
+
 # ============== TASKS ROUTES ==============
 
 @api_router.get("/tasks", response_model=List[TaskResponse])

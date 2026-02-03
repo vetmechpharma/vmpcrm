@@ -155,10 +155,36 @@ Build a simple CRM for managing doctor leads. Features include:
 | `/api/auth/me` | GET | Get current user |
 | `/api/doctors` | GET/POST | List/Create doctors |
 | `/api/doctors/{id}` | GET/PUT/DELETE | Doctor CRUD |
+| `/api/medicals` | GET/POST | List/Create medicals |
+| `/api/medicals/{id}` | GET/PUT/DELETE | Medical CRUD |
+| `/api/medicals/{id}/notes` | GET/POST | Medical notes |
+| `/api/medicals/{id}/contact` | PUT | Mark medical contacted |
+| `/api/agencies` | GET/POST | List/Create agencies |
+| `/api/agencies/{id}` | GET/PUT/DELETE | Agency CRUD |
+| `/api/agencies/{id}/notes` | GET/POST | Agency notes |
+| `/api/agencies/{id}/contact` | PUT | Mark agency contacted |
 | `/api/smtp-config` | GET/POST | SMTP settings |
 | `/api/send-email` | POST | Send email to doctor |
 | `/api/email-logs` | GET | Get email history |
 | `/api/dashboard/stats` | GET | Dashboard statistics |
+
+## Medicals & Agencies Management - COMPLETED Jan 25, 2026
+- [x] **Medicals Entity**: Complete CRUD for medical stores with fields:
+  - Name, Proprietor Name, GST Number, Drug License
+  - Address (Street, State, District, Pincode)
+  - Phone, Alternate Phone, Email
+  - Lead Status, Priority, Follow-up Date
+  - Auto-generated codes: MED-XXXX
+- [x] **Agencies Entity**: Complete CRUD for distribution agencies with same fields
+  - Auto-generated codes: AGY-XXXX
+- [x] **Lead Management**: Same features as Doctors
+  - Lead statuses (Customer, Contacted, Pipeline, Not Interested, Closed)
+  - Priority levels (Low, Moderate, High)
+  - Mark Contacted with 25-day follow-up
+  - Notes system with timestamps
+  - Tasks system with due dates and priorities
+- [x] **Sidebar Navigation**: Separate menu items for Doctors, Medicals, Agencies
+- [x] **Search & Filter**: Search by name, phone, GST; filter by status
 
 ## Admin Dashboard UI Redesign - COMPLETED Jan 25, 2026
 - [x] **Modern Dashboard Design**: Complete UI overhaul with gradient header and glass-morphism effects

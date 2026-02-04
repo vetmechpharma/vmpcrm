@@ -209,6 +209,23 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Recent Doctors**: Activity feed showing latest doctor additions
 - [x] **Activity Summary**: Stats for customers, emails sent, and pipeline leads
 
+## Reminder System - COMPLETED Feb 4, 2026
+- [x] **Reminder Management Page** (`/reminders`):
+  - Stats cards showing Today, Follow-ups, Birthdays, Anniversaries, Custom counts
+  - Two tabs: "Today's Reminders" and "All Reminders"
+  - Table view with Type, Title/Contact, Entity, Priority, Phone, Actions
+  - Add Reminder modal with fields: Title, Description, Type, Priority, Date, Time, Link to Contact
+  - Mark Complete action (green checkmark)
+  - Delete action with confirmation modal
+- [x] **Reminder Types**: Follow-up, Birthday, Anniversary, Custom
+- [x] **Priority Levels**: Low, Moderate, High with color badges
+- [x] **Entity Linking**: Optional link to Doctor, Medical, or Agency
+- [x] **Auto-Generated Reminders**: Automatically shows birthdays/anniversaries from entity records
+- [x] **Dashboard Widget**: "Today's Reminders" alert card showing count and preview
+- [x] **Send to Admin**: Manual WhatsApp summary button sends daily overview
+- [x] **Daily Background Task**: Automated WhatsApp notification to admin at 8 AM IST with reminder summary
+- [x] **Sidebar Navigation**: Reminders link with bell icon
+
 ## What's Been Implemented (January 2025)
 
 ### Phase 1 - MVP Complete ✅
@@ -266,9 +283,14 @@ Build a simple CRM for managing doctor leads. Features include:
 
 ## Prioritized Backlog
 
-### P0 (Critical) - None remaining
+### P0 (Critical) 
+- [ ] **Refactor `server.py`**: Backend is >4000 lines monolithic file - needs to be split into routers/models/services
 
 ### P1 (High Priority)
+- [ ] **Stock Arrived Notification**: Notify doctors when out-of-stock items become available
+- [ ] **Invoice/Bill PDF Generation**: Downloadable PDF invoices for orders
+- [ ] **Stock/Inventory Management**: Track item quantities with low-stock alerts
+- [ ] **Payment Tracking**: Track payments received against orders
 - [ ] Bulk email sending to multiple doctors
 - [ ] Export doctors to CSV/Excel
 - [ ] Import doctors from CSV

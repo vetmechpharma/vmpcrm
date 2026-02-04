@@ -93,7 +93,13 @@ export const agenciesAPI = {
 
 // Reminders APIs
 export const remindersAPI = {
-  getAll: () => api.get('/reminders'),
+  getAll: (params) => api.get('/reminders', { params }),
+  getToday: () => api.get('/reminders/today'),
+  create: (data) => api.post('/reminders', data),
+  update: (id, data) => api.put(`/reminders/${id}`, data),
+  delete: (id) => api.delete(`/reminders/${id}`),
+  markComplete: (id) => api.post(`/reminders/${id}/complete`),
+  sendWhatsAppSummary: () => api.post('/reminders/send-whatsapp-summary'),
 };
 
 // SMTP Config APIs

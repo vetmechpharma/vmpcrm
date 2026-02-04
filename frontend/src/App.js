@@ -118,6 +118,14 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/expenses" 
+        element={
+          <ProtectedRoute>
+            <Expenses />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/pending-items" 
         element={
           <ProtectedRoute>

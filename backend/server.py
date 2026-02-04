@@ -204,6 +204,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
+    permissions: Optional[dict] = None
     created_at: datetime
 
 class TokenResponse(BaseModel):

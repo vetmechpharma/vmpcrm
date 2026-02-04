@@ -623,14 +623,14 @@ export const Reminders = () => {
               <Label>Link to Contact (Optional)</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Select 
-                  value={formData.entity_type} 
-                  onValueChange={(v) => setFormData({...formData, entity_type: v, entity_id: '', entity_name: ''})}
+                  value={formData.entity_type || "none"} 
+                  onValueChange={(v) => setFormData({...formData, entity_type: v === "none" ? "" : v, entity_id: '', entity_name: ''})}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {ENTITY_TYPES.map((e) => (
                       <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
                     ))}

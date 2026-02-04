@@ -3093,6 +3093,54 @@ async def get_orders(
     
     return result
 
+async def auto_create_transport_expense(order: dict, update_data: dict, current_user: dict):
+    """Auto-create an expense entry when order is shipped with 'paid' payment mode"""
+    try:
+        # Ensure default categories exist
+        await ensure_default_categories()
+        
+        # Find Transport/Shipping category
+        transport_category = await db.expense_categories.find_one({'name': 'Transport/Shipping'}, {'_id': 0})
+        if not transport_category:
+            return  # Skip if category not found
+        
+        now = datetime.now(timezone.utc)
+        transport_name = order.get('transport_name') or update_data.get('transport_name', 'Unknown Transport')
+        delivery_station = order.get('delivery_station') or update_data.get('delivery_station', '')
+        order_number = order.get('order_number', 'N/A')
+        invoice_value = order.get('invoice_value', 0)
+        
+        # Check if expense already exists for this order
+        existing = await db.expenses.find_one({'order_id': order['id'], 'is_auto_generated': True}, {'_id': 0})
+        if existing:
+            return  # Don't create duplicate
+        
+        expense_doc = {
+            'id': str(uuid.uuid4()),
+            'category_id': transport_category['id'],
+            'category_name': transport_category['name'],
+            'date': now.strftime('%Y-%m-%d'),
+            'amount': invoice_value,
+            'payment_type': 'net_banking',  # Default for transport
+            'payment_account': 'company_account',
+            'paid_by': None,
+            'reason': f'Transport for Order #{order_number}',
+            'transport_id': order.get('transport_id'),
+            'transport_name': transport_name,
+            'transport_location': delivery_station,
+            'order_id': order['id'],
+            'order_number': order_number,
+            'is_auto_generated': True,
+            'created_at': now.isoformat(),
+            'updated_at': now.isoformat(),
+            'created_by': current_user['id']
+        }
+        
+        await db.expenses.insert_one(expense_doc)
+        logger.info(f"Auto-created transport expense for order {order_number}")
+    except Exception as e:
+        logger.error(f"Failed to auto-create transport expense: {str(e)}")
+
 @api_router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, status_data: OrderStatusUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Update order status with optional transport details (for ready_to_despatch/shipped) or cancellation reason"""

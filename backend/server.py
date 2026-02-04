@@ -2874,10 +2874,13 @@ Regards,
     
     try:
         async with httpx.AsyncClient() as client:
-            await client.get(config['api_url'], params=params, timeout=30)
+            response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"Order confirmation sent to {clean_mobile}")
+            status = 'success' if response.status_code == 200 else 'failed'
+            await log_whatsapp_message(clean_mobile, 'order_confirmation', message, status, recipient_name=doctor_name)
     except Exception as e:
         logger.error(f"WhatsApp order message error: {str(e)}")
+        await log_whatsapp_message(clean_mobile, 'order_confirmation', message, 'failed', recipient_name=doctor_name, error_message=str(e))
 
 async def send_whatsapp_status_update(order: dict, new_status: str, update_data: dict = None):
     """Send WhatsApp notification for order status changes"""

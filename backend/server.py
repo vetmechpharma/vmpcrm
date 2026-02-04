@@ -153,6 +153,8 @@ class MedicalUpdate(BaseModel):
     priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
 
 class MedicalResponse(BaseModel):
     id: str
@@ -172,6 +174,8 @@ class MedicalResponse(BaseModel):
     priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

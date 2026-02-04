@@ -134,6 +134,8 @@ class MedicalCreate(BaseModel):
     phone: str
     alternate_phone: Optional[str] = None
     lead_status: str = "Pipeline"
+    birthday: Optional[str] = None  # Format: YYYY-MM-DD
+    anniversary: Optional[str] = None  # Format: YYYY-MM-DD
 
 class MedicalUpdate(BaseModel):
     name: Optional[str] = None

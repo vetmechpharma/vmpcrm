@@ -527,21 +527,82 @@ class CompanySettingsCreate(BaseModel):
     company_name: str
     address: str
     email: EmailStr
+    phone: Optional[str] = None
     gst_number: str
     drug_license: str
     logo_base64: Optional[str] = None
     terms_conditions: Optional[str] = None
+    # Login page customization
+    login_tagline: Optional[str] = None  # Custom tagline for login page
+    login_background_color: Optional[str] = None  # Hex color for background
+    login_background_image: Optional[str] = None  # Base64 image for background
 
 class CompanySettingsResponse(BaseModel):
     id: str
     company_name: str
     address: str
     email: str
+    phone: Optional[str] = None
     gst_number: str
     drug_license: str
     logo_url: Optional[str] = None
     terms_conditions: Optional[str] = None
+    login_tagline: Optional[str] = None
+    login_background_color: Optional[str] = None
+    login_background_image_url: Optional[str] = None
     updated_at: datetime
+
+# ============== WHATSAPP LOG MODELS ==============
+
+class WhatsAppLogResponse(BaseModel):
+    id: str
+    recipient_phone: str
+    recipient_name: Optional[str] = None
+    message_type: str  # otp, order_confirmation, status_update, reminder, stock_arrived, etc.
+    message_preview: str
+    status: str  # success, failed
+    error_message: Optional[str] = None
+    created_at: datetime
+
+# ============== USER MANAGEMENT MODELS ==============
+
+class UserPermissions(BaseModel):
+    doctors: bool = True
+    medicals: bool = True
+    agencies: bool = True
+    items: bool = True
+    orders: bool = True
+    expenses: bool = True
+    reminders: bool = True
+    pending_items: bool = True
+    email_logs: bool = False
+    whatsapp_logs: bool = False
+    users: bool = False
+    smtp_settings: bool = False
+    company_settings: bool = False
+    whatsapp_settings: bool = False
+
+class UserCreateByAdmin(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    role: str = "staff"
+    permissions: Optional[UserPermissions] = None
+
+class UserUpdateByAdmin(BaseModel):
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    role: Optional[str] = None
+    password: Optional[str] = None
+    permissions: Optional[UserPermissions] = None
+
+class UserWithPermissions(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    permissions: Optional[dict] = None
+    created_at: datetime
 
 # ============== ORDER MODELS ==============
 

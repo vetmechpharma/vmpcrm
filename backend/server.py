@@ -3123,10 +3123,13 @@ async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
             
             try:
                 async with httpx.AsyncClient() as client:
-                    await client.get(config['api_url'], params=params, timeout=30)
+                    response = await client.get(config['api_url'], params=params, timeout=30)
                     logger.info(f"Ready to despatch notification sent to transporter {clean_transporter_mobile}")
+                    status = 'success' if response.status_code == 200 else 'failed'
+                    await log_whatsapp_message(clean_transporter_mobile, 'ready_to_despatch_transporter', transporter_message, status, recipient_name=transport_name)
             except Exception as e:
                 logger.error(f"WhatsApp transporter notification error: {str(e)}")
+                await log_whatsapp_message(clean_transporter_mobile, 'ready_to_despatch_transporter', transporter_message, 'failed', recipient_name=transport_name, error_message=str(e))
 
 async def send_whatsapp_out_of_stock(order: dict, out_of_stock_items: list):
     """Send WhatsApp notification for out of stock items"""

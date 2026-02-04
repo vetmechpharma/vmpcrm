@@ -3142,6 +3142,11 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
             update_data['transport_id'] = status_data.transport_id
         if status_data.transport_name:
             update_data['transport_name'] = status_data.transport_name
+        
+        # Auto-create expense for shipped orders with 'paid' payment mode
+        payment_mode = order.get('payment_mode') or update_data.get('payment_mode', '')
+        if payment_mode == 'paid' and order.get('invoice_value'):
+            await auto_create_transport_expense(order, update_data, current_user)
     
     # Only add cancellation reason if status is 'cancelled'
     if new_status == 'cancelled' and status_data.cancellation_reason:

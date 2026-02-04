@@ -537,6 +537,62 @@ class OrderCustomerUpdate(BaseModel):
     doctor_phone: Optional[str] = None
     link_to_doctor: Optional[bool] = False  # If true, link/create doctor record
 
+# ============== EXPENSE MODELS ==============
+
+class ExpenseCategoryCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class ExpenseCategoryResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_default: bool = False
+    created_at: datetime
+
+class ExpenseCreate(BaseModel):
+    category_id: str
+    date: str
+    amount: float
+    payment_type: str  # cash, card, upi, net_banking
+    payment_account: str  # company_account, admin_user, employee_user
+    paid_by: Optional[str] = None  # Name of person who paid
+    reason: str
+    # For transport expenses
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None
+    transport_location: Optional[str] = None
+    order_id: Optional[str] = None
+    order_number: Optional[str] = None
+
+class ExpenseUpdate(BaseModel):
+    category_id: Optional[str] = None
+    date: Optional[str] = None
+    amount: Optional[float] = None
+    payment_type: Optional[str] = None
+    payment_account: Optional[str] = None
+    paid_by: Optional[str] = None
+    reason: Optional[str] = None
+
+class ExpenseResponse(BaseModel):
+    id: str
+    category_id: str
+    category_name: Optional[str] = None
+    date: str
+    amount: float
+    payment_type: str
+    payment_account: str
+    paid_by: Optional[str] = None
+    reason: str
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None
+    transport_location: Optional[str] = None
+    order_id: Optional[str] = None
+    order_number: Optional[str] = None
+    is_auto_generated: bool = False
+    created_at: datetime
+    updated_at: datetime
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

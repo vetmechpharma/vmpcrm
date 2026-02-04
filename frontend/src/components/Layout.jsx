@@ -29,6 +29,7 @@ const navItems = [
   { path: '/agencies', icon: Building, label: 'Agencies' },
   { path: '/items', icon: Package, label: 'Items' },
   { path: '/orders', icon: ShoppingCart, label: 'Orders' },
+  { path: '/expenses', icon: Receipt, label: 'Expenses' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/company-settings', icon: Building2, label: 'Company' },

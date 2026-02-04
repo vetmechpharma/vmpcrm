@@ -7,6 +7,7 @@ import { Doctors } from './pages/Doctors';
 import { Medicals } from './pages/Medicals';
 import { Agencies } from './pages/Agencies';
 import { Items } from './pages/Items';
+import { Expenses } from './pages/Expenses';
 import { EmailLogs } from './pages/EmailLogs';
 import { Settings } from './pages/Settings';
 import { CompanySettings } from './pages/CompanySettings';

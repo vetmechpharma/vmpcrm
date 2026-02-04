@@ -46,11 +46,13 @@ const STATUS_ICONS = {
 export const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [pendingStats, setPendingStats] = useState({ total_pending_items: 0, doctors_with_pending: 0 });
+  const [expenseStats, setExpenseStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchPendingStats();
+    fetchExpenseStats();
   }, []);
 
   const fetchStats = async () => {
@@ -70,6 +72,15 @@ export const Dashboard = () => {
       setPendingStats(response.data);
     } catch (error) {
       console.error('Failed to fetch pending stats:', error);
+    }
+  };
+
+  const fetchExpenseStats = async () => {
+    try {
+      const response = await expensesAPI.getMonthlyStats();
+      setExpenseStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch expense stats:', error);
     }
   };
 

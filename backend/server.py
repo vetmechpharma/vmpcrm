@@ -3035,10 +3035,13 @@ Regards,
     
     try:
         async with httpx.AsyncClient() as client:
-            await client.get(config['api_url'], params=params, timeout=30)
+            response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"Order status update ({new_status}) sent to {clean_mobile}")
+            status = 'success' if response.status_code == 200 else 'failed'
+            await log_whatsapp_message(clean_mobile, f'status_{new_status}', message, status, recipient_name=doctor_name)
     except Exception as e:
         logger.error(f"WhatsApp status update error: {str(e)}")
+        await log_whatsapp_message(clean_mobile, f'status_{new_status}', message, 'failed', recipient_name=doctor_name, error_message=str(e))
 
 async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
     """Send WhatsApp notification for Ready to Despatch status - to both transporter and customer"""

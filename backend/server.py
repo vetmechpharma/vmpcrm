@@ -3188,10 +3188,13 @@ Regards,
     
     try:
         async with httpx.AsyncClient() as client:
-            await client.get(config['api_url'], params=params, timeout=30)
+            response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"Out of stock notification sent to {clean_mobile} for order {order_number}")
+            status = 'success' if response.status_code == 200 else 'failed'
+            await log_whatsapp_message(clean_mobile, 'out_of_stock', message, status, recipient_name=doctor_name)
     except Exception as e:
         logger.error(f"WhatsApp out of stock notification error: {str(e)}")
+        await log_whatsapp_message(clean_mobile, 'out_of_stock', message, 'failed', recipient_name=doctor_name, error_message=str(e))
 
 async def send_whatsapp_stock_arrived(doctor_phone: str, doctor_name: str, item_name: str, item_code: str, quantity: str):
     """Send WhatsApp notification when stock arrives for a pending item"""
@@ -3238,11 +3241,14 @@ Regards,
     
     try:
         async with httpx.AsyncClient() as client:
-            await client.get(config['api_url'], params=params, timeout=30)
+            response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"Stock arrived notification sent to {clean_mobile} for item {item_code}")
-            return True
+            status = 'success' if response.status_code == 200 else 'failed'
+            await log_whatsapp_message(clean_mobile, 'stock_arrived', message, status, recipient_name=doctor_name)
+            return response.status_code == 200
     except Exception as e:
         logger.error(f"WhatsApp stock arrived notification error: {str(e)}")
+        await log_whatsapp_message(clean_mobile, 'stock_arrived', message, 'failed', recipient_name=doctor_name, error_message=str(e))
         return False
 
 @api_router.post("/public/send-otp")

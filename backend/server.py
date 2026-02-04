@@ -605,6 +605,43 @@ class ExpenseResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+# ============== REMINDER MODELS ==============
+
+class ReminderCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    reminder_type: str  # follow_up, birthday, anniversary, custom
+    reminder_date: str  # YYYY-MM-DD
+    reminder_time: Optional[str] = None  # HH:MM
+    entity_type: Optional[str] = None  # doctor, medical, agency
+    entity_id: Optional[str] = None
+    entity_name: Optional[str] = None
+    priority: str = "moderate"  # low, moderate, high
+
+class ReminderUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    reminder_type: Optional[str] = None
+    reminder_date: Optional[str] = None
+    reminder_time: Optional[str] = None
+    priority: Optional[str] = None
+    is_completed: Optional[bool] = None
+
+class ReminderResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    reminder_type: str
+    reminder_date: str
+    reminder_time: Optional[str] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    entity_name: Optional[str] = None
+    priority: str
+    is_completed: bool = False
+    is_auto_generated: bool = False
+    created_at: datetime
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

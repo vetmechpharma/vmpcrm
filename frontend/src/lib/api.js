@@ -158,6 +158,23 @@ export const transportAPI = {
   delete: (id) => api.delete(`/transports/${id}`),
 };
 
+// Expense APIs
+export const expensesAPI = {
+  getAll: (params) => api.get('/expenses', { params }),
+  getOne: (id) => api.get(`/expenses/${id}`),
+  create: (data) => api.post('/expenses', data),
+  update: (id, data) => api.put(`/expenses/${id}`, data),
+  delete: (id) => api.delete(`/expenses/${id}`),
+  getMonthlyStats: () => api.get('/expenses/stats/monthly'),
+};
+
+// Expense Categories APIs
+export const expenseCategoriesAPI = {
+  getAll: () => api.get('/expense-categories'),
+  create: (data) => api.post('/expense-categories', data),
+  delete: (id) => api.delete(`/expense-categories/${id}`),
+};
+
 // WhatsApp Config APIs
 export const whatsappAPI = {
   getConfig: () => api.get('/whatsapp-config'),

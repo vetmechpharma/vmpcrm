@@ -244,6 +244,35 @@ export const Dashboard = () => {
           </Link>
         )}
 
+        {/* Today's Reminders Widget */}
+        {todayReminders.total_count > 0 && (
+          <Link to="/reminders" className="block mb-6">
+            <div className="relative overflow-hidden bg-gradient-to-r from-amber-500 to-yellow-500 rounded-2xl p-5 shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 transition-all group" data-testid="today-reminders-alert">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+              <div className="absolute right-8 bottom-0 w-20 h-20 bg-white/10 rounded-full -mb-10"></div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Bell className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-white">
+                      {todayReminders.total_count} Reminder{todayReminders.total_count > 1 ? 's' : ''} Today
+                    </p>
+                    <p className="text-amber-100 text-sm">
+                      {todayReminders.reminders.slice(0, 2).map(r => r.title).join(', ')}
+                      {todayReminders.total_count > 2 && ` +${todayReminders.total_count - 2} more`}
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white/20 rounded-full p-2 group-hover:bg-white/30 transition-colors">
+                  <ArrowRight className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Lead Status Card */}

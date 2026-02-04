@@ -168,6 +168,20 @@ Build a simple CRM for managing doctor leads. Features include:
 | `/api/email-logs` | GET | Get email history |
 | `/api/dashboard/stats` | GET | Dashboard statistics |
 
+## Expenses Management - COMPLETED Feb 4, 2026
+- [x] **Expense Categories**: 6 default categories (Transport/Shipping, Office Supplies, Salaries, Utilities, Marketing, Miscellaneous) + custom categories
+- [x] **Expense Tracking**: Full CRUD with fields:
+  - Category, Date, Amount
+  - Payment Type (Cash, Card, UPI, Net Banking)
+  - Payment Account (Company Account, Admin User, Employee User)
+  - Paid By (name of person who paid)
+  - Reason/Description
+- [x] **Transport Auto-Expense**: Auto-create expense when order is shipped with "Paid" status
+- [x] **Filtering**: Date range, category, payment type, payment account filters
+- [x] **Monthly Statistics**: Current month total, previous month comparison, change %, by category breakdown
+- [x] **Dashboard Integration**: Monthly Expenses summary card on dashboard
+- [x] **Sidebar Navigation**: Expenses menu item between Orders and Pending Items
+
 ## Medicals & Agencies Management - COMPLETED Jan 25, 2026
 - [x] **Medicals Entity**: Complete CRUD for medical stores with fields:
   - Name, Proprietor Name, GST Number, Drug License

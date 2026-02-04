@@ -4796,6 +4796,229 @@ async def test_whatsapp_config(mobile: str, current_user: dict = Depends(get_cur
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
 
+# ============== WHATSAPP LOGS ROUTES ==============
+
+@api_router.get("/whatsapp-logs")
+async def get_whatsapp_logs(
+    skip: int = 0,
+    limit: int = 50,
+    message_type: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get WhatsApp logs with filtering and pagination"""
+    query = {}
+    
+    if message_type:
+        query['message_type'] = message_type
+    
+    if status:
+        query['status'] = status
+    
+    if search:
+        query['$or'] = [
+            {'recipient_phone': {'$regex': search, '$options': 'i'}},
+            {'recipient_name': {'$regex': search, '$options': 'i'}},
+            {'message_preview': {'$regex': search, '$options': 'i'}}
+        ]
+    
+    total = await db.whatsapp_logs.count_documents(query)
+    
+    logs = await db.whatsapp_logs.find(query, {'_id': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Parse dates
+    for log in logs:
+        if isinstance(log.get('created_at'), str):
+            log['created_at'] = datetime.fromisoformat(log['created_at'].replace('Z', '+00:00'))
+    
+    return {
+        'logs': logs,
+        'total': total,
+        'skip': skip,
+        'limit': limit
+    }
+
+@api_router.get("/whatsapp-logs/stats")
+async def get_whatsapp_logs_stats(current_user: dict = Depends(get_current_user)):
+    """Get WhatsApp logs statistics"""
+    total = await db.whatsapp_logs.count_documents({})
+    success = await db.whatsapp_logs.count_documents({'status': 'success'})
+    failed = await db.whatsapp_logs.count_documents({'status': 'failed'})
+    
+    # Get counts by message type
+    pipeline = [
+        {'$group': {'_id': '$message_type', 'count': {'$sum': 1}}},
+        {'$sort': {'count': -1}}
+    ]
+    type_counts = await db.whatsapp_logs.aggregate(pipeline).to_list(100)
+    
+    return {
+        'total': total,
+        'success': success,
+        'failed': failed,
+        'by_type': {item['_id']: item['count'] for item in type_counts}
+    }
+
+@api_router.delete("/whatsapp-logs/{log_id}")
+async def delete_whatsapp_log(log_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a WhatsApp log entry"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete logs")
+    
+    result = await db.whatsapp_logs.delete_one({'id': log_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Log not found")
+    
+    return {"message": "Log deleted successfully"}
+
+@api_router.delete("/whatsapp-logs")
+async def clear_whatsapp_logs(current_user: dict = Depends(get_current_user)):
+    """Clear all WhatsApp logs (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can clear logs")
+    
+    result = await db.whatsapp_logs.delete_many({})
+    return {"message": f"Deleted {result.deleted_count} logs"}
+
+# ============== USER MANAGEMENT ROUTES ==============
+
+@api_router.get("/users")
+async def get_users(current_user: dict = Depends(get_current_user)):
+    """Get all users (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can view users")
+    
+    users = await db.users.find({}, {'_id': 0, 'password': 0}).to_list(100)
+    
+    # Parse dates
+    for user in users:
+        if isinstance(user.get('created_at'), str):
+            user['created_at'] = datetime.fromisoformat(user['created_at'].replace('Z', '+00:00'))
+    
+    return users
+
+@api_router.post("/users")
+async def create_user(user_data: UserCreateByAdmin, current_user: dict = Depends(get_current_user)):
+    """Create a new user (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can create users")
+    
+    # Check if email already exists
+    existing = await db.users.find_one({'email': user_data.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Default permissions for staff
+    default_permissions = UserPermissions()
+    permissions = user_data.permissions or default_permissions
+    
+    # Admin gets all permissions by default
+    if user_data.role == 'admin':
+        permissions = UserPermissions(
+            doctors=True, medicals=True, agencies=True, items=True, orders=True,
+            expenses=True, reminders=True, pending_items=True, email_logs=True,
+            whatsapp_logs=True, users=True, smtp_settings=True, company_settings=True,
+            whatsapp_settings=True
+        )
+    
+    user_doc = {
+        'id': user_id,
+        'email': user_data.email.lower(),
+        'password': pwd_context.hash(user_data.password),
+        'name': user_data.name,
+        'role': user_data.role,
+        'permissions': permissions.model_dump(),
+        'created_at': now.isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    return {
+        'id': user_id,
+        'email': user_data.email.lower(),
+        'name': user_data.name,
+        'role': user_data.role,
+        'permissions': permissions.model_dump(),
+        'created_at': now
+    }
+
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, user_data: UserUpdateByAdmin, current_user: dict = Depends(get_current_user)):
+    """Update a user (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can update users")
+    
+    # Get existing user
+    existing = await db.users.find_one({'id': user_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_doc = {}
+    
+    if user_data.email:
+        # Check if new email already exists for another user
+        email_exists = await db.users.find_one({'email': user_data.email.lower(), 'id': {'$ne': user_id}})
+        if email_exists:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        update_doc['email'] = user_data.email.lower()
+    
+    if user_data.name:
+        update_doc['name'] = user_data.name
+    
+    if user_data.role:
+        update_doc['role'] = user_data.role
+    
+    if user_data.password:
+        update_doc['password'] = pwd_context.hash(user_data.password)
+    
+    if user_data.permissions:
+        update_doc['permissions'] = user_data.permissions.model_dump()
+    
+    if update_doc:
+        await db.users.update_one({'id': user_id}, {'$set': update_doc})
+    
+    # Return updated user
+    updated = await db.users.find_one({'id': user_id}, {'_id': 0, 'password': 0})
+    if isinstance(updated.get('created_at'), str):
+        updated['created_at'] = datetime.fromisoformat(updated['created_at'].replace('Z', '+00:00'))
+    
+    return updated
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a user (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete users")
+    
+    # Prevent deleting yourself
+    if user_id == current_user['id']:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    
+    result = await db.users.delete_one({'id': user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User deleted successfully"}
+
+@api_router.get("/users/{user_id}")
+async def get_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific user (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can view user details")
+    
+    user = await db.users.find_one({'id': user_id}, {'_id': 0, 'password': 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if isinstance(user.get('created_at'), str):
+        user['created_at'] = datetime.fromisoformat(user['created_at'].replace('Z', '+00:00'))
+    
+    return user
+
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/")

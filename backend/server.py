@@ -2762,12 +2762,37 @@ async def get_whatsapp_config():
         }
     return config
 
+async def log_whatsapp_message(
+    recipient_phone: str,
+    message_type: str,
+    message_preview: str,
+    status: str,
+    recipient_name: str = None,
+    error_message: str = None
+):
+    """Log WhatsApp message to database"""
+    try:
+        log_doc = {
+            'id': str(uuid.uuid4()),
+            'recipient_phone': recipient_phone,
+            'recipient_name': recipient_name,
+            'message_type': message_type,
+            'message_preview': message_preview[:500] if message_preview else '',  # Truncate long messages
+            'status': status,
+            'error_message': error_message,
+            'created_at': datetime.now(timezone.utc).isoformat()
+        }
+        await db.whatsapp_logs.insert_one(log_doc)
+    except Exception as e:
+        logger.error(f"Failed to log WhatsApp message: {str(e)}")
+
 async def send_whatsapp_otp(mobile: str, otp: str):
     """Send OTP via WhatsApp API"""
     config = await get_whatsapp_config()
     
     if not config:
         logger.warning("WhatsApp config not found, OTP not sent via WhatsApp")
+        await log_whatsapp_message(mobile, 'otp', f"OTP: {otp}", 'failed', error_message='WhatsApp not configured')
         return True  # Return True to allow order flow to continue (OTP is logged)
     
     # Ensure mobile has 91 prefix
@@ -2789,9 +2814,12 @@ async def send_whatsapp_otp(mobile: str, otp: str):
         async with httpx.AsyncClient() as client:
             response = await client.get(config['api_url'], params=params, timeout=30)
             logger.info(f"WhatsApp OTP sent to {clean_mobile}: {response.status_code}")
+            status = 'success' if response.status_code == 200 else 'failed'
+            await log_whatsapp_message(clean_mobile, 'otp', message, status)
             return response.status_code == 200
     except Exception as e:
         logger.error(f"WhatsApp OTP error: {str(e)}")
+        await log_whatsapp_message(clean_mobile, 'otp', message, 'failed', error_message=str(e))
         return True  # Return True to allow flow to continue even if WhatsApp fails
 
 async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str, doctor_name: str = None, ip_address: str = None, location: str = None):

@@ -2541,6 +2541,15 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
         except Exception as e:
             logger.error(f"Logo processing error: {str(e)}")
     
+    # Process login background image if provided
+    processed_bg = None
+    if settings.login_background_image:
+        try:
+            image_bytes = base64.b64decode(settings.login_background_image)
+            processed_bg = process_image_to_webp(image_bytes, max_size_kb=200, target_size=(1920, 1080))
+        except Exception as e:
+            logger.error(f"Background image processing error: {str(e)}")
+    
     # Delete existing settings (only one allowed)
     await db.company_settings.delete_many({})
     
@@ -2549,10 +2558,14 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
         'company_name': settings.company_name,
         'address': settings.address,
         'email': settings.email,
+        'phone': settings.phone,
         'gst_number': settings.gst_number,
         'drug_license': settings.drug_license,
         'logo_webp': processed_logo,
         'terms_conditions': settings.terms_conditions,
+        'login_tagline': settings.login_tagline,
+        'login_background_color': settings.login_background_color,
+        'login_background_webp': processed_bg,
         'updated_at': now.isoformat()
     }
     
@@ -2563,10 +2576,14 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
         company_name=settings.company_name,
         address=settings.address,
         email=settings.email,
+        phone=settings.phone,
         gst_number=settings.gst_number,
         drug_license=settings.drug_license,
         logo_url="/api/company-settings/logo" if processed_logo else None,
         terms_conditions=settings.terms_conditions,
+        login_tagline=settings.login_tagline,
+        login_background_color=settings.login_background_color,
+        login_background_image_url="/api/company-settings/login-background" if processed_bg else None,
         updated_at=now
     )
 

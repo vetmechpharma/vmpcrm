@@ -2589,7 +2589,7 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
 
 @api_router.get("/company-settings", response_model=Optional[CompanySettingsResponse])
 async def get_company_settings(current_user: dict = Depends(get_current_user)):
-    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0})
+    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0, 'login_background_webp': 0})
     if not settings:
         return None
     
@@ -2598,16 +2598,21 @@ async def get_company_settings(current_user: dict = Depends(get_current_user)):
         updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
     
     has_logo = await db.company_settings.find_one({'logo_webp': {'$ne': None}}, {'_id': 1})
+    has_bg = await db.company_settings.find_one({'login_background_webp': {'$ne': None}}, {'_id': 1})
     
     return CompanySettingsResponse(
         id=settings['id'],
         company_name=settings['company_name'],
         address=settings['address'],
         email=settings['email'],
+        phone=settings.get('phone'),
         gst_number=settings['gst_number'],
         drug_license=settings['drug_license'],
         logo_url="/api/company-settings/logo" if has_logo else None,
         terms_conditions=settings.get('terms_conditions'),
+        login_tagline=settings.get('login_tagline'),
+        login_background_color=settings.get('login_background_color'),
+        login_background_image_url="/api/company-settings/login-background" if has_bg else None,
         updated_at=updated_at
     )
 
@@ -2620,24 +2625,39 @@ async def get_company_logo():
     image_data = base64.b64decode(settings['logo_webp'])
     return Response(content=image_data, media_type="image/webp")
 
+@api_router.get("/company-settings/login-background")
+async def get_login_background():
+    settings = await db.company_settings.find_one({}, {'login_background_webp': 1})
+    if not settings or not settings.get('login_background_webp'):
+        raise HTTPException(status_code=404, detail="Login background not found")
+    
+    image_data = base64.b64decode(settings['login_background_webp'])
+    return Response(content=image_data, media_type="image/webp")
+
 # ============== PUBLIC SHOWCASE ROUTES (NO AUTH) ==============
 
 @api_router.get("/public/company-settings")
 async def get_public_company_settings():
-    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0})
+    settings = await db.company_settings.find_one({}, {'_id': 0, 'logo_webp': 0, 'login_background_webp': 0})
     if not settings:
         return None
     
     has_logo = await db.company_settings.find_one({'logo_webp': {'$ne': None}}, {'_id': 1})
+    has_bg = await db.company_settings.find_one({'login_background_webp': {'$ne': None}}, {'_id': 1})
     
     return {
         'company_name': settings['company_name'],
         'address': settings['address'],
         'email': settings['email'],
+        'phone': settings.get('phone'),
         'gst_number': settings['gst_number'],
         'drug_license': settings['drug_license'],
         'logo_url': "/api/company-settings/logo" if has_logo else None,
-        'terms_conditions': settings.get('terms_conditions')
+        'terms_conditions': settings.get('terms_conditions'),
+        'login_tagline': settings.get('login_tagline'),
+        'login_background_color': settings.get('login_background_color'),
+        'login_background_image_url': "/api/company-settings/login-background" if has_bg else None
+    }
     }
 
 @api_router.get("/public/items")

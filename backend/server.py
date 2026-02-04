@@ -204,6 +204,8 @@ class AgencyCreate(BaseModel):
     phone: str
     alternate_phone: Optional[str] = None
     lead_status: str = "Pipeline"
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
 
 class AgencyUpdate(BaseModel):
     name: Optional[str] = None
@@ -221,6 +223,8 @@ class AgencyUpdate(BaseModel):
     priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
 
 class AgencyResponse(BaseModel):
     id: str
@@ -240,6 +244,8 @@ class AgencyResponse(BaseModel):
     priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

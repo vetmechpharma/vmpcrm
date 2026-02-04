@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardAPI, pendingItemsAPI, expensesAPI } from '../lib/api';
+import { dashboardAPI, pendingItemsAPI, expensesAPI, remindersAPI } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -23,7 +23,11 @@ import {
   Truck,
   Calendar,
   Receipt,
-  TrendingDown
+  TrendingDown,
+  Bell,
+  Gift,
+  Heart,
+  Phone
 } from 'lucide-react';
 import { getStatusColor, formatDate } from '../lib/utils';
 
@@ -47,12 +51,14 @@ export const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [pendingStats, setPendingStats] = useState({ total_pending_items: 0, doctors_with_pending: 0 });
   const [expenseStats, setExpenseStats] = useState(null);
+  const [todayReminders, setTodayReminders] = useState({ reminders: [], total_count: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchPendingStats();
     fetchExpenseStats();
+    fetchTodayReminders();
   }, []);
 
   const fetchStats = async () => {
@@ -81,6 +87,33 @@ export const Dashboard = () => {
       setExpenseStats(response.data);
     } catch (error) {
       console.error('Failed to fetch expense stats:', error);
+    }
+  };
+
+  const fetchTodayReminders = async () => {
+    try {
+      const response = await remindersAPI.getToday();
+      setTodayReminders(response.data);
+    } catch (error) {
+      console.error('Failed to fetch reminders:', error);
+    }
+  };
+
+  const getReminderTypeIcon = (type) => {
+    switch (type) {
+      case 'birthday': return Gift;
+      case 'anniversary': return Heart;
+      case 'follow_up': return Phone;
+      default: return Bell;
+    }
+  };
+
+  const getReminderTypeColor = (type) => {
+    switch (type) {
+      case 'birthday': return { bg: 'bg-pink-100', text: 'text-pink-600', border: 'border-pink-200' };
+      case 'anniversary': return { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-200' };
+      case 'follow_up': return { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-200' };
+      default: return { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
     }
   };
 

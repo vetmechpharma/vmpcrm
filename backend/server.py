@@ -50,6 +50,143 @@ security = HTTPBearer()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Global variable for background task
+daily_reminder_task = None
+
+async def send_daily_reminder_summary():
+    """Background task to send daily reminder summary to admin via WhatsApp"""
+    while True:
+        try:
+            # Calculate time until next 8 AM
+            now = datetime.now(timezone.utc)
+            # For IST (UTC+5:30), 8 AM IST = 2:30 AM UTC
+            target_hour = 2  # 2 AM UTC = ~7:30 AM IST
+            target_minute = 30
+            
+            next_run = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            if now >= next_run:
+                # Already past today's run time, schedule for tomorrow
+                next_run += timedelta(days=1)
+            
+            wait_seconds = (next_run - now).total_seconds()
+            logger.info(f"Daily reminder task scheduled. Next run in {wait_seconds/3600:.1f} hours")
+            
+            await asyncio.sleep(wait_seconds)
+            
+            # Execute reminder summary send
+            logger.info("Executing daily reminder summary...")
+            
+            # Get WhatsApp config
+            wa_config = await db.whatsapp_config.find_one({}, {'_id': 0})
+            if not wa_config:
+                logger.warning("WhatsApp not configured, skipping daily reminder")
+                continue
+            
+            # Get company settings for admin number
+            company = await db.company_settings.find_one({}, {'_id': 0})
+            admin_phone = company.get('phone') if company else None
+            
+            if not admin_phone:
+                logger.warning("Admin phone not configured, skipping daily reminder")
+                continue
+            
+            # Get today's date for reminders
+            today = datetime.now(timezone.utc).date()
+            today_str = today.strftime('%Y-%m-%d')
+            
+            # Get today's reminders count
+            reminders = []
+            
+            # Manual reminders for today
+            manual_count = await db.reminders.count_documents({
+                'reminder_date': today_str,
+                'is_completed': {'$ne': True}
+            })
+            
+            # Get birthday/anniversary counts
+            month_day = today.strftime('%m-%d')
+            
+            # Doctors with birthdays/follow-ups
+            doctors = await db.doctors.find({
+                'lead_status': {'$nin': ['Not Interested', 'Closed']}
+            }, {'_id': 0, 'name': 1, 'dob': 1, 'follow_up_date': 1, 'last_contact_date': 1}).to_list(1000)
+            
+            birthday_count = 0
+            followup_count = 0
+            for doc in doctors:
+                if doc.get('dob') and doc['dob'][5:] == month_day:
+                    birthday_count += 1
+                if doc.get('follow_up_date') and doc['follow_up_date'] <= today_str:
+                    followup_count += 1
+            
+            # Medicals and Agencies birthdays/anniversaries
+            medicals = await db.medicals.find({}, {'_id': 0, 'name': 1, 'birthday': 1, 'anniversary': 1, 'follow_up_date': 1}).to_list(1000)
+            agencies = await db.agencies.find({}, {'_id': 0, 'name': 1, 'birthday': 1, 'anniversary': 1, 'follow_up_date': 1}).to_list(1000)
+            
+            anniversary_count = 0
+            for entity in medicals + agencies:
+                if entity.get('birthday') and entity['birthday'][5:] == month_day:
+                    birthday_count += 1
+                if entity.get('anniversary') and entity['anniversary'][5:] == month_day:
+                    anniversary_count += 1
+                if entity.get('follow_up_date') and entity['follow_up_date'] <= today_str:
+                    followup_count += 1
+            
+            total_count = manual_count + birthday_count + anniversary_count + followup_count
+            
+            if total_count == 0:
+                logger.info("No reminders today, skipping notification")
+                continue
+            
+            # Build message
+            message_lines = [
+                f"🌅 *Good Morning!*",
+                f"📅 *Today's Reminders ({today_str})*",
+                f"Total: {total_count} reminder(s)",
+                ""
+            ]
+            
+            if followup_count > 0:
+                message_lines.append(f"📞 Follow-ups: {followup_count}")
+            if birthday_count > 0:
+                message_lines.append(f"🎂 Birthdays: {birthday_count}")
+            if anniversary_count > 0:
+                message_lines.append(f"🎉 Anniversaries: {anniversary_count}")
+            if manual_count > 0:
+                message_lines.append(f"📝 Custom: {manual_count}")
+            
+            message_lines.append("")
+            message_lines.append("Login to CRM to view details.")
+            
+            message = "\n".join(message_lines)
+            
+            # Send WhatsApp
+            try:
+                async with httpx.AsyncClient() as http_client:
+                    params = {
+                        'action': 'send',
+                        'senderId': wa_config['sender_id'],
+                        'authToken': wa_config['auth_token'],
+                        'messageText': message,
+                        'receiverId': admin_phone
+                    }
+                    response = await http_client.get(wa_config['api_url'], params=params, timeout=30)
+                    
+                    if response.status_code == 200:
+                        logger.info(f"Daily reminder sent to admin: {admin_phone}")
+                    else:
+                        logger.error(f"Failed to send daily reminder: {response.text}")
+            except Exception as e:
+                logger.error(f"Error sending daily reminder: {str(e)}")
+            
+        except asyncio.CancelledError:
+            logger.info("Daily reminder task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Error in daily reminder task: {str(e)}")
+            # Wait 1 hour before retrying on error
+            await asyncio.sleep(3600)
+
 # ============== MODELS ==============
 
 class UserCreate(BaseModel):

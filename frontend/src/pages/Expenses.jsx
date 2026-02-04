@@ -27,7 +27,8 @@ import {
   Tag,
   Printer,
   FileText,
-  Download
+  Download,
+  Filter
 } from 'lucide-react';
 import { formatDate } from '../lib/utils';
 
@@ -44,8 +45,31 @@ const PAYMENT_ACCOUNTS = [
   { value: 'employee_user', label: 'Employee User' },
 ];
 
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+// Generate years from 2020 to current year + 1
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 2019 }, (_, i) => ({
+  value: String(2020 + i),
+  label: String(2020 + i)
+})).reverse();
+
 export const Expenses = () => {
   const [expenses, setExpenses] = useState([]);
+  const [allExpenses, setAllExpenses] = useState([]); // For print filtering
   const [categories, setCategories] = useState([]);
   const [stats, setStats] = useState(null);
   const [companySettings, setCompanySettings] = useState(null);
@@ -64,8 +88,21 @@ export const Expenses = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  // Print options
+  const [printOptions, setPrintOptions] = useState({
+    filterType: 'all', // all, date_range, month_year
+    startDate: '',
+    endDate: '',
+    month: '',
+    year: String(currentYear),
+    category: 'all',
+    paymentAccount: 'all',
+    paidBy: '',
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,6 +119,7 @@ export const Expenses = () => {
 
   useEffect(() => {
     fetchData();
+    fetchAllExpenses();
     fetchCompanySettings();
   }, [startDate, endDate, categoryFilter, paymentTypeFilter, paymentAccountFilter]);
 
@@ -106,6 +144,15 @@ export const Expenses = () => {
       toast.error('Failed to fetch expenses');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllExpenses = async () => {
+    try {
+      const response = await expensesAPI.getAll({});
+      setAllExpenses(response.data);
+    } catch (error) {
+      console.error('Failed to fetch all expenses');
     }
   };
 
@@ -134,6 +181,7 @@ export const Expenses = () => {
       setShowAddModal(false);
       resetForm();
       fetchData();
+      fetchAllExpenses();
     } catch (error) {
       toast.error('Failed to add expense');
     } finally {
@@ -152,6 +200,7 @@ export const Expenses = () => {
       setShowEditModal(false);
       resetForm();
       fetchData();
+      fetchAllExpenses();
     } catch (error) {
       toast.error('Failed to update expense');
     } finally {
@@ -167,6 +216,7 @@ export const Expenses = () => {
       setShowDeleteModal(false);
       setSelectedExpense(null);
       fetchData();
+      fetchAllExpenses();
     } catch (error) {
       toast.error('Failed to delete expense');
     } finally {
@@ -205,21 +255,108 @@ export const Expenses = () => {
     }
   };
 
+  // Get filtered expenses for print
+  const getFilteredExpensesForPrint = () => {
+    let filtered = [...allExpenses];
+    
+    // Filter by date
+    if (printOptions.filterType === 'date_range') {
+      if (printOptions.startDate) {
+        filtered = filtered.filter(exp => exp.date >= printOptions.startDate);
+      }
+      if (printOptions.endDate) {
+        filtered = filtered.filter(exp => exp.date <= printOptions.endDate);
+      }
+    } else if (printOptions.filterType === 'month_year') {
+      if (printOptions.month && printOptions.year) {
+        const monthStart = `${printOptions.year}-${printOptions.month}-01`;
+        const lastDay = new Date(parseInt(printOptions.year), parseInt(printOptions.month), 0).getDate();
+        const monthEnd = `${printOptions.year}-${printOptions.month}-${lastDay}`;
+        filtered = filtered.filter(exp => exp.date >= monthStart && exp.date <= monthEnd);
+      } else if (printOptions.year) {
+        filtered = filtered.filter(exp => exp.date.startsWith(printOptions.year));
+      }
+    }
+    
+    // Filter by category
+    if (printOptions.category !== 'all') {
+      filtered = filtered.filter(exp => exp.category_id === printOptions.category);
+    }
+    
+    // Filter by payment account
+    if (printOptions.paymentAccount !== 'all') {
+      filtered = filtered.filter(exp => exp.payment_account === printOptions.paymentAccount);
+    }
+    
+    // Filter by paid by (user)
+    if (printOptions.paidBy.trim()) {
+      const searchTerm = printOptions.paidBy.toLowerCase();
+      filtered = filtered.filter(exp => 
+        exp.paid_by && exp.paid_by.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    return filtered;
+  };
+
   const handlePrint = () => {
-    const printContent = printRef.current;
+    const filteredExpenses = getFilteredExpensesForPrint();
     const printWindow = window.open('', '_blank');
     
     const companyName = companySettings?.company_name || 'Company Name';
     const companyAddress = companySettings?.address || '';
     const companyPhone = companySettings?.phone || '';
     
-    const dateRange = startDate && endDate 
-      ? `${formatDate(startDate)} to ${formatDate(endDate)}`
-      : startDate 
-        ? `From ${formatDate(startDate)}`
-        : endDate 
-          ? `Until ${formatDate(endDate)}`
-          : 'All Time';
+    // Build report title based on filters
+    let reportPeriod = 'All Time';
+    let filterDetails = [];
+    
+    if (printOptions.filterType === 'date_range') {
+      if (printOptions.startDate && printOptions.endDate) {
+        reportPeriod = `${formatDate(printOptions.startDate)} to ${formatDate(printOptions.endDate)}`;
+      } else if (printOptions.startDate) {
+        reportPeriod = `From ${formatDate(printOptions.startDate)}`;
+      } else if (printOptions.endDate) {
+        reportPeriod = `Until ${formatDate(printOptions.endDate)}`;
+      }
+    } else if (printOptions.filterType === 'month_year') {
+      if (printOptions.month && printOptions.year) {
+        const monthName = MONTHS.find(m => m.value === printOptions.month)?.label || '';
+        reportPeriod = `${monthName} ${printOptions.year}`;
+      } else if (printOptions.year) {
+        reportPeriod = `Year ${printOptions.year}`;
+      }
+    }
+    
+    if (printOptions.category !== 'all') {
+      const catName = categories.find(c => c.id === printOptions.category)?.name || 'Unknown';
+      filterDetails.push(`Category: ${catName}`);
+    }
+    
+    if (printOptions.paymentAccount !== 'all') {
+      const accName = PAYMENT_ACCOUNTS.find(a => a.value === printOptions.paymentAccount)?.label || 'Unknown';
+      filterDetails.push(`Account: ${accName}`);
+    }
+    
+    if (printOptions.paidBy.trim()) {
+      filterDetails.push(`Paid By: ${printOptions.paidBy}`);
+    }
+    
+    const totalAmount = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Group by category for summary
+    const byCategory = {};
+    filteredExpenses.forEach(exp => {
+      const cat = exp.category_name || 'Uncategorized';
+      byCategory[cat] = (byCategory[cat] || 0) + exp.amount;
+    });
+    
+    // Group by payment account for summary
+    const byAccount = {};
+    filteredExpenses.forEach(exp => {
+      const acc = getPaymentAccountLabel(exp.payment_account);
+      byAccount[acc] = (byAccount[acc] || 0) + exp.amount;
+    });
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -228,27 +365,36 @@ export const Expenses = () => {
         <title>Expense Report - ${companyName}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-          .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-          .company-details { font-size: 12px; color: #666; }
-          .report-title { font-size: 18px; margin-top: 15px; }
-          .report-meta { font-size: 12px; color: #666; margin-top: 5px; }
-          .summary { display: flex; justify-content: space-between; margin-bottom: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px; }
-          .summary-item { text-align: center; }
-          .summary-label { font-size: 12px; color: #666; }
-          .summary-value { font-size: 20px; font-weight: bold; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; font-size: 12px; }
+          .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+          .company-name { font-size: 22px; font-weight: bold; margin-bottom: 3px; }
+          .company-details { font-size: 11px; color: #666; }
+          .report-title { font-size: 16px; margin-top: 12px; font-weight: bold; }
+          .report-meta { font-size: 11px; color: #666; margin-top: 5px; }
+          .filters { font-size: 10px; color: #888; margin-top: 3px; }
+          .summary-section { margin: 20px 0; }
+          .summary-title { font-size: 13px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+          .summary-grid { display: flex; gap: 30px; flex-wrap: wrap; }
+          .summary-box { flex: 1; min-width: 150px; padding: 12px; background: #f8f8f8; border-radius: 5px; }
+          .summary-box-title { font-size: 10px; color: #666; text-transform: uppercase; }
+          .summary-box-value { font-size: 18px; font-weight: bold; margin-top: 5px; }
+          .breakdown { margin-top: 15px; }
+          .breakdown-title { font-size: 11px; font-weight: bold; margin-bottom: 8px; }
+          .breakdown-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #ddd; }
+          .breakdown-item:last-child { border-bottom: none; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; }
-          th { background: #f8f8f8; font-weight: bold; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background: #f0f0f0; font-weight: bold; font-size: 11px; }
+          td { font-size: 11px; }
           tr:nth-child(even) { background: #fafafa; }
           .amount { text-align: right; font-weight: 500; }
           .total-row { font-weight: bold; background: #e8e8e8 !important; }
-          .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #666; border-top: 1px solid #ddd; padding-top: 15px; }
-          .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+          .total-row td { font-size: 12px; }
+          .footer { margin-top: 25px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; }
+          .badge { display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 9px; }
           .badge-auto { background: #fef3c7; color: #92400e; }
           @media print { 
-            body { padding: 0; }
+            body { padding: 10px; }
             .no-print { display: none; }
           }
         </style>
@@ -259,62 +405,81 @@ export const Expenses = () => {
           ${companyAddress ? `<div class="company-details">${companyAddress}</div>` : ''}
           ${companyPhone ? `<div class="company-details">Phone: ${companyPhone}</div>` : ''}
           <div class="report-title">EXPENSE REPORT</div>
-          <div class="report-meta">Period: ${dateRange} | Generated: ${new Date().toLocaleDateString()}</div>
+          <div class="report-meta">Period: ${reportPeriod}</div>
+          ${filterDetails.length > 0 ? `<div class="filters">${filterDetails.join(' | ')}</div>` : ''}
         </div>
         
-        <div class="summary">
-          <div class="summary-item">
-            <div class="summary-label">Total Expenses</div>
-            <div class="summary-value">₹${totalFiltered.toLocaleString()}</div>
+        <div class="summary-section">
+          <div class="summary-title">Summary</div>
+          <div class="summary-grid">
+            <div class="summary-box">
+              <div class="summary-box-title">Total Expenses</div>
+              <div class="summary-box-value">₹${totalAmount.toLocaleString()}</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-box-title">Transactions</div>
+              <div class="summary-box-value">${filteredExpenses.length}</div>
+            </div>
           </div>
-          <div class="summary-item">
-            <div class="summary-label">Transactions</div>
-            <div class="summary-value">${expenses.length}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">This Month</div>
-            <div class="summary-value">₹${stats?.current_month_total?.toLocaleString() || 0}</div>
-          </div>
-          <div class="summary-item">
-            <div class="summary-label">Last Month</div>
-            <div class="summary-value">₹${stats?.previous_month_total?.toLocaleString() || 0}</div>
+          
+          <div style="display: flex; gap: 30px; margin-top: 15px;">
+            <div class="breakdown" style="flex: 1;">
+              <div class="breakdown-title">By Category</div>
+              ${Object.entries(byCategory).map(([cat, amt]) => `
+                <div class="breakdown-item">
+                  <span>${cat}</span>
+                  <span>₹${amt.toLocaleString()}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="breakdown" style="flex: 1;">
+              <div class="breakdown-title">By Payment Account</div>
+              ${Object.entries(byAccount).map(([acc, amt]) => `
+                <div class="breakdown-item">
+                  <span>${acc}</span>
+                  <span>₹${amt.toLocaleString()}</span>
+                </div>
+              `).join('')}
+            </div>
           </div>
         </div>
         
         <table>
           <thead>
             <tr>
-              <th style="width: 5%">#</th>
-              <th style="width: 12%">Date</th>
-              <th style="width: 15%">Category</th>
-              <th style="width: 25%">Reason</th>
-              <th style="width: 12%">Payment Type</th>
-              <th style="width: 15%">Account</th>
-              <th style="width: 16%" class="amount">Amount</th>
+              <th style="width: 4%">#</th>
+              <th style="width: 10%">Date</th>
+              <th style="width: 14%">Category</th>
+              <th style="width: 28%">Reason</th>
+              <th style="width: 10%">Type</th>
+              <th style="width: 14%">Account</th>
+              <th style="width: 10%">Paid By</th>
+              <th style="width: 10%" class="amount">Amount</th>
             </tr>
           </thead>
           <tbody>
-            ${expenses.map((exp, idx) => `
+            ${filteredExpenses.map((exp, idx) => `
               <tr>
                 <td>${idx + 1}</td>
                 <td>${formatDate(exp.date)}</td>
                 <td>${exp.category_name}${exp.is_auto_generated ? ' <span class="badge badge-auto">Auto</span>' : ''}</td>
                 <td>${exp.reason}${exp.transport_name ? `<br><small style="color:#666">Transport: ${exp.transport_name}</small>` : ''}</td>
                 <td>${getPaymentTypeLabel(exp.payment_type)}</td>
-                <td>${getPaymentAccountLabel(exp.payment_account)}${exp.paid_by ? `<br><small style="color:#666">by ${exp.paid_by}</small>` : ''}</td>
+                <td>${getPaymentAccountLabel(exp.payment_account)}</td>
+                <td>${exp.paid_by || '-'}</td>
                 <td class="amount">₹${exp.amount.toLocaleString()}</td>
               </tr>
             `).join('')}
             <tr class="total-row">
-              <td colspan="6" style="text-align: right;">TOTAL</td>
-              <td class="amount">₹${totalFiltered.toLocaleString()}</td>
+              <td colspan="7" style="text-align: right;">TOTAL</td>
+              <td class="amount">₹${totalAmount.toLocaleString()}</td>
             </tr>
           </tbody>
         </table>
         
         <div class="footer">
           <p>This is a computer-generated report. No signature required.</p>
-          <p>${companyName} | Printed on ${new Date().toLocaleString()}</p>
+          <p>${companyName} | Generated on ${new Date().toLocaleString()}</p>
         </div>
       </body>
       </html>
@@ -325,7 +490,8 @@ export const Expenses = () => {
     
     setTimeout(() => {
       printWindow.print();
-    }, 250);
+      setShowPrintModal(false);
+    }, 300);
   };
 
   const openEditModal = (expense) => {
@@ -359,6 +525,19 @@ export const Expenses = () => {
     });
   };
 
+  const resetPrintOptions = () => {
+    setPrintOptions({
+      filterType: 'all',
+      startDate: '',
+      endDate: '',
+      month: '',
+      year: String(currentYear),
+      category: 'all',
+      paymentAccount: 'all',
+      paidBy: '',
+    });
+  };
+
   const getPaymentTypeLabel = (type) => {
     const pt = PAYMENT_TYPES.find(p => p.value === type);
     return pt ? pt.label : type;
@@ -371,6 +550,9 @@ export const Expenses = () => {
 
   const totalFiltered = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
+  // Get unique paid_by users for suggestions
+  const uniqueUsers = [...new Set(allExpenses.filter(e => e.paid_by).map(e => e.paid_by))];
+
   return (
     <div className="space-y-6" data-testid="expenses-page">
       {/* Header */}
@@ -380,9 +562,9 @@ export const Expenses = () => {
           <p className="text-slate-500">Track and manage all expenses</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={handlePrint} className="gap-2" data-testid="print-btn">
+          <Button variant="outline" onClick={() => setShowPrintModal(true)} className="gap-2" data-testid="print-btn">
             <Printer className="w-4 h-4" />
-            Print PDF
+            Print Report
           </Button>
           <Button variant="outline" onClick={() => setShowCategoryModal(true)}>
             <Tag className="w-4 h-4 mr-2" />
@@ -636,6 +818,170 @@ export const Expenses = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Print Options Modal */}
+      <Dialog open={showPrintModal} onOpenChange={(open) => { setShowPrintModal(open); if (!open) resetPrintOptions(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="w-5 h-5" />
+              Print Expense Report
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-4">
+            {/* Period Selection */}
+            <div className="space-y-3">
+              <Label className="font-medium">Report Period</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={printOptions.filterType === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPrintOptions({...printOptions, filterType: 'all'})}
+                >
+                  All Time
+                </Button>
+                <Button
+                  type="button"
+                  variant={printOptions.filterType === 'date_range' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPrintOptions({...printOptions, filterType: 'date_range'})}
+                >
+                  Date Range
+                </Button>
+                <Button
+                  type="button"
+                  variant={printOptions.filterType === 'month_year' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPrintOptions({...printOptions, filterType: 'month_year'})}
+                >
+                  Month/Year
+                </Button>
+              </div>
+              
+              {printOptions.filterType === 'date_range' && (
+                <div className="flex gap-3 mt-3">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-slate-500">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={printOptions.startDate}
+                      onChange={(e) => setPrintOptions({...printOptions, startDate: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-slate-500">End Date</Label>
+                    <Input
+                      type="date"
+                      value={printOptions.endDate}
+                      onChange={(e) => setPrintOptions({...printOptions, endDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {printOptions.filterType === 'month_year' && (
+                <div className="flex gap-3 mt-3">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-slate-500">Month</Label>
+                    <Select value={printOptions.month} onValueChange={(v) => setPrintOptions({...printOptions, month: v})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Months</SelectItem>
+                        {MONTHS.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-slate-500">Year</Label>
+                    <Select value={printOptions.year} onValueChange={(v) => setPrintOptions({...printOptions, year: v})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEARS.map((y) => (
+                          <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category Filter */}
+            <div className="space-y-2">
+              <Label className="font-medium">Category</Label>
+              <Select value={printOptions.category} onValueChange={(v) => setPrintOptions({...printOptions, category: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Payment Account Filter */}
+            <div className="space-y-2">
+              <Label className="font-medium">Payment Account</Label>
+              <Select value={printOptions.paymentAccount} onValueChange={(v) => setPrintOptions({...printOptions, paymentAccount: v})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Accounts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  {PAYMENT_ACCOUNTS.map((pa) => (
+                    <SelectItem key={pa.value} value={pa.value}>{pa.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Paid By (User) Filter */}
+            <div className="space-y-2">
+              <Label className="font-medium">Paid By (User)</Label>
+              <Input
+                value={printOptions.paidBy}
+                onChange={(e) => setPrintOptions({...printOptions, paidBy: e.target.value})}
+                placeholder="Enter name to filter by user"
+                list="paid-by-suggestions"
+              />
+              {uniqueUsers.length > 0 && (
+                <datalist id="paid-by-suggestions">
+                  {uniqueUsers.map((user, idx) => (
+                    <option key={idx} value={user} />
+                  ))}
+                </datalist>
+              )}
+              <p className="text-xs text-slate-400">Leave empty to include all users</p>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <p className="text-sm font-medium text-slate-700">Preview</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {getFilteredExpensesForPrint().length} expense(s) • 
+                Total: ₹{getFilteredExpensesForPrint().reduce((sum, exp) => sum + exp.amount, 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPrintModal(false); resetPrintOptions(); }}>Cancel</Button>
+            <Button onClick={handlePrint} className="gap-2">
+              <Printer className="w-4 h-4" />
+              Print Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Expense Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={() => { setShowAddModal(false); setShowEditModal(false); resetForm(); }}>

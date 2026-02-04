@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardAPI, pendingItemsAPI } from '../lib/api';
+import { dashboardAPI, pendingItemsAPI, expensesAPI } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -21,7 +21,9 @@ import {
   TrendingUp,
   ShoppingCart,
   Truck,
-  Calendar
+  Calendar,
+  Receipt,
+  TrendingDown
 } from 'lucide-react';
 import { getStatusColor, formatDate } from '../lib/utils';
 

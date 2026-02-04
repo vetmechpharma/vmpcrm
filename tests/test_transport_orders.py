@@ -7,7 +7,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://medipro-3.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://medcrm-6.preview.emergentagent.com')
 
 class TestTransportCRUD:
     """Transport CRUD operations tests"""

@@ -311,6 +311,64 @@ export const Dashboard = () => {
           </div>
         </div>
 
+        {/* Monthly Expenses Summary */}
+        {expenseStats && (
+          <div className="mb-8" data-testid="expense-summary">
+            <Link to="/expenses" className="block">
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden hover:shadow-md transition-shadow">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-slate-600" />
+                    Monthly Expenses
+                  </h3>
+                  <Button variant="ghost" size="sm" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                    View All <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">This Month</p>
+                      <p className="text-2xl font-bold text-slate-800">₹{expenseStats.current_month_total?.toLocaleString() || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">Last Month</p>
+                      <p className="text-2xl font-bold text-slate-600">₹{expenseStats.previous_month_total?.toLocaleString() || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">Change</p>
+                      <div className={`flex items-center gap-1 ${expenseStats.change_percent >= 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {expenseStats.change_percent >= 0 ? (
+                          <TrendingUp className="w-5 h-5" />
+                        ) : (
+                          <TrendingDown className="w-5 h-5" />
+                        )}
+                        <p className="text-2xl font-bold">{expenseStats.change_percent >= 0 ? '+' : ''}{expenseStats.change_percent}%</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">Transactions</p>
+                      <p className="text-2xl font-bold text-slate-800">{expenseStats.expense_count || 0}</p>
+                    </div>
+                  </div>
+                  {expenseStats.by_category && Object.keys(expenseStats.by_category).length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <p className="text-sm text-slate-500 mb-3">By Category</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(expenseStats.by_category).map(([cat, amount]) => (
+                          <Badge key={cat} variant="outline" className="text-sm py-1 px-3">
+                            {cat}: ₹{amount.toLocaleString()}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+
         {/* Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Doctors */}

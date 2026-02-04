@@ -4676,6 +4676,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on app startup"""
+    global daily_reminder_task
+    daily_reminder_task = asyncio.create_task(send_daily_reminder_summary())
+    logger.info("Daily reminder background task started")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    global daily_reminder_task
+    if daily_reminder_task:
+        daily_reminder_task.cancel()
+        try:
+            await daily_reminder_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Daily reminder background task stopped")
     client.close()

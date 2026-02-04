@@ -17,7 +17,8 @@ import {
   Clock,
   Store,
   Building,
-  Receipt
+  Receipt,
+  Bell
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -30,6 +31,7 @@ const navItems = [
   { path: '/items', icon: Package, label: 'Items' },
   { path: '/orders', icon: ShoppingCart, label: 'Orders' },
   { path: '/expenses', icon: Receipt, label: 'Expenses' },
+  { path: '/reminders', icon: Bell, label: 'Reminders' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/company-settings', icon: Building2, label: 'Company' },

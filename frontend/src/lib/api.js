@@ -188,6 +188,23 @@ export const whatsappAPI = {
   testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
 };
 
+// WhatsApp Logs APIs
+export const whatsappLogsAPI = {
+  getAll: (params) => api.get('/whatsapp-logs', { params }),
+  getStats: () => api.get('/whatsapp-logs/stats'),
+  delete: (id) => api.delete(`/whatsapp-logs/${id}`),
+  clearAll: () => api.delete('/whatsapp-logs'),
+};
+
+// Users Management APIs
+export const usersAPI = {
+  getAll: () => api.get('/users'),
+  getOne: (id) => api.get(`/users/${id}`),
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  delete: (id) => api.delete(`/users/${id}`),
+};
+
 // Public APIs (no auth required)
 export const publicAPI = {
   getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),

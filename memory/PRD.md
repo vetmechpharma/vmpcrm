@@ -226,6 +226,42 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Daily Background Task**: Automated WhatsApp notification to admin at 8 AM IST with reminder summary
 - [x] **Sidebar Navigation**: Reminders link with bell icon
 
+## User Management & Permissions - COMPLETED Feb 5, 2026
+- [x] **Login Page Redesign**:
+  - Removed public registration - users created by admin only
+  - Company branding (logo, name, tagline) from Company Settings
+  - Custom background color or image
+  - Clean Sign In only form
+- [x] **User Management Page** (`/users`) - Admin Only:
+  - Stats cards: Total Users, Admins, Staff counts
+  - Users table with name, email, role, permissions count, created date
+  - Add User modal with name, email, password, role fields
+  - Edit User modal with all fields pre-filled
+  - Delete user with confirmation (cannot delete self)
+- [x] **User Permissions System**:
+  - 14 module permissions: doctors, medicals, agencies, items, orders, expenses, reminders, pending_items, email_logs, whatsapp_logs, users, smtp_settings, company_settings, whatsapp_settings
+  - Toggle switches for each permission
+  - Select All / Clear All buttons
+  - Admin gets all permissions by default
+  - Staff gets basic permissions by default (customers, items, orders, etc.)
+- [x] **Company Settings - Login Page Tab**:
+  - Live preview of login page appearance
+  - Login Tagline input
+  - Background Color picker with hex input
+  - Background Image upload
+  - Save Settings button
+
+## WhatsApp Logs - COMPLETED Feb 5, 2026
+- [x] **WhatsApp Logs Page** (`/whatsapp-logs`):
+  - Stats cards: Total Messages, Successful, Failed, Success Rate
+  - Filters: Search by phone/name, Message Type dropdown, Status filter
+  - Message History table with: Type, Recipient, Message Preview, Status, Time, Delete action
+  - Pagination with Previous/Next buttons
+  - Refresh and Clear All buttons
+- [x] **Message Types Tracked**: OTP, Order Confirmation, Status Updates (Confirmed/Shipped/Delivered/Cancelled), Out of Stock, Stock Arrived, Ready to Despatch (Transporter), Reminder
+- [x] **Automatic Logging**: All WhatsApp messages logged automatically when sent
+- [x] **Sidebar Navigation**: WhatsApp Logs link with message icon
+
 ## What's Been Implemented (January 2025)
 
 ### Phase 1 - MVP Complete ✅

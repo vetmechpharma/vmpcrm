@@ -103,7 +103,9 @@ export const Layout = ({ children }) => {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => {
+            {navItems
+              .filter((item) => !item.adminOnly || user?.role === 'admin')
+              .map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <Link

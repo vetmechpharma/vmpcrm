@@ -10,14 +10,14 @@ Build a simple CRM for managing doctor leads. Features include:
 - Additional field: Doctor Date of Birth
 
 ## User Choices
-- **Authentication**: JWT-based custom auth (email/password)
+- **Authentication**: JWT-based custom auth (email/password) - Admin creates users in panel
 - **Email**: Custom SMTP (user provides credentials)
 - **Lead Statuses**: Customer, Contacted, Pipeline, Not Interested, Closed
 - **Customer Code Format**: VMP-XXXX (auto-generated)
 
 ## User Personas
-1. **Admin**: Full access to all features including SMTP configuration, user management, and all doctor operations
-2. **Staff**: Access to doctor CRUD operations, search/filter, and email sending (no SMTP config access)
+1. **Admin**: Full access to all features including SMTP configuration, user management, company settings, and all CRM operations
+2. **Staff**: Customizable access to modules based on admin-assigned permissions
 
 ## Core Requirements
 - [x] JWT Authentication (login/register)

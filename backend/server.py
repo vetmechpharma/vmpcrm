@@ -2660,7 +2660,6 @@ async def get_public_company_settings():
         'login_background_color': settings.get('login_background_color'),
         'login_background_image_url': "/api/company-settings/login-background" if has_bg else None
     }
-    }
 
 @api_router.get("/public/items")
 async def get_public_items(main_category: Optional[str] = None, subcategory: Optional[str] = None):

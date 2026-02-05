@@ -153,6 +153,22 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/whatsapp-logs" 
+        element={
+          <ProtectedRoute>
+            <WhatsAppLogs />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/users" 
+        element={
+          <ProtectedRoute>
+            <Users />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/company-settings" 
         element={
           <ProtectedRoute>

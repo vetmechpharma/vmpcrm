@@ -9,6 +9,8 @@ import { Agencies } from './pages/Agencies';
 import { Items } from './pages/Items';
 import { Expenses } from './pages/Expenses';
 import { EmailLogs } from './pages/EmailLogs';
+import { WhatsAppLogs } from './pages/WhatsAppLogs';
+import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
 import { CompanySettings } from './pages/CompanySettings';
 import { Orders } from './pages/Orders';

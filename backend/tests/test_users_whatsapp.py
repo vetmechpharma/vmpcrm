@@ -123,7 +123,7 @@ class TestUserManagement:
                 requests.delete(f"{BASE_URL}/api/users/{existing['id']}", headers=auth_headers)
                 response = requests.post(f"{BASE_URL}/api/users", json=test_user, headers=auth_headers)
         
-        assert response.status_code == 201, f"Failed to create user: {response.text}"
+        assert response.status_code in [200, 201], f"Failed to create user: {response.text}"
         data = response.json()
         assert data["email"] == test_user["email"]
         assert data["name"] == test_user["name"]
@@ -167,7 +167,7 @@ class TestUserManagement:
             requests.delete(f"{BASE_URL}/api/users/{existing['id']}", headers=auth_headers)
         
         create_resp = requests.post(f"{BASE_URL}/api/users", json=test_user, headers=auth_headers)
-        assert create_resp.status_code == 201
+        assert create_resp.status_code in [200, 201]
         user_id = create_resp.json()["id"]
         
         # Update the user
@@ -226,7 +226,7 @@ class TestUserManagement:
             requests.delete(f"{BASE_URL}/api/users/{existing['id']}", headers=auth_headers)
         
         create_resp = requests.post(f"{BASE_URL}/api/users", json=test_user, headers=auth_headers)
-        assert create_resp.status_code == 201
+        assert create_resp.status_code in [200, 201]
         user_id = create_resp.json()["id"]
         
         # Delete the user

@@ -18,7 +18,9 @@ import {
   Store,
   Building,
   Receipt,
-  Bell
+  Bell,
+  MessageSquare,
+  UserCog
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -34,6 +36,8 @@ const navItems = [
   { path: '/reminders', icon: Bell, label: 'Reminders' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
+  { path: '/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
+  { path: '/users', icon: UserCog, label: 'Users', adminOnly: true },
   { path: '/company-settings', icon: Building2, label: 'Company' },
   { path: '/settings', icon: Settings, label: 'SMTP Settings' },
 ];

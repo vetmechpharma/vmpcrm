@@ -4929,7 +4929,7 @@ async def create_user(user_data: UserCreateByAdmin, current_user: dict = Depends
     user_doc = {
         'id': user_id,
         'email': user_data.email.lower(),
-        'password': pwd_context.hash(user_data.password),
+        'password': hash_password(user_data.password),
         'name': user_data.name,
         'role': user_data.role,
         'permissions': permissions.model_dump(),
@@ -4974,7 +4974,7 @@ async def update_user(user_id: str, user_data: UserUpdateByAdmin, current_user: 
         update_doc['role'] = user_data.role
     
     if user_data.password:
-        update_doc['password'] = pwd_context.hash(user_data.password)
+        update_doc['password'] = hash_password(user_data.password)
     
     if user_data.permissions:
         update_doc['permissions'] = user_data.permissions.model_dump()

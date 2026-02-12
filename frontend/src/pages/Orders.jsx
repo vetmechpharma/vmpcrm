@@ -831,34 +831,6 @@ export const Orders = () => {
                 </div>
               </div>
             )}
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={newOrderForm.doctor_email}
-                    onChange={(e) => setNewOrderForm({...newOrderForm, doctor_email: e.target.value})}
-                    placeholder="Email address"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input
-                    value={newOrderForm.doctor_address}
-                    onChange={(e) => setNewOrderForm({...newOrderForm, doctor_address: e.target.value})}
-                    placeholder="Delivery address"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="link-doctor"
-                  checked={newOrderForm.link_to_doctor}
-                  onCheckedChange={(c) => setNewOrderForm({...newOrderForm, link_to_doctor: c})}
-                />
-                <label htmlFor="link-doctor" className="text-sm cursor-pointer">
-                  Create/link doctor record
-                </label>
-              </div>
-            </div>
 
             {/* Add Items */}
             <div className="space-y-4 border-t pt-4">

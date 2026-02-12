@@ -385,7 +385,6 @@ Build a simple CRM for managing doctor leads. Features include:
 
 ### P0 (Critical) 
 - [ ] **Refactor `server.py`**: Backend is >4000 lines monolithic file - needs to be split into routers/models/services
-- [ ] **Apply Table View to Medicals & Agencies**: Convert UI to match Doctors page table format for consistency
 
 ### P1 (High Priority)
 - [ ] **Customer Order History**: View all past orders when clicking a customer (Doctor/Medical/Agency)

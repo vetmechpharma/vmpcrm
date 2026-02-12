@@ -1779,6 +1779,20 @@ async def delete_agency(agency_id: str, current_user: dict = Depends(get_current
     await db.agency_notes.delete_many({'agency_id': agency_id})
     return {"message": "Agency deleted successfully"}
 
+@api_router.post("/agencies/bulk-delete")
+async def bulk_delete_agencies(ids: List[str], current_user: dict = Depends(get_current_user)):
+    """Bulk delete multiple agencies"""
+    if not ids:
+        raise HTTPException(status_code=400, detail="No IDs provided")
+    
+    # Delete agencies
+    result = await db.agencies.delete_many({'id': {'$in': ids}})
+    
+    # Also delete related notes
+    await db.agency_notes.delete_many({'agency_id': {'$in': ids}})
+    
+    return {"message": f"{result.deleted_count} agency(ies) deleted successfully", "deleted_count": result.deleted_count}
+
 @api_router.put("/agencies/{agency_id}/contact")
 async def update_agency_last_contact(agency_id: str, current_user: dict = Depends(get_current_user)):
     """Update last contact date and set follow-up to 25 days from now"""

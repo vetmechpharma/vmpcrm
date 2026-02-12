@@ -1501,6 +1501,20 @@ async def delete_medical(medical_id: str, current_user: dict = Depends(get_curre
     await db.medical_notes.delete_many({'medical_id': medical_id})
     return {"message": "Medical deleted successfully"}
 
+@api_router.post("/medicals/bulk-delete")
+async def bulk_delete_medicals(ids: List[str], current_user: dict = Depends(get_current_user)):
+    """Bulk delete multiple medicals"""
+    if not ids:
+        raise HTTPException(status_code=400, detail="No IDs provided")
+    
+    # Delete medicals
+    result = await db.medicals.delete_many({'id': {'$in': ids}})
+    
+    # Also delete related notes
+    await db.medical_notes.delete_many({'medical_id': {'$in': ids}})
+    
+    return {"message": f"{result.deleted_count} medical(s) deleted successfully", "deleted_count": result.deleted_count}
+
 @api_router.put("/medicals/{medical_id}/contact")
 async def update_medical_last_contact(medical_id: str, current_user: dict = Depends(get_current_user)):
     """Update last contact date and set follow-up to 25 days from now"""

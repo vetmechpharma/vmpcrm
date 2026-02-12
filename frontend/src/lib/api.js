@@ -131,6 +131,15 @@ export const itemsAPI = {
   delete: (id) => api.delete(`/items/${id}`),
   deleteImage: (id) => api.delete(`/items/${id}/image`),
   getCategories: () => api.get('/item-categories'),
+  // Bulk import
+  getImportTemplate: () => api.get('/items/import/template', { responseType: 'blob' }),
+  bulkImport: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/items/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 };
 
 // Company Settings APIs

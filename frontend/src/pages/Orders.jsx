@@ -1208,6 +1208,9 @@ export const Orders = () => {
                         <Badge className={selectedOrder.payment_mode === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
                           {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
                         </Badge>
+                        {selectedOrder.payment_amount > 0 && (
+                          <span className="font-medium">₹{selectedOrder.payment_amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        )}
                       </div>
                     )}
                     {(selectedOrder.boxes_count > 0 || selectedOrder.cans_count > 0 || selectedOrder.bags_count > 0) && (

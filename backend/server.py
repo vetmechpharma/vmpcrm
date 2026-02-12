@@ -3381,6 +3381,105 @@ async def verify_otp_and_submit_order(request: OTPVerify):
 
 # ============== ORDERS ADMIN ROUTES ==============
 
+@api_router.post("/orders")
+async def create_manual_order(order_data: ManualOrderCreate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Create a new order manually by admin/staff"""
+    # Generate order number
+    today_str = datetime.now(timezone.utc).strftime('%Y%m%d')
+    today_orders = await db.orders.count_documents({
+        'order_number': {'$regex': f'^ORD-{today_str}'}
+    })
+    order_number = f"ORD-{today_str}-{(today_orders + 1):04d}"
+    
+    order_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Clean phone number
+    clean_phone = ''.join(filter(str.isdigit, order_data.doctor_phone))
+    if len(clean_phone) > 10:
+        clean_phone = clean_phone[-10:]
+    
+    # Check for existing doctor by phone
+    existing_doctor = await db.doctors.find_one({'phone': {'$regex': clean_phone}}, {'_id': 0})
+    doctor_id = None
+    
+    if order_data.link_to_doctor:
+        if existing_doctor:
+            # Update existing doctor info
+            doctor_id = existing_doctor['id']
+            update_fields = {}
+            if order_data.doctor_name:
+                update_fields['name'] = order_data.doctor_name
+            if order_data.doctor_email:
+                update_fields['email'] = order_data.doctor_email
+            if order_data.doctor_address:
+                update_fields['address'] = order_data.doctor_address
+            if update_fields:
+                await db.doctors.update_one({'id': doctor_id}, {'$set': update_fields})
+        else:
+            # Create new doctor record
+            doctor_id = str(uuid.uuid4())
+            # Generate customer code
+            last_doctor = await db.doctors.find_one({}, sort=[('customer_code', -1)])
+            if last_doctor and last_doctor.get('customer_code', '').startswith('VMP-'):
+                try:
+                    last_num = int(last_doctor['customer_code'].split('-')[1])
+                    customer_code = f"VMP-{last_num + 1:04d}"
+                except:
+                    customer_code = "VMP-0001"
+            else:
+                customer_code = "VMP-0001"
+            
+            doctor_doc = {
+                'id': doctor_id,
+                'name': order_data.doctor_name,
+                'customer_code': customer_code,
+                'phone': clean_phone,
+                'email': order_data.doctor_email or '',
+                'address': order_data.doctor_address or '',
+                'reg_no': '',
+                'lead_status': 'Customer',
+                'priority': 'moderate',
+                'created_at': now.isoformat()
+            }
+            await db.doctors.insert_one(doctor_doc)
+    elif existing_doctor:
+        doctor_id = existing_doctor['id']
+    
+    # Create order
+    order_doc = {
+        'id': order_id,
+        'order_number': order_number,
+        'doctor_id': doctor_id,
+        'doctor_name': order_data.doctor_name,
+        'doctor_phone': clean_phone,
+        'doctor_email': order_data.doctor_email,
+        'doctor_address': order_data.doctor_address,
+        'items': [item.dict() for item in order_data.items],
+        'status': 'pending',
+        'created_by': current_user['name'],
+        'created_by_id': current_user['id'],
+        'source': 'admin_panel',
+        'created_at': now.isoformat()
+    }
+    
+    await db.orders.insert_one(order_doc)
+    
+    # Send WhatsApp confirmation
+    background_tasks.add_task(
+        send_whatsapp_order,
+        clean_phone,
+        order_data.items,
+        order_number,
+        order_data.doctor_name
+    )
+    
+    return {
+        "message": "Order created successfully",
+        "order_number": order_number,
+        "order_id": order_id
+    }
+
 @api_router.get("/orders", response_model=List[OrderResponse])
 async def get_orders(
     status: Optional[str] = None,

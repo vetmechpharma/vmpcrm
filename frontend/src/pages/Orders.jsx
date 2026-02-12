@@ -1438,6 +1438,158 @@ export const Orders = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Print Order Modal */}
+      <Dialog open={showPrintModal} onOpenChange={setShowPrintModal}>
+        <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="w-5 h-5" /> Print Order - {selectedOrder?.order_number}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {/* Print Preview */}
+            <div ref={printRef} className="bg-white p-6 print:p-4">
+              {/* Company Header */}
+              <div className="text-center border-b pb-4 mb-4">
+                {companySettings?.logo_url && (
+                  <img src={companySettings.logo_url} alt="Logo" className="h-16 mx-auto mb-2" />
+                )}
+                <h1 className="text-xl font-bold">{companySettings?.company_name || 'VMP CRM'}</h1>
+                {companySettings?.address && <p className="text-sm text-gray-600">{companySettings.address}</p>}
+                <div className="flex justify-center gap-4 text-xs text-gray-500 mt-1">
+                  {companySettings?.phone && <span>Ph: {companySettings.phone}</span>}
+                  {companySettings?.email && <span>Email: {companySettings.email}</span>}
+                </div>
+                {companySettings?.gst_number && <p className="text-xs text-gray-500">GST: {companySettings.gst_number}</p>}
+              </div>
+
+              {/* Order Info */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-lg font-bold">ORDER SHEET</h2>
+                  <p className="text-sm"><span className="font-medium">Order No:</span> {selectedOrder?.order_number}</p>
+                  <p className="text-sm"><span className="font-medium">Date:</span> {selectedOrder && formatDateTime(selectedOrder.created_at)}</p>
+                  <p className="text-sm"><span className="font-medium">Status:</span> {selectedOrder && STATUS_CONFIG[selectedOrder.status]?.label}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">Bill To:</p>
+                  <p className="text-sm font-semibold">{selectedOrder?.doctor_name}</p>
+                  <p className="text-sm">{selectedOrder?.doctor_phone}</p>
+                  {selectedOrder?.doctor_email && <p className="text-sm">{selectedOrder.doctor_email}</p>}
+                  {selectedOrder?.doctor_address && <p className="text-sm max-w-[200px]">{selectedOrder.doctor_address}</p>}
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table className="w-full border-collapse mb-4">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-300 px-2 py-1 text-left text-sm">S.No</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left text-sm">Item Code</th>
+                    <th className="border border-gray-300 px-2 py-1 text-left text-sm">Item Name</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center text-sm">Qty</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Rate (₹)</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">MRP (₹)</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrder?.items?.map((item, index) => {
+                    // Calculate base quantity for amount (handle "10+5" format)
+                    const qtyStr = String(item.quantity || '0');
+                    const qtyParts = qtyStr.split('+').map(p => parseInt(p.trim()) || 0);
+                    const baseQty = qtyParts[0] || 0;
+                    const rate = parseFloat(item.rate) || 0;
+                    const amount = baseQty * rate;
+                    
+                    return (
+                      <tr key={index}>
+                        <td className="border border-gray-300 px-2 py-1 text-sm">{index + 1}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm font-mono">{item.item_code}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm">{item.item_name}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm text-center font-medium">{item.quantity}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm text-right">{rate.toFixed(2)}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm text-right">{item.mrp ? parseFloat(item.mrp).toFixed(2) : '-'}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm text-right font-medium">{amount.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50">
+                    <td colSpan={3} className="border border-gray-300 px-2 py-1 text-sm font-medium text-right">Total Items: {selectedOrder?.items?.length || 0}</td>
+                    <td className="border border-gray-300 px-2 py-1 text-sm text-center font-bold">
+                      {selectedOrder?.items?.reduce((sum, item) => {
+                        const qtyStr = String(item.quantity || '0');
+                        const qtyParts = qtyStr.split('+').map(p => parseInt(p.trim()) || 0);
+                        return sum + (qtyParts[0] || 0) + (qtyParts[1] || 0);
+                      }, 0)}
+                    </td>
+                    <td colSpan={2} className="border border-gray-300 px-2 py-1 text-sm text-right font-bold">Grand Total:</td>
+                    <td className="border border-gray-300 px-2 py-1 text-sm text-right font-bold">
+                      ₹{selectedOrder?.items?.reduce((sum, item) => {
+                        const qtyStr = String(item.quantity || '0');
+                        const qtyParts = qtyStr.split('+').map(p => parseInt(p.trim()) || 0);
+                        const baseQty = qtyParts[0] || 0;
+                        const rate = parseFloat(item.rate) || 0;
+                        return sum + (baseQty * rate);
+                      }, 0).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+
+              {/* Transport & Invoice Details */}
+              {(selectedOrder?.transport_name || selectedOrder?.invoice_number) && (
+                <div className="grid grid-cols-2 gap-4 border-t pt-4 mb-4">
+                  {selectedOrder?.transport_name && (
+                    <div>
+                      <h3 className="font-medium text-sm mb-1">Transport Details</h3>
+                      <p className="text-sm">Transport: {selectedOrder.transport_name}</p>
+                      {selectedOrder.tracking_number && <p className="text-sm">Tracking: {selectedOrder.tracking_number}</p>}
+                      {selectedOrder.delivery_station && <p className="text-sm">Station: {selectedOrder.delivery_station}</p>}
+                      {selectedOrder.payment_mode && <p className="text-sm">Payment: {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}</p>}
+                      {(selectedOrder.boxes_count > 0 || selectedOrder.cans_count > 0 || selectedOrder.bags_count > 0) && (
+                        <p className="text-sm">
+                          Packages: {selectedOrder.boxes_count > 0 && `${selectedOrder.boxes_count} Box`}
+                          {selectedOrder.boxes_count > 0 && (selectedOrder.cans_count > 0 || selectedOrder.bags_count > 0) && ', '}
+                          {selectedOrder.cans_count > 0 && `${selectedOrder.cans_count} Can`}
+                          {selectedOrder.cans_count > 0 && selectedOrder.bags_count > 0 && ', '}
+                          {selectedOrder.bags_count > 0 && `${selectedOrder.bags_count} Bag`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {selectedOrder?.invoice_number && (
+                    <div>
+                      <h3 className="font-medium text-sm mb-1">Invoice Details</h3>
+                      <p className="text-sm">Invoice No: {selectedOrder.invoice_number}</p>
+                      {selectedOrder.invoice_date && <p className="text-sm">Date: {selectedOrder.invoice_date}</p>}
+                      {selectedOrder.invoice_value && <p className="text-sm">Value: ₹{parseFloat(selectedOrder.invoice_value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="border-t pt-4 mt-4 text-center text-xs text-gray-500">
+                <p>Thank you for your business!</p>
+                {companySettings?.phone && <p>For queries, contact: {companySettings.phone}</p>}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowPrintModal(false)}>Close</Button>
+            <Button variant="outline" onClick={() => sendOrderWhatsApp(selectedOrder)} className="text-green-600 border-green-300 hover:bg-green-50">
+              <MessageSquare className="w-4 h-4 mr-2" /> Send WhatsApp
+            </Button>
+            <Button onClick={handlePrint} data-testid="print-order-btn">
+              <Printer className="w-4 h-4 mr-2" /> Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

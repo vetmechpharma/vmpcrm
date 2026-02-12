@@ -195,7 +195,7 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Dashboard Integration**: Monthly Expenses summary card on dashboard
 - [x] **Sidebar Navigation**: Expenses menu item between Orders and Pending Items
 
-## Medicals & Agencies Management - COMPLETED Jan 25, 2026
+## Medicals & Agencies Management - COMPLETED Jan 25, 2026 (Updated Feb 12, 2026)
 - [x] **Medicals Entity**: Complete CRUD for medical stores with fields:
   - Name, Proprietor Name, GST Number, Drug License
   - Address (Street, State, District, Pincode)
@@ -212,6 +212,8 @@ Build a simple CRM for managing doctor leads. Features include:
   - Tasks system with due dates and priorities
 - [x] **Sidebar Navigation**: Separate menu items for Doctors, Medicals, Agencies
 - [x] **Search & Filter**: Search by name, phone, GST; filter by status
+- [x] **Table View UI** (Feb 12, 2026): Both Medicals and Agencies pages converted to table view matching Doctors page
+- [x] **Bulk Delete** (Feb 12, 2026): Same functionality as Doctors - checkboxes, Select All, Delete (N) button, confirmation modal
 
 ## Admin Dashboard UI Redesign - COMPLETED Jan 25, 2026
 - [x] **Modern Dashboard Design**: Complete UI overhaul with gradient header and glass-morphism effects

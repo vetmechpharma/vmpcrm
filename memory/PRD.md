@@ -76,14 +76,21 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Order tracking with transport details
 - [x] **Transport Display**: Orders page shows transport name + tracking number as plain text (no clickable links)
 - [x] Payment status tracking (To Pay/Paid)
+- [x] **Payment Amount Tracking** (COMPLETED Feb 12, 2026):
+  - **To Pay Amount**: Enter amount to collect from customer (stored for reference only, not sent via WhatsApp)
+  - **Paid Amount**: Enter paid amount with expense details
+  - **Auto Expense Creation**: When "Paid" is selected, auto-creates expense entry in Transport/Shipping category
+  - **Expense Details**: "Paid By" (who spent) and "From Account" (company_account, admin_account, employee_account, cash)
+  - **Display**: Payment amount shown in Orders table and Order Details modal
 - [x] **New Order Status: Ready to Despatch**:
   - Added between Confirmed and Shipped statuses
-  - Captures: Transport, Delivery Station, Payment Mode, Package Details (Box/Can/Bag), Invoice Details
+  - Captures: Transport, Delivery Station, Payment Mode, Payment Amount, Package Details (Box/Can/Bag), Invoice Details
   - Sends WhatsApp to **Transporter ONLY** with complete billing info (using transport contact number)
   - NO message sent to customer at this stage
 - [x] **Shipped Status with Full Details**:
   - Only requires Tracking Number entry (other details from Ready to Despatch)
   - Sends WhatsApp to **Customer** with: Tracking Number + Package Details + Invoice Details
+  - Auto-creates expense for "Paid" orders (not for "To Pay")
 - [x] **WhatsApp notifications for status changes:**
   - Confirmed: Order confirmation message to customer
   - Ready to Despatch: Full billing details to **transporter only**
@@ -91,7 +98,7 @@ Build a simple CRM for managing doctor leads. Features include:
   - Delivered: Delivery confirmation to customer
   - Cancelled: Cancellation with reason to customer
 - [x] **Conditional fields based on status:**
-  - Ready to Despatch: Transport, delivery station, payment mode, package counts (boxes/cans/bags), invoice details
+  - Ready to Despatch: Transport, delivery station, payment mode, payment amount, expense details (for Paid), package counts (boxes/cans/bags), invoice details
   - Shipped: Tracking number only (transport info shown if already set)
   - Cancelled: Cancellation reason (required)
 - [x] Package details: Boxes, Cans, Bags counts

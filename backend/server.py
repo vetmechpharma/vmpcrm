@@ -633,12 +633,13 @@ class OTPVerify(BaseModel):
     device_info: Optional[str] = None
 
 class ManualOrderCreate(BaseModel):
-    doctor_name: str
-    doctor_phone: str
-    doctor_email: Optional[str] = None
-    doctor_address: Optional[str] = None
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+    customer_address: Optional[str] = None
+    customer_type: str = "doctor"  # doctor, medical, agency
+    customer_id: Optional[str] = None  # If linking to existing entity
     items: List[OrderItem]
-    link_to_doctor: bool = False  # Option to create/link to doctor record
 
 class OrderResponse(BaseModel):
     id: str

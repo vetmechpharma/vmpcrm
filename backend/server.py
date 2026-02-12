@@ -640,6 +640,7 @@ class ManualOrderCreate(BaseModel):
     customer_type: str = "doctor"  # doctor, medical, agency
     customer_id: Optional[str] = None  # If linking to existing entity
     items: List[OrderItem]
+    pending_items: Optional[List[dict]] = None  # Items to mark as pending (out of stock)
 
 class OrderResponse(BaseModel):
     id: str

@@ -178,6 +178,40 @@ export const Doctors = () => {
     }
   };
 
+  // Bulk selection handlers
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(doctors.map(d => d.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id, checked) => {
+    if (checked) {
+      setSelectedIds([...selectedIds, id]);
+    } else {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    setBulkDeleting(true);
+    try {
+      const response = await doctorsAPI.bulkDelete(selectedIds);
+      toast.success(response.data.message || `${selectedIds.length} doctor(s) deleted successfully`);
+      setShowBulkDeleteModal(false);
+      setSelectedIds([]);
+      fetchDoctors();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete doctors');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleMarkContacted = async (doctor) => {
     try {
       await doctorsAPI.updateContact(doctor.id);

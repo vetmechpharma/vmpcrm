@@ -307,6 +307,78 @@ export const Items = () => {
     }
   };
 
+  // Import handlers
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await itemsAPI.getImportTemplate();
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'items_import_template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Template downloaded successfully');
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleImportFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        toast.error('Please select an Excel file (.xlsx or .xls)');
+        return;
+      }
+      setImportFile(file);
+      setImportResult(null);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (!importFile) {
+      toast.error('Please select a file to import');
+      return;
+    }
+
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const response = await itemsAPI.bulkImport(importFile);
+      setImportResult({
+        success: true,
+        message: response.data.message,
+        created: response.data.items_created,
+        updated: response.data.items_updated,
+        errors: response.data.errors || []
+      });
+      toast.success(response.data.message);
+      fetchItems();
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || 'Import failed';
+      setImportResult({
+        success: false,
+        message: errorMessage,
+        errors: []
+      });
+      toast.error(errorMessage);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const closeImportModal = () => {
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportResult(null);
+    if (importFileRef.current) {
+      importFileRef.current.value = '';
+    }
+  };
+
   const isFormMode = isEditing || isCreating;
 
   return (

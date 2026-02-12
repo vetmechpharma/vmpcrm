@@ -876,6 +876,113 @@ export const Items = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Import Modal */}
+      <Dialog open={showImportModal} onOpenChange={closeImportModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5" />
+              Bulk Import Items
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-800 mb-2">Import Instructions</h4>
+              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                <li>Download the template and fill in your items</li>
+                <li>Multiple categories: separate with commas (e.g., "Large Animals, Poultry")</li>
+                <li>Item Code is optional - auto-generated if empty</li>
+                <li>Images can be added manually after import</li>
+                <li>Maximum 500 items per import</li>
+              </ul>
+            </div>
+
+            {/* Download Template */}
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div>
+                <p className="font-medium text-slate-700">Download Template</p>
+                <p className="text-sm text-slate-500">Excel template with sample data</p>
+              </div>
+              <Button variant="outline" onClick={handleDownloadTemplate} data-testid="download-template-btn">
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
+            </div>
+
+            {/* File Upload */}
+            <div className="space-y-2">
+              <Label>Select Excel File</Label>
+              <div className="flex gap-2">
+                <Input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportFileSelect}
+                  className="flex-1"
+                  data-testid="import-file-input"
+                />
+              </div>
+              {importFile && (
+                <p className="text-sm text-green-600 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Selected: {importFile.name}
+                </p>
+              )}
+            </div>
+
+            {/* Import Result */}
+            {importResult && (
+              <div className={`p-4 rounded-lg border ${importResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <div className="flex items-start gap-2">
+                  {importResult.success ? (
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={`font-medium ${importResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                      {importResult.message}
+                    </p>
+                    {importResult.success && (
+                      <p className="text-sm text-green-700 mt-1">
+                        Created: {importResult.created} | Updated: {importResult.updated}
+                      </p>
+                    )}
+                    {importResult.errors && importResult.errors.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-medium text-red-700">Errors:</p>
+                        <ul className="text-sm text-red-600 list-disc list-inside">
+                          {importResult.errors.slice(0, 5).map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                          {importResult.errors.length > 5 && (
+                            <li>...and {importResult.errors.length - 5} more errors</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeImportModal}>
+              {importResult?.success ? 'Close' : 'Cancel'}
+            </Button>
+            {!importResult?.success && (
+              <Button onClick={handleBulkImport} disabled={!importFile || importing} data-testid="start-import-btn">
+                {importing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {importing ? 'Importing...' : 'Start Import'}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

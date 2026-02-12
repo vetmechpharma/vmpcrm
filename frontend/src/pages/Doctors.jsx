@@ -8,6 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
 import { toast } from 'sonner';
 import { 
   Plus, 
@@ -18,14 +26,14 @@ import {
   Loader2,
   Users,
   Phone,
-  MapPin,
   Calendar,
   Clock,
   MessageSquare,
   CheckSquare,
   AlertTriangle,
   PhoneCall,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate } from '../lib/utils';
 
@@ -304,23 +312,91 @@ export const Doctors = () => {
     return doctor.follow_up_date <= today;
   };
 
+  // Stats
+  const totalDoctors = doctors.length;
+  const customerCount = doctors.filter(d => d.lead_status === 'Customer').length;
+  const pipelineCount = doctors.filter(d => d.lead_status === 'Pipeline').length;
+  const followUpDueCount = doctors.filter(d => isFollowUpDue(d)).length;
+
   return (
     <div className="space-y-6" data-testid="doctors-page">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Doctors / Leads</h1>
-          <p className="text-slate-500">Manage your doctor leads and contacts</p>
+          <h1 className="text-2xl font-bold text-slate-900">Doctors / Leads</h1>
+          <p className="text-slate-600">Manage your doctor leads and contacts</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="gap-2" data-testid="add-doctor-btn">
-          <Plus className="w-4 h-4" />
-          Add Doctor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchDoctors} data-testid="refresh-btn">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button onClick={() => setShowAddModal(true)} data-testid="add-doctor-btn">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Doctor
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalDoctors}</p>
+                <p className="text-sm text-slate-500">Total Doctors</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600">{customerCount}</p>
+                <p className="text-sm text-slate-500">Customers</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600">{pipelineCount}</p>
+                <p className="text-sm text-slate-500">Pipeline</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-red-600">{followUpDueCount}</p>
+                <p className="text-sm text-slate-500">Follow-up Due</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -347,97 +423,160 @@ export const Doctors = () => {
         </CardContent>
       </Card>
 
-      {/* Doctors List */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        </div>
-      ) : doctors.length > 0 ? (
-        <div className="grid gap-4">
-          {doctors.map((doctor) => (
-            <Card key={doctor.id} className={`card-hover ${isFollowUpDue(doctor) ? 'border-l-4 border-l-red-500' : ''}`} data-testid={`doctor-card-${doctor.id}`}>
-              <CardContent className="pt-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
-                      <Users className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-slate-800">{doctor.name}</h3>
-                        <Badge variant="outline" className="text-xs">{doctor.customer_code}</Badge>
-                        <Badge className={getStatusColor(doctor.lead_status)}>{doctor.lead_status}</Badge>
-                        {doctor.priority && (
-                          <Badge className={getPriorityColor(doctor.priority)}>
-                            {getPriorityLabel(doctor.priority)}
-                          </Badge>
-                        )}
-                        {isFollowUpDue(doctor) && (
-                          <Badge className="bg-red-500 text-white animate-pulse">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Follow-up Due
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {doctor.phone}
-                        </span>
-                        {doctor.email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {doctor.email}
-                          </span>
-                        )}
-                        {doctor.last_contact_date && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Last: {formatDate(doctor.last_contact_date)}
-                          </span>
-                        )}
-                        {doctor.follow_up_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Follow-up: {formatDate(doctor.follow_up_date)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => fetchDoctorDetails(doctor)} title="View Details">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleMarkContacted(doctor)} title="Mark Contacted">
-                      <PhoneCall className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEditModal(doctor)} title="Edit">
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEmailModal(doctor)} title="Send Email">
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openDeleteModal(doctor)} className="text-red-600 hover:text-red-700" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-16">
-            <div className="flex flex-col items-center text-slate-400">
-              <Users className="w-16 h-16 mb-4" />
-              <h3 className="text-lg font-medium">No doctors found</h3>
-              <p className="text-sm">Add your first doctor to get started</p>
+      {/* Doctors Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Doctors List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : doctors.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Doctor</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Follow-up</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Contact</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {doctors.map((doctor) => (
+                    <TableRow 
+                      key={doctor.id} 
+                      className={isFollowUpDue(doctor) ? 'bg-red-50' : ''}
+                      data-testid={`doctor-row-${doctor.id}`}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Users className="w-5 h-5 text-slate-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{doctor.name}</p>
+                            <p className="text-xs text-slate-500">{doctor.customer_code}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="flex items-center gap-1 text-sm">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {doctor.phone}
+                          </p>
+                          {doctor.email && (
+                            <p className="flex items-center gap-1 text-xs text-slate-500">
+                              <Mail className="w-3 h-3" />
+                              {doctor.email}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(doctor.lead_status)}>
+                          {doctor.lead_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getPriorityColor(doctor.priority)}>
+                          {getPriorityLabel(doctor.priority)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {doctor.follow_up_date ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span className={isFollowUpDue(doctor) ? 'text-red-600 font-medium' : ''}>
+                              {formatDate(doctor.follow_up_date)}
+                            </span>
+                            {isFollowUpDue(doctor) && (
+                              <AlertTriangle className="w-3 h-3 text-red-500" />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">Not set</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {doctor.last_contact_date ? (
+                          <div className="flex items-center gap-1 text-sm text-slate-500">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(doctor.last_contact_date)}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm">Never</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => fetchDoctorDetails(doctor)} 
+                            title="View Details"
+                            className="h-8 w-8"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleMarkContacted(doctor)} 
+                            title="Mark Contacted"
+                            className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <PhoneCall className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => openEditModal(doctor)} 
+                            title="Edit"
+                            className="h-8 w-8"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => openEmailModal(doctor)} 
+                            title="Send Email"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => openDeleteModal(doctor)} 
+                            title="Delete"
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-600">No doctors found</h3>
+              <p className="text-sm text-slate-400">Add your first doctor to get started</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Doctor Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={() => { setShowAddModal(false); setShowEditModal(false); resetForm(); }}>

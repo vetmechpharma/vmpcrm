@@ -337,13 +337,29 @@ Build a simple CRM for managing doctor leads. Features include:
   - Quantity controls with +/- buttons
   - WhatsApp confirmation sent automatically
 - [x] **Edit Order Items**:
-  - Quantity editing with +/- buttons and direct input
+  - **String-based quantities**: Support for scheme format like "10+5" (buy 10, get 5 free)
+  - **Rate & MRP display**: Shows Rate and MRP for each item during editing
+  - Quantity editing with text input (allows numbers or scheme format)
   - "Out of Stock" button (replaced "Remove")
   - "Mark as Pending" checkbox for customer follow-up
   - "Restore" button to undo out of stock
   - Summary of changes before saving
 - [x] **Order Sources**: Both customer orders (from public showcase) and admin/staff created orders supported
 - [x] **Customer Types**: Orders can be linked to Doctors, Medicals, or Agencies
+- [x] **Print Order Feature**:
+  - Professional printable order sheet with company branding
+  - Items table with S.No, Item Code, Item Name, Qty, Rate, MRP, Amount columns
+  - Auto-calculates amounts and grand total (handles "10+5" scheme quantities)
+  - Transport Details section (transport name, tracking, station, payment mode, packages)
+  - Invoice Details section (invoice no, date, value)
+  - Footer with thank you message and contact info
+  - Uses react-to-print library for native browser print dialog
+- [x] **WhatsApp Order Sharing**:
+  - WhatsApp button in order actions row (green icon)
+  - Sends formatted message with company name, order number, customer details
+  - Includes all items with code, quantity, rate, and MRP
+  - Opens wa.me link with pre-filled message
+  - Also available in Print Modal via "Send WhatsApp" button
 
 ## Prioritized Backlog
 

@@ -317,6 +317,15 @@ Build a simple CRM for managing doctor leads. Features include:
 - Add, Edit, Delete operations on single page
 - Search and category filter functionality
 
+## Doctors Table View - COMPLETED Feb 12, 2026
+- [x] **Table View Layout**:
+  - Stats cards: Total Doctors, Customers, Pipeline, Follow-up Due
+  - Search and status filter
+  - Table columns: Doctor (name+code), Contact (phone+email), Status, Priority, Follow-up, Last Contact, Actions
+  - Row highlighting for overdue follow-ups (red background)
+- [x] **Actions**: View Details, Mark Contacted, Edit, Send Email, Delete
+- [x] **Detail Modal**: Full info with Notes and Tasks sections
+
 ## Orders Enhancement - COMPLETED Feb 12, 2026
 - [x] **Manual Order Creation** (`Add Order` button):
   - Customer Details: Name, Phone, Email, Address

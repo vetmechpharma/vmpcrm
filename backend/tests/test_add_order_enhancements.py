@@ -120,7 +120,7 @@ class TestAddOrderEnhancements:
         
         # Verify pending item was added to pending_items collection
         pending_response = requests.get(
-            f"{BASE_URL}/api/pending-items/by-doctor/{unique_phone}",
+            f"{BASE_URL}/api/pending-items/doctor/{unique_phone}",
             headers=self.headers
         )
         
@@ -187,7 +187,7 @@ class TestAddOrderEnhancements:
         
         # Verify all pending items were added
         pending_response = requests.get(
-            f"{BASE_URL}/api/pending-items/by-doctor/{unique_phone}",
+            f"{BASE_URL}/api/pending-items/doctor/{unique_phone}",
             headers=self.headers
         )
         

@@ -185,6 +185,40 @@ export const Agencies = () => {
     }
   };
 
+  // Bulk selection handlers
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedIds(agencies.map(a => a.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id, checked) => {
+    if (checked) {
+      setSelectedIds([...selectedIds, id]);
+    } else {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    setBulkDeleting(true);
+    try {
+      const response = await agenciesAPI.bulkDelete(selectedIds);
+      toast.success(response.data.message || `${selectedIds.length} agency(ies) deleted successfully`);
+      setShowBulkDeleteModal(false);
+      setSelectedIds([]);
+      fetchAgencies();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete agencies');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleMarkContacted = async (agency) => {
     try {
       await agenciesAPI.updateContact(agency.id);

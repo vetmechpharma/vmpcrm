@@ -48,6 +48,7 @@ export const doctorsAPI = {
   create: (data) => api.post('/doctors', data),
   update: (id, data) => api.put(`/doctors/${id}`, data),
   delete: (id) => api.delete(`/doctors/${id}`),
+  bulkDelete: (ids) => api.post('/doctors/bulk-delete', ids),
   updateContact: (id) => api.put(`/doctors/${id}/contact`),
   // Notes
   getNotes: (id) => api.get(`/doctors/${id}/notes`),

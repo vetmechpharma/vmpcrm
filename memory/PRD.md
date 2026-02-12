@@ -317,6 +317,21 @@ Build a simple CRM for managing doctor leads. Features include:
 - Add, Edit, Delete operations on single page
 - Search and category filter functionality
 
+## Orders Enhancement - COMPLETED Feb 12, 2026
+- [x] **Manual Order Creation** (`Add Order` button):
+  - Customer Details: Name, Phone, Email, Address
+  - Item Search to add products to order
+  - Quantity controls with +/- buttons
+  - Option to create/link doctor record
+  - WhatsApp confirmation sent automatically
+- [x] **Edit Order Items**:
+  - Quantity editing with +/- buttons and direct input
+  - "Out of Stock" button (replaced "Remove")
+  - "Mark as Pending" checkbox for customer follow-up
+  - "Restore" button to undo out of stock
+  - Summary of changes before saving
+- [x] **Order Sources**: Both customer orders (from public showcase) and admin/staff created orders supported
+
 ## Prioritized Backlog
 
 ### P0 (Critical) 

@@ -558,15 +558,6 @@ export const Medicals = () => {
           )}
         </CardContent>
       </Card>
-          <CardContent className="py-16">
-            <div className="flex flex-col items-center text-slate-400">
-              <Store className="w-16 h-16 mb-4" />
-              <h3 className="text-lg font-medium">No medicals found</h3>
-              <p className="text-sm">Add your first medical store to get started</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Add/Edit Medical Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={() => { setShowAddModal(false); setShowEditModal(false); resetForm(); }}>

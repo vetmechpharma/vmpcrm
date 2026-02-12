@@ -508,9 +508,16 @@ export const Doctors = () => {
                   {doctors.map((doctor) => (
                     <TableRow 
                       key={doctor.id} 
-                      className={isFollowUpDue(doctor) ? 'bg-red-50' : ''}
+                      className={`${isFollowUpDue(doctor) ? 'bg-red-50' : ''} ${selectedIds.includes(doctor.id) ? 'bg-blue-50' : ''}`}
                       data-testid={`doctor-row-${doctor.id}`}
                     >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(doctor.id)}
+                          onCheckedChange={(checked) => handleSelectOne(doctor.id, checked)}
+                          data-testid={`select-doctor-${doctor.id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center flex-shrink-0">

@@ -790,9 +790,14 @@ export const Orders = () => {
                         </td>
                         <td>
                           {order.payment_mode ? (
-                            <Badge className={order.payment_mode === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
-                              {order.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
-                            </Badge>
+                            <div className="flex flex-col">
+                              <Badge className={order.payment_mode === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
+                                {order.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
+                              </Badge>
+                              {order.payment_amount > 0 && (
+                                <span className="text-xs text-slate-600 mt-0.5">₹{order.payment_amount?.toLocaleString('en-IN')}</span>
+                              )}
+                            </div>
                           ) : <span className="text-slate-400">-</span>}
                         </td>
                         <td><span className="text-sm text-slate-500">{formatDateTime(order.created_at)}</span></td>

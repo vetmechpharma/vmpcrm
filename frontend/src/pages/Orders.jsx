@@ -641,23 +641,49 @@ export const Orders = () => {
       toast.error('Customer name and phone are required');
       return;
     }
-    if (newOrderForm.items.length === 0) {
-      toast.error('Please add at least one item');
+    
+    // Filter out items marked as out of stock
+    const availableItems = newOrderForm.items.filter(item => !item.outOfStock && item.quantity !== '0' && item.quantity !== '');
+    
+    if (availableItems.length === 0) {
+      toast.error('Please add at least one available item (not out of stock)');
       return;
     }
 
     setSaving(true);
     try {
-      // Convert quantity to string for API
+      // Prepare order data with only available items
       const orderData = {
         ...newOrderForm,
-        items: newOrderForm.items.map(item => ({
-          ...item,
-          quantity: String(item.quantity)
+        items: availableItems.map(item => ({
+          item_id: item.item_id,
+          item_code: item.item_code,
+          item_name: item.item_name,
+          quantity: String(item.quantity),
+          mrp: item.mrp,
+          rate: item.rate,
+          gst: item.gst
         }))
       };
+      
+      // Collect out of stock items to mark as pending
+      const outOfStockItems = newOrderForm.items.filter(item => item.outOfStock || item.quantity === '0');
+      if (outOfStockItems.length > 0) {
+        orderData.pending_items = outOfStockItems.map(item => ({
+          item_id: item.item_id,
+          item_code: item.item_code,
+          item_name: item.item_name,
+          quantity: item.previousQty || '1'
+        }));
+      }
+      
       const response = await ordersAPI.create(orderData);
-      toast.success(`Order ${response.data.order_number} created successfully!`);
+      
+      let successMsg = `Order ${response.data.order_number} created successfully!`;
+      if (outOfStockItems.length > 0) {
+        successMsg += ` ${outOfStockItems.length} item(s) marked as pending.`;
+      }
+      toast.success(successMsg);
       setShowAddModal(false);
       fetchOrders();
     } catch (error) {

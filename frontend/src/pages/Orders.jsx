@@ -1396,7 +1396,12 @@ export const Orders = () => {
                   <div className="bg-slate-50 p-3 rounded-lg mb-3">
                     <p className="text-sm"><span className="text-slate-500">Transport:</span> <span className="font-medium">{selectedOrder.transport_name}</span></p>
                     {selectedOrder.delivery_station && <p className="text-sm"><span className="text-slate-500">Delivery Station:</span> {selectedOrder.delivery_station}</p>}
-                    {selectedOrder.payment_mode && <p className="text-sm"><span className="text-slate-500">Payment:</span> {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}</p>}
+                    {selectedOrder.payment_mode && (
+                      <p className="text-sm">
+                        <span className="text-slate-500">Payment:</span> {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
+                        {selectedOrder.payment_amount > 0 && <span className="font-medium"> - ₹{selectedOrder.payment_amount?.toLocaleString('en-IN')}</span>}
+                      </p>
+                    )}
                   </div>
                 )}
                 {!selectedOrder?.transport_name && (

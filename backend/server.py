@@ -2587,6 +2587,245 @@ async def delete_item(item_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted successfully"}
 
+# ============== BULK IMPORT ENDPOINTS ==============
+
+@api_router.get("/items/import/template")
+async def get_import_template(current_user: dict = Depends(get_current_user)):
+    """Generate and return Excel template for bulk item import"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Items Import"
+    
+    # Define headers
+    headers = [
+        "Item Code*", "Item Name*", "Main Categories", "Subcategories", 
+        "Composition", "MRP*", "Rate*", "GST %", "Offer", "Special Offer"
+    ]
+    
+    # Style for headers
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    # Write headers
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = thin_border
+    
+    # Add sample data rows
+    sample_data = [
+        ["ITM-0001", "Paracetamol 500mg", "Large Animals, Poultry", "Injection, Powder", "Paracetamol IP 500mg", "50.00", "35.00", "12", "Buy 10 Get 1 Free", "Limited Offer"],
+        ["ITM-0002", "Vitamin D3 1000IU", "Pets", "Liquids", "Cholecalciferol 1000IU", "250.00", "180.00", "5", "", ""],
+        ["", "Sample Item 3", "Large Animals", "Bolus", "Sample composition", "100.00", "75.00", "18", "", ""],
+    ]
+    
+    for row_num, row_data in enumerate(sample_data, 2):
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col_num, value=value)
+            cell.border = thin_border
+    
+    # Add instructions sheet
+    instructions = wb.create_sheet("Instructions")
+    instructions_data = [
+        ["BULK ITEM IMPORT INSTRUCTIONS"],
+        [""],
+        ["Required Fields (marked with *):"],
+        ["- Item Code: Unique code (leave empty for auto-generation)"],
+        ["- Item Name: Product name (required)"],
+        ["- MRP: Maximum Retail Price (required, number)"],
+        ["- Rate: Selling rate (required, number)"],
+        [""],
+        ["Optional Fields:"],
+        ["- Main Categories: Comma-separated (e.g., 'Large Animals, Poultry, Pets')"],
+        ["- Subcategories: Comma-separated (e.g., 'Injection, Powder, Liquids')"],
+        ["- Composition: Product composition text"],
+        ["- GST %: GST percentage (number, default 0)"],
+        ["- Offer: Offer text (e.g., 'Buy 10 Get 1 Free')"],
+        ["- Special Offer: Special offer text"],
+        [""],
+        ["Notes:"],
+        ["- Images can be added manually after import"],
+        ["- Default logo will be used for items without images"],
+        ["- Delete sample rows before importing"],
+        ["- Maximum 500 items per import"],
+    ]
+    
+    for row_num, row_data in enumerate(instructions_data, 1):
+        cell = instructions.cell(row=row_num, column=1, value=row_data[0])
+        if row_num == 1:
+            cell.font = Font(bold=True, size=14)
+    
+    # Adjust column widths
+    column_widths = [15, 25, 30, 30, 35, 12, 12, 10, 25, 25]
+    for i, width in enumerate(column_widths, 1):
+        ws.column_dimensions[chr(64 + i)].width = width
+    
+    # Save to bytes
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=items_import_template.xlsx"}
+    )
+
+@api_router.post("/items/import")
+async def bulk_import_items(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Bulk import items from Excel file"""
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx or .xls)")
+    
+    try:
+        contents = await file.read()
+        df = pd.read_excel(BytesIO(contents), sheet_name=0)
+        
+        # Normalize column names (remove * and extra spaces)
+        df.columns = [col.replace('*', '').strip() for col in df.columns]
+        
+        # Expected columns mapping
+        column_mapping = {
+            'Item Code': 'item_code',
+            'Item Name': 'item_name',
+            'Main Categories': 'main_categories',
+            'Subcategories': 'subcategories',
+            'Composition': 'composition',
+            'MRP': 'mrp',
+            'Rate': 'rate',
+            'GST %': 'gst',
+            'Offer': 'offer',
+            'Special Offer': 'special_offer'
+        }
+        
+        # Rename columns
+        df = df.rename(columns=column_mapping)
+        
+        # Validate required columns
+        required_cols = ['item_name', 'mrp', 'rate']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
+        
+        # Remove rows where item_name is empty
+        df = df.dropna(subset=['item_name'])
+        df = df[df['item_name'].astype(str).str.strip() != '']
+        
+        if len(df) == 0:
+            raise HTTPException(status_code=400, detail="No valid items found in the file")
+        
+        if len(df) > 500:
+            raise HTTPException(status_code=400, detail="Maximum 500 items per import. Please split your file.")
+        
+        # Get company logo for default image
+        company_settings = await db.company_settings.find_one({}, {'_id': 0})
+        default_image = company_settings.get('logo_base64') if company_settings else None
+        
+        now = datetime.now(timezone.utc)
+        items_created = 0
+        items_updated = 0
+        errors = []
+        
+        for index, row in df.iterrows():
+            try:
+                item_name = str(row.get('item_name', '')).strip()
+                if not item_name:
+                    continue
+                
+                # Parse item_code
+                item_code = str(row.get('item_code', '')).strip() if pd.notna(row.get('item_code')) else ''
+                
+                # Parse main_categories (comma-separated)
+                main_cats_str = str(row.get('main_categories', '')) if pd.notna(row.get('main_categories')) else ''
+                main_categories = [cat.strip() for cat in main_cats_str.split(',') if cat.strip()]
+                
+                # Parse subcategories (comma-separated)
+                sub_cats_str = str(row.get('subcategories', '')) if pd.notna(row.get('subcategories')) else ''
+                subcategories = [cat.strip() for cat in sub_cats_str.split(',') if cat.strip()]
+                
+                # Parse numeric fields
+                mrp = float(row.get('mrp', 0)) if pd.notna(row.get('mrp')) else 0
+                rate = float(row.get('rate', 0)) if pd.notna(row.get('rate')) else 0
+                gst = float(row.get('gst', 0)) if pd.notna(row.get('gst')) else 0
+                
+                # Parse text fields
+                composition = str(row.get('composition', '')) if pd.notna(row.get('composition')) else ''
+                offer = str(row.get('offer', '')) if pd.notna(row.get('offer')) else ''
+                special_offer = str(row.get('special_offer', '')) if pd.notna(row.get('special_offer')) else ''
+                
+                # Check if item with same code exists
+                existing_item = None
+                if item_code:
+                    existing_item = await db.items.find_one({'item_code': item_code}, {'_id': 0})
+                
+                if existing_item:
+                    # Update existing item
+                    update_data = {
+                        'item_name': item_name,
+                        'main_categories': main_categories,
+                        'subcategories': subcategories,
+                        'composition': composition,
+                        'mrp': mrp,
+                        'rate': rate,
+                        'gst': gst,
+                        'offer': offer,
+                        'special_offer': special_offer,
+                        'updated_at': now.isoformat()
+                    }
+                    await db.items.update_one({'item_code': item_code}, {'$set': update_data})
+                    items_updated += 1
+                else:
+                    # Generate item_code if not provided
+                    if not item_code:
+                        item_code = await generate_item_code()
+                    
+                    # Create new item
+                    item_doc = {
+                        'id': str(uuid.uuid4()),
+                        'item_code': item_code,
+                        'item_name': item_name,
+                        'main_categories': main_categories,
+                        'subcategories': subcategories,
+                        'composition': composition,
+                        'mrp': mrp,
+                        'rate': rate,
+                        'gst': gst,
+                        'offer': offer,
+                        'special_offer': special_offer,
+                        'image_base64': default_image,  # Use company logo as default
+                        'custom_fields': [],
+                        'created_at': now.isoformat(),
+                        'updated_at': now.isoformat()
+                    }
+                    await db.items.insert_one(item_doc)
+                    items_created += 1
+                    
+            except Exception as e:
+                errors.append(f"Row {index + 2}: {str(e)}")
+        
+        result_message = f"Import completed: {items_created} items created, {items_updated} items updated"
+        if errors:
+            result_message += f". {len(errors)} errors occurred."
+        
+        return {
+            "message": result_message,
+            "items_created": items_created,
+            "items_updated": items_updated,
+            "errors": errors[:10] if errors else []  # Return first 10 errors
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bulk import error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
 # ============== COMPANY SETTINGS ROUTES ==============
 
 @api_router.post("/company-settings", response_model=CompanySettingsResponse)

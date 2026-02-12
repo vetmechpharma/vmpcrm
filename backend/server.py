@@ -3928,7 +3928,8 @@ async def get_all_pending_items(current_user: dict = Depends(get_current_user)):
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         
-        order_date = item.get('original_order_date')
+        # Use original_order_date if available, otherwise use created_at as fallback
+        order_date = item.get('original_order_date') or item.get('created_at')
         if isinstance(order_date, str):
             order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
         
@@ -3942,7 +3943,7 @@ async def get_all_pending_items(current_user: dict = Depends(get_current_user)):
             quantity=item['quantity'],
             original_order_id=item.get('original_order_id') or item.get('order_id'),
             original_order_number=item['original_order_number'],
-            original_order_date=order_date,
+            original_order_date=order_date or created_at,
             created_at=created_at
         ))
     

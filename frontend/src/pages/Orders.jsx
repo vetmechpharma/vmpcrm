@@ -447,6 +447,7 @@ export const Orders = () => {
           item_code: item.item_code,
           item_name: item.item_name,
           quantity: 1,
+          mrp: item.mrp || item.rate || 0,
           rate: item.rate || 0,
           gst: item.gst || 0
         }]

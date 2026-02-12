@@ -99,12 +99,13 @@ export const Orders = () => {
 
   // New order form
   const [newOrderForm, setNewOrderForm] = useState({
-    doctor_name: '',
-    doctor_phone: '',
-    doctor_email: '',
-    doctor_address: '',
-    items: [],
-    link_to_doctor: false
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    customer_address: '',
+    customer_type: 'doctor',
+    customer_id: null,
+    items: []
   });
 
   // Order update form with new fields

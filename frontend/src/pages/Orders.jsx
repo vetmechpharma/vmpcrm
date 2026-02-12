@@ -746,6 +746,12 @@ export const Orders = () => {
                             <Button variant="ghost" size="sm" onClick={() => openEditModal(order)} title="Edit Items">
                               <Edit className="w-4 h-4" />
                             </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openPrintModal(order)} title="Print Order" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                              <Printer className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => sendOrderWhatsApp(order)} title="Send WhatsApp" className="text-green-600 hover:text-green-700 hover:bg-green-50">
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => openUpdateModal(order)} title="Update Status">
                               <Truck className="w-4 h-4" />
                             </Button>

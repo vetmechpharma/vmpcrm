@@ -72,11 +72,11 @@ class TestPaymentTrackingAPI:
         assert response.status_code == 200, f"Failed to create order: {response.text}"
         
         data = response.json()
-        TestPaymentTrackingAPI.test_order_id = data['id']
+        TestPaymentTrackingAPI.test_order_id = data.get('order_id') or data.get('id')
         
-        assert 'id' in data
+        assert 'order_id' in data or 'id' in data
         assert 'order_number' in data
-        print(f"Created test order: {data['order_number']} (ID: {data['id']})")
+        print(f"Created test order: {data['order_number']} (ID: {TestPaymentTrackingAPI.test_order_id})")
     
     # Test 2: Update to Ready to Despatch with "To Pay" payment mode
     def test_02_update_to_ready_with_to_pay_mode(self, authenticated_client):
@@ -138,9 +138,9 @@ class TestPaymentTrackingAPI:
         
         data = response.json()
         # Store as second order for paid mode tests
-        self.__class__.paid_order_id = data['id']
+        self.__class__.paid_order_id = data.get('order_id') or data.get('id')
         self.__class__.paid_order_number = data['order_number']
-        print(f"Created paid mode test order: {data['order_number']}")
+        print(f"Created paid mode test order: {data['order_number']} (ID: {self.__class__.paid_order_id})")
     
     # Test 4: Update order to Ready to Despatch with "Paid" payment mode
     def test_04_update_to_ready_with_paid_mode(self, authenticated_client):
@@ -316,7 +316,8 @@ class TestPaymentTrackingAPI:
         
         resp = authenticated_client.post(f"{BASE_URL}/api/orders", json=order_data)
         assert resp.status_code == 200
-        order_id = resp.json()['id']
+        data = resp.json()
+        order_id = data.get('order_id') or data.get('id')
         
         # Update with cash account
         update_data = {

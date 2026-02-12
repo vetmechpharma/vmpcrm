@@ -528,7 +528,7 @@ export const Orders = () => {
   };
 
   const handleCreateOrder = async () => {
-    if (!newOrderForm.doctor_name || !newOrderForm.doctor_phone) {
+    if (!newOrderForm.customer_name || !newOrderForm.customer_phone) {
       toast.error('Customer name and phone are required');
       return;
     }

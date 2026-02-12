@@ -74,6 +74,16 @@ Build a simple CRM for managing doctor leads. Features include:
   - Added main_categories (multiple selection checkboxes)
   - Added subcategories (multiple selection checkboxes)
   - Added "Add New Subcategory" option
+- [x] **Bulk Item Excel Import** (COMPLETED Feb 12, 2026):
+  - "Import Excel" button in Items page header
+  - Import modal with instructions and template download
+  - Excel template with headers: Item Code, Item Name, Main Categories, Subcategories, Composition, MRP, Rate, GST%, Offer, Special Offer
+  - Multiple categories/subcategories support (comma-separated in Excel)
+  - Auto-generated item codes if not provided
+  - Updates existing items if item_code matches
+  - Default company logo for items without images (images can be added manually after import)
+  - Maximum 500 items per import
+  - Import result summary showing created/updated counts and errors
 
 ## Order Management & Transport (Iteration 7-9) - UPDATED Jan 23, 2026
 - [x] Transport provider management (CRUD)

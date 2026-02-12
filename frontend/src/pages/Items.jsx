@@ -389,6 +389,12 @@ export const Items = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Items / Products</h1>
           <p className="text-slate-500 mt-1">Manage your product inventory</p>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImportModal(true)} data-testid="import-items-btn">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Import Excel
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">

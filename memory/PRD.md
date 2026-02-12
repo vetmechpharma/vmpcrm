@@ -333,8 +333,13 @@ Build a simple CRM for managing doctor leads. Features include:
   - Click to select existing customer and auto-fill details
   - Or enter new customer details with type selection
   - Auto-creates customer record if new (with appropriate customer code: VMP-/MED-/AGN-)
-  - Item Search to add products to order
-  - Quantity controls with +/- buttons
+  - **Item Search** to add products to order
+  - **String-based quantities**: Support for scheme format like "10+5" (buy 10, get 5 free)
+  - **Rate, MRP, GST display**: Shows pricing info for each item
+  - **Out of Stock button**: Mark items unavailable during order creation
+  - **Restore button**: Undo out of stock marking
+  - **Pending Items tracking**: Out of stock items automatically added to pending items for customer follow-up
+  - **Summary counter**: Shows available and out of stock item counts
   - WhatsApp confirmation sent automatically
 - [x] **Edit Order Items**:
   - **String-based quantities**: Support for scheme format like "10+5" (buy 10, get 5 free)

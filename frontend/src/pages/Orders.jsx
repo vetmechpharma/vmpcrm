@@ -1308,11 +1308,64 @@ export const Orders = () => {
                   </div>
                   <div className="space-y-2">
                     <Label>Payment Mode *</Label>
-                    <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v})}>
+                    <Select value={updateForm.payment_mode} onValueChange={(v) => setUpdateForm({...updateForm, payment_mode: v, payment_amount: '', expense_paid_by: '', expense_account: 'company_account'})}>
                       <SelectTrigger data-testid="payment-mode-select"><SelectValue placeholder="Select payment mode" /></SelectTrigger>
                       <SelectContent>{PAYMENT_MODES.map((mode) => (<SelectItem key={mode.value} value={mode.value}>{mode.label}</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Payment Amount - shown for both To Pay and Paid */}
+                  {updateForm.payment_mode && (
+                    <div className="mt-3 p-3 rounded-lg border bg-slate-50">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label>{updateForm.payment_mode === 'paid' ? 'Paid Amount (₹) *' : 'To Pay Amount (₹)'}</Label>
+                          <Input 
+                            data-testid="payment-amount-input" 
+                            type="number" 
+                            min="0" 
+                            step="0.01"
+                            value={updateForm.payment_amount} 
+                            onChange={(e) => setUpdateForm({...updateForm, payment_amount: parseFloat(e.target.value) || ''})} 
+                            placeholder={updateForm.payment_mode === 'paid' ? 'Enter paid amount' : 'Enter amount to pay'}
+                          />
+                          {updateForm.payment_mode === 'to_pay' && (
+                            <p className="text-xs text-slate-500">This amount will be stored for reference only (not sent to customer)</p>
+                          )}
+                        </div>
+                        
+                        {/* Expense details - only for Paid mode */}
+                        {updateForm.payment_mode === 'paid' && (
+                          <>
+                            <div className="border-t pt-3 mt-3">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Expense Details (auto-added to Transport/Shipping expenses)</p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Paid By (Who spent?)</Label>
+                              <Input 
+                                data-testid="expense-paid-by-input"
+                                value={updateForm.expense_paid_by} 
+                                onChange={(e) => setUpdateForm({...updateForm, expense_paid_by: e.target.value})} 
+                                placeholder="Enter name of person who paid"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>From Account</Label>
+                              <Select value={updateForm.expense_account} onValueChange={(v) => setUpdateForm({...updateForm, expense_account: v})}>
+                                <SelectTrigger data-testid="expense-account-select"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="company_account">Company Account</SelectItem>
+                                  <SelectItem value="admin_account">Admin Account</SelectItem>
+                                  <SelectItem value="employee_account">Employee Account</SelectItem>
+                                  <SelectItem value="cash">Cash</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <h4 className="font-medium flex items-center gap-2 mb-3"><Box className="w-4 h-4" /> Package Details</h4>

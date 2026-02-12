@@ -409,104 +409,155 @@ export const Agencies = () => {
                 ))}
               </SelectContent>
             </Select>
+            {selectedIds.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowBulkDeleteModal(true)}
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete ({selectedIds.length})
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Agencies List */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        </div>
-      ) : agencies.length > 0 ? (
-        <div className="grid gap-4">
-          {agencies.map((agency) => (
-            <Card key={agency.id} className={`card-hover ${isFollowUpDue(agency) ? 'border-l-4 border-l-red-500' : ''}`} data-testid={`agency-card-${agency.id}`}>
-              <CardContent className="pt-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Building className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-slate-800">{agency.name}</h3>
-                        <Badge variant="outline" className="text-xs">{agency.customer_code}</Badge>
-                        <Badge className={getStatusColor(agency.lead_status)}>{agency.lead_status}</Badge>
-                        {agency.priority && (
-                          <Badge className={getPriorityColor(agency.priority)}>
-                            {getPriorityLabel(agency.priority)}
-                          </Badge>
-                        )}
-                        {isFollowUpDue(agency) && (
-                          <Badge className="bg-red-500 text-white animate-pulse">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Follow-up Due
-                          </Badge>
-                        )}
-                      </div>
-                      {agency.proprietor_name && (
-                        <p className="text-sm text-slate-600">Prop: {agency.proprietor_name}</p>
-                      )}
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {agency.phone}
-                        </span>
-                        {agency.gst_number && (
-                          <span className="flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            GST: {agency.gst_number}
-                          </span>
-                        )}
-                        {agency.last_contact_date && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Last: {formatDate(agency.last_contact_date)}
-                          </span>
-                        )}
-                        {agency.follow_up_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Follow-up: {formatDate(agency.follow_up_date)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => fetchAgencyDetails(agency)} title="View Details">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleMarkContacted(agency)} title="Mark Contacted">
-                      <PhoneCall className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEditModal(agency)} title="Edit">
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEmailModal(agency)} title="Send Email">
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openDeleteModal(agency)} className="text-red-600 hover:text-red-700" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-16">
-            <div className="flex flex-col items-center text-slate-400">
-              <Building className="w-16 h-16 mb-4" />
-              <h3 className="text-lg font-medium">No agencies found</h3>
-              <p className="text-sm">Add your first agency to get started</p>
+      {/* Agencies Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Agencies List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : agencies.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedIds.length === agencies.length && agencies.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        data-testid="select-all-checkbox"
+                      />
+                    </TableHead>
+                    <TableHead>Agency</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Follow-up</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Contact</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agencies.map((agency) => (
+                    <TableRow 
+                      key={agency.id} 
+                      className={`${isFollowUpDue(agency) ? 'bg-red-50' : ''} ${selectedIds.includes(agency.id) ? 'bg-blue-50' : ''}`}
+                      data-testid={`agency-row-${agency.id}`}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(agency.id)}
+                          onCheckedChange={(checked) => handleSelectOne(agency.id, checked)}
+                          data-testid={`select-agency-${agency.id}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Building className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{agency.name}</p>
+                            <p className="text-xs text-slate-500">{agency.customer_code}</p>
+                            {agency.proprietor_name && <p className="text-xs text-slate-400">Prop: {agency.proprietor_name}</p>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="flex items-center gap-1 text-sm">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {agency.phone}
+                          </p>
+                          {agency.gst_number && (
+                            <p className="flex items-center gap-1 text-xs text-slate-500">
+                              <FileText className="w-3 h-3" />
+                              GST: {agency.gst_number}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(agency.lead_status)}>
+                          {agency.lead_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getPriorityColor(agency.priority)}>
+                          {getPriorityLabel(agency.priority)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {agency.follow_up_date ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span className={isFollowUpDue(agency) ? 'text-red-600 font-medium' : ''}>
+                              {formatDate(agency.follow_up_date)}
+                            </span>
+                          </div>
+                        ) : <span className="text-slate-400">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {agency.last_contact_date ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {formatDate(agency.last_contact_date)}
+                          </div>
+                        ) : <span className="text-slate-400">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fetchAgencyDetails(agency)} title="View Details">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMarkContacted(agency)} title="Mark Contacted">
+                            <PhoneCall className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditModal(agency)} title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEmailModal(agency)} title="Send Email">
+                            <Mail className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => openDeleteModal(agency)} title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Building className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">No agencies found</p>
+              <Button onClick={() => setShowAddModal(true)} variant="outline" className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Agency
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Agency Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={() => { setShowAddModal(false); setShowEditModal(false); resetForm(); }}>

@@ -1295,7 +1295,7 @@ export const Orders = () => {
 
       {/* Edit Order Items Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Edit className="w-5 h-5" />Edit Order Items - {selectedOrder?.order_number}</DialogTitle>
           </DialogHeader>
@@ -1305,7 +1305,7 @@ export const Orders = () => {
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div className="text-sm text-amber-700">
                   <p className="font-medium">Edit quantities or mark items as out of stock</p>
-                  <p>Check "Mark as Pending" to track for customer follow-up.</p>
+                  <p>Enter qty as number (10) or with free scheme (10+5). Check "Mark as Pending" to track for customer follow-up.</p>
                 </div>
               </div>
             </div>
@@ -1313,33 +1313,33 @@ export const Orders = () => {
             <div className="space-y-3">
               {editItems.map((item, index) => (
                 <div key={index} className={`p-4 rounded-lg border ${item.remove ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-800">{item.item_name}</p>
                       <p className="text-sm text-slate-500">{item.item_code}</p>
+                      <div className="flex gap-3 mt-1 text-xs text-slate-600">
+                        {item.rate && <span>Rate: ₹{item.rate}</span>}
+                        {item.mrp && <span>MRP: ₹{item.mrp}</span>}
+                        {item.gst && <span>GST: {item.gst}%</span>}
+                      </div>
                     </div>
                     {!item.remove ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(index, item.quantity - 1)}>
-                            <Minus className="w-3 h-3" />
-                          </Button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
                           <Input
-                            type="number"
-                            value={item.quantity}
+                            type="text"
+                            value={item.editQty || item.quantity}
                             onChange={(e) => handleQuantityChange(index, e.target.value)}
-                            className="w-16 h-8 text-center"
-                            min="0"
+                            className="w-24 h-9 text-center"
+                            placeholder="10 or 10+5"
                           />
-                          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(index, item.quantity + 1)}>
-                            <Plus className="w-3 h-3" />
-                          </Button>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleMarkOutOfStock(index)}
-                          className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                          className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9"
                         >
                           Out of Stock
                         </Button>

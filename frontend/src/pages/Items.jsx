@@ -18,8 +18,13 @@ import {
   Save,
   PlusCircle,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Download,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { formatDate } from '../lib/utils';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,6 +38,13 @@ export const Items = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const importFileRef = useRef(null);
+  
+  // Import modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({

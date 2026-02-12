@@ -46,7 +46,7 @@ class TestAddOrderEnhancements:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/orders/manual",
+            f"{BASE_URL}/api/orders",
             json=order_data,
             headers=self.headers
         )
@@ -106,7 +106,7 @@ class TestAddOrderEnhancements:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/orders/manual",
+            f"{BASE_URL}/api/orders",
             json=order_data,
             headers=self.headers
         )
@@ -173,7 +173,7 @@ class TestAddOrderEnhancements:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/orders/manual",
+            f"{BASE_URL}/api/orders",
             json=order_data,
             headers=self.headers
         )
@@ -274,7 +274,7 @@ class TestManualOrderCreateModel:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/orders/manual",
+            f"{BASE_URL}/api/orders",
             json=order_data,
             headers=self.headers
         )
@@ -304,7 +304,7 @@ class TestManualOrderCreateModel:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/orders/manual",
+            f"{BASE_URL}/api/orders",
             json=order_data,
             headers=self.headers
         )

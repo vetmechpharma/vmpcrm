@@ -574,8 +574,13 @@ export const Orders = () => {
   const addItemToOrder = (item) => {
     const existingIndex = newOrderForm.items.findIndex(i => i.item_id === item.id);
     if (existingIndex >= 0) {
+      // Increment quantity - handle both number and scheme format
       const newItems = [...newOrderForm.items];
-      newItems[existingIndex].quantity += 1;
+      const currentQty = String(newItems[existingIndex].quantity);
+      const qtyParts = currentQty.split('+').map(p => parseInt(p.trim()) || 0);
+      const newQty = (qtyParts[0] || 0) + 1;
+      newItems[existingIndex].quantity = qtyParts[1] ? `${newQty}+${qtyParts[1]}` : String(newQty);
+      newItems[existingIndex].outOfStock = false;
       setNewOrderForm({ ...newOrderForm, items: newItems });
     } else {
       setNewOrderForm({
@@ -584,10 +589,11 @@ export const Orders = () => {
           item_id: item.id,
           item_code: item.item_code,
           item_name: item.item_name,
-          quantity: 1,
+          quantity: '1',
           mrp: item.mrp || item.rate || 0,
           rate: item.rate || 0,
-          gst: item.gst || 0
+          gst: item.gst || 0,
+          outOfStock: false
         }]
       });
     }
@@ -595,13 +601,33 @@ export const Orders = () => {
   };
 
   const updateOrderItemQty = (index, qty) => {
-    const newQty = parseInt(qty) || 0;
-    if (newQty <= 0) {
-      removeOrderItem(index);
-      return;
-    }
+    // Allow string quantities like "10+5" for scheme
+    const qtyStr = String(qty).trim();
     const newItems = [...newOrderForm.items];
-    newItems[index].quantity = newQty;
+    
+    // Check if empty or zero
+    if (qtyStr === '' || qtyStr === '0') {
+      newItems[index].quantity = qtyStr;
+      newItems[index].outOfStock = true;
+    } else {
+      newItems[index].quantity = qtyStr;
+      newItems[index].outOfStock = false;
+    }
+    setNewOrderForm({ ...newOrderForm, items: newItems });
+  };
+
+  const markNewOrderItemOutOfStock = (index) => {
+    const newItems = [...newOrderForm.items];
+    newItems[index].outOfStock = true;
+    newItems[index].previousQty = newItems[index].quantity;
+    newItems[index].quantity = '0';
+    setNewOrderForm({ ...newOrderForm, items: newItems });
+  };
+
+  const restoreNewOrderItem = (index) => {
+    const newItems = [...newOrderForm.items];
+    newItems[index].outOfStock = false;
+    newItems[index].quantity = newItems[index].previousQty || '1';
     setNewOrderForm({ ...newOrderForm, items: newItems });
   };
 

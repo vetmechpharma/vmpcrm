@@ -30,6 +30,12 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Email logs tracking
 - [x] Dashboard with statistics
 - [x] Search and filter functionality
+- [x] **Bulk Delete** (COMPLETED Feb 12, 2026):
+  - Table view with checkboxes for selection
+  - "Select All" checkbox in header
+  - "Delete (N)" button appears when items selected
+  - Confirmation modal with warning
+  - Deletes related notes and tasks
 
 ## Items/Products Management (Iteration 2-3)
 - [x] Items CRUD with fields: name, composition, offer, MRP, Rate, GST

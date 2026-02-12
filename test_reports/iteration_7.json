@@ -1,0 +1,82 @@
+{
+  "summary": "Completed e2e testing of Add Order Modal enhancements. All 8 features tested and PASSED. Found and fixed 2 backend bugs related to pending_items field mapping (original_order_id vs order_id and original_order_date handling).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [],
+    "fixed": [
+      {"endpoint": "/api/pending-items/doctor/{phone}", "issue": "KeyError on original_order_id - stored as order_id but retrieved as original_order_id", "fix": "Updated to use item.get('original_order_id') or item.get('order_id')"},
+      {"endpoint": "/api/pending-items", "issue": "ValidationError for original_order_date when None", "fix": "Added fallback to created_at when original_order_date is None"},
+      {"endpoint": "/api/orders (POST)", "issue": "Missing original_order_id and original_order_date in pending_doc", "fix": "Added original_order_id and original_order_date fields when creating pending items"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_add_order_enhancements.py",
+    "/app/test_reports/pytest/pytest_add_order.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/server.py - Fixed pending_items field mapping and date handling",
+    "/app/backend/tests/test_add_order_enhancements.py - Added comprehensive API tests"
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (8 features tested manually)"
+  },
+  "test_credentials": {
+    "email": "admin@vmpcrm.com",
+    "password": "admin123"
+  },
+  "seed_data_creation": "Created test orders with prefix TEST_ (TEST_E2E_Order, TEST_Multi_Pending, TEST_Pending_Customer, etc.)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Add Order Modal enhancements fully tested and working. Key components: 1) Helper text in blue box about qty format (10+5) and out of stock tracking. 2) Rate/MRP/GST display under each item. 3) Text input for quantity accepting scheme format. 4) 'Out of Stock' button with red styling and 'Restore' button. 5) Summary showing available and out of stock count. 6) Backend ManualOrderCreate model accepts pending_items field. 7) Pending items stored with original_order_id and original_order_date fields.",
+  "features_tested": {
+    "helper_text_display": {
+      "status": "PASS",
+      "details": "Blue info box displays: 'Enter qty as number (10) or with free scheme (10+5). Mark items \"Out of Stock\" to track for customer follow-up.'"
+    },
+    "rate_mrp_gst_display": {
+      "status": "PASS",
+      "details": "Each item shows 'Rate: ₹X MRP: ₹Y GST: Z%' below item name and code"
+    },
+    "scheme_quantity_input": {
+      "status": "PASS",
+      "details": "Text input field accepts both numeric (10) and scheme format (10+5). Label shows 'Qty (e.g. 10 or 10+5)'"
+    },
+    "out_of_stock_button": {
+      "status": "PASS",
+      "details": "Orange 'Out of Stock' button appears for each item. Clicking marks item with red background and red 'Out of Stock' badge"
+    },
+    "restore_button": {
+      "status": "PASS",
+      "details": "Green 'Restore' button appears when item is marked out of stock. Clicking restores item to available state"
+    },
+    "warning_message": {
+      "status": "PASS",
+      "details": "Warning message 'This item will be tracked as pending for customer follow-up' shown for out of stock items"
+    },
+    "summary_counter": {
+      "status": "PASS",
+      "details": "Summary shows 'X available item(s), Y out of stock (will be tracked as pending)'"
+    },
+    "pending_items_backend": {
+      "status": "PASS",
+      "details": "Creating order with out of stock items adds them to pending_items collection with correct order reference"
+    }
+  },
+  "api_tests": {
+    "test_1_create_order_with_scheme_quantity": "PASS - Orders can be created with '10+5' format quantity",
+    "test_2_create_order_with_pending_items": "PASS - Pending items stored in collection with correct data",
+    "test_3_create_order_with_multiple_pending_items": "PASS - Multiple pending items tracked correctly",
+    "test_4_items_api_returns_rate_mrp_gst": "PASS - Items API returns rate, mrp, gst fields",
+    "test_5_orders_api_supports_string_quantity": "PASS - Orders API handles string quantities correctly",
+    "test_6_order_without_pending_items": "PASS - Normal orders created without pending_items",
+    "test_7_order_with_empty_pending_items": "PASS - Empty pending_items array handled correctly"
+  }
+}

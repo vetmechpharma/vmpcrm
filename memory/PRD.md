@@ -328,10 +328,13 @@ Build a simple CRM for managing doctor leads. Features include:
 
 ## Orders Enhancement - COMPLETED Feb 12, 2026
 - [x] **Manual Order Creation** (`Add Order` button):
-  - Customer Details: Name, Phone, Email, Address
+  - **Customer Search**: Search across Doctors, Medicals, Agencies by name or phone
+  - Search results show: name, phone, customer code, type badge (Doctor/Medical/Agency)
+  - Click to select existing customer and auto-fill details
+  - Or enter new customer details with type selection
+  - Auto-creates customer record if new (with appropriate customer code: VMP-/MED-/AGN-)
   - Item Search to add products to order
   - Quantity controls with +/- buttons
-  - Option to create/link doctor record
   - WhatsApp confirmation sent automatically
 - [x] **Edit Order Items**:
   - Quantity editing with +/- buttons and direct input
@@ -340,6 +343,7 @@ Build a simple CRM for managing doctor leads. Features include:
   - "Restore" button to undo out of stock
   - Summary of changes before saving
 - [x] **Order Sources**: Both customer orders (from public showcase) and admin/staff created orders supported
+- [x] **Customer Types**: Orders can be linked to Doctors, Medicals, or Agencies
 
 ## Prioritized Backlog
 

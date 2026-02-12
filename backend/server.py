@@ -1239,6 +1239,21 @@ async def delete_doctor(doctor_id: str, current_user: dict = Depends(get_current
     await db.tasks.delete_many({'doctor_id': doctor_id})
     return {"message": "Doctor deleted successfully"}
 
+@api_router.post("/doctors/bulk-delete")
+async def bulk_delete_doctors(ids: List[str], current_user: dict = Depends(get_current_user)):
+    """Bulk delete multiple doctors"""
+    if not ids:
+        raise HTTPException(status_code=400, detail="No IDs provided")
+    
+    # Delete doctors
+    result = await db.doctors.delete_many({'id': {'$in': ids}})
+    
+    # Also delete related notes and tasks
+    await db.doctor_notes.delete_many({'doctor_id': {'$in': ids}})
+    await db.tasks.delete_many({'doctor_id': {'$in': ids}})
+    
+    return {"message": f"{result.deleted_count} doctor(s) deleted successfully", "deleted_count": result.deleted_count}
+
 # ============== DOCTOR NOTES ROUTES ==============
 
 @api_router.get("/doctors/{doctor_id}/notes", response_model=List[DoctorNoteResponse])

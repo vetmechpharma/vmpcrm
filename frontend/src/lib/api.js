@@ -71,6 +71,7 @@ export const medicalsAPI = {
   create: (data) => api.post('/medicals', data),
   update: (id, data) => api.put(`/medicals/${id}`, data),
   delete: (id) => api.delete(`/medicals/${id}`),
+  bulkDelete: (ids) => api.post('/medicals/bulk-delete', ids),
   updateContact: (id) => api.put(`/medicals/${id}/contact`),
   // Notes
   getNotes: (id) => api.get(`/medicals/${id}/notes`),
@@ -85,6 +86,7 @@ export const agenciesAPI = {
   create: (data) => api.post('/agencies', data),
   update: (id, data) => api.put(`/agencies/${id}`, data),
   delete: (id) => api.delete(`/agencies/${id}`),
+  bulkDelete: (ids) => api.post('/agencies/bulk-delete', ids),
   updateContact: (id) => api.put(`/agencies/${id}/contact`),
   // Notes
   getNotes: (id) => api.get(`/agencies/${id}/notes`),

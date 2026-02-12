@@ -3722,6 +3722,14 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
             update_data['delivery_station'] = status_data.delivery_station
         if status_data.payment_mode:
             update_data['payment_mode'] = status_data.payment_mode
+        # Payment amount (for both to_pay and paid)
+        if status_data.payment_amount is not None:
+            update_data['payment_amount'] = status_data.payment_amount
+        # Expense details (only relevant for 'paid' mode)
+        if status_data.expense_paid_by:
+            update_data['expense_paid_by'] = status_data.expense_paid_by
+        if status_data.expense_account:
+            update_data['expense_account'] = status_data.expense_account
         # Package counts
         if status_data.boxes_count is not None:
             update_data['boxes_count'] = status_data.boxes_count
@@ -3751,7 +3759,8 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
         
         # Auto-create expense for shipped orders with 'paid' payment mode
         payment_mode = order.get('payment_mode') or update_data.get('payment_mode', '')
-        if payment_mode == 'paid' and order.get('invoice_value'):
+        payment_amount = order.get('payment_amount') or update_data.get('payment_amount', 0)
+        if payment_mode == 'paid' and payment_amount > 0:
             await auto_create_transport_expense(order, update_data, current_user)
     
     # Only add cancellation reason if status is 'cancelled'

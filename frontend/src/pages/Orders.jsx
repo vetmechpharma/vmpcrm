@@ -54,6 +54,8 @@ const PAYMENT_MODES = [
   { value: 'paid', label: 'Paid' },
 ];
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 export const Orders = () => {
   const { isAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -68,6 +70,7 @@ export const Orders = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingItemsForOrder, setPendingItemsForOrder] = useState([]);
   const [existingDoctor, setExistingDoctor] = useState(null);
@@ -77,6 +80,9 @@ export const Orders = () => {
   const [customerResults, setCustomerResults] = useState([]);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [companySettings, setCompanySettings] = useState(null);
+  
+  const printRef = useRef();
 
   // Transport form
   const [newTransport, setNewTransport] = useState({

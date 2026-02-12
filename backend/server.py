@@ -658,6 +658,9 @@ class OrderResponse(BaseModel):
     tracking_url: Optional[str] = None
     delivery_station: Optional[str] = None
     payment_mode: Optional[str] = None
+    payment_amount: Optional[float] = None
+    expense_paid_by: Optional[str] = None
+    expense_account: Optional[str] = None
     # Shipping package details
     boxes_count: Optional[int] = None
     cans_count: Optional[int] = None

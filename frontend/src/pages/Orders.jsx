@@ -427,15 +427,65 @@ export const Orders = () => {
   // Add Order Functions
   const openAddModal = () => {
     setNewOrderForm({
-      doctor_name: '',
-      doctor_phone: '',
-      doctor_email: '',
-      doctor_address: '',
-      items: [],
-      link_to_doctor: false
+      customer_name: '',
+      customer_phone: '',
+      customer_email: '',
+      customer_address: '',
+      customer_type: 'doctor',
+      customer_id: null,
+      items: []
     });
     setItemSearch('');
+    setCustomerSearch('');
+    setCustomerResults([]);
+    setSelectedCustomer(null);
     setShowAddModal(true);
+  };
+
+  const searchCustomers = async (query) => {
+    setCustomerSearch(query);
+    if (query.length < 2) {
+      setCustomerResults([]);
+      return;
+    }
+    
+    setSearchingCustomers(true);
+    try {
+      const response = await ordersAPI.searchCustomers(query);
+      setCustomerResults(response.data);
+    } catch (error) {
+      console.error('Failed to search customers');
+    } finally {
+      setSearchingCustomers(false);
+    }
+  };
+
+  const selectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    setNewOrderForm({
+      ...newOrderForm,
+      customer_name: customer.name,
+      customer_phone: customer.phone,
+      customer_email: customer.email || '',
+      customer_address: customer.address || '',
+      customer_type: customer.type,
+      customer_id: customer.id
+    });
+    setCustomerSearch('');
+    setCustomerResults([]);
+  };
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+    setNewOrderForm({
+      ...newOrderForm,
+      customer_name: '',
+      customer_phone: '',
+      customer_email: '',
+      customer_address: '',
+      customer_type: 'doctor',
+      customer_id: null
+    });
   };
 
   const addItemToOrder = (item) => {

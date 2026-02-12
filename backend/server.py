@@ -3658,7 +3658,15 @@ async def auto_create_transport_expense(order: dict, update_data: dict, current_
         transport_name = order.get('transport_name') or update_data.get('transport_name', 'Unknown Transport')
         delivery_station = order.get('delivery_station') or update_data.get('delivery_station', '')
         order_number = order.get('order_number', 'N/A')
-        invoice_value = order.get('invoice_value', 0)
+        
+        # Use payment_amount for expense, fallback to invoice_value for backward compatibility
+        payment_amount = update_data.get('payment_amount') or order.get('payment_amount') or order.get('invoice_value', 0)
+        expense_paid_by = update_data.get('expense_paid_by') or order.get('expense_paid_by')
+        expense_account = update_data.get('expense_account') or order.get('expense_account', 'company_account')
+        
+        if not payment_amount or payment_amount <= 0:
+            logger.info(f"Skipping expense creation for order {order_number} - no payment amount")
+            return
         
         # Check if expense already exists for this order
         existing = await db.expenses.find_one({'order_id': order['id'], 'is_auto_generated': True}, {'_id': 0})
@@ -3670,11 +3678,11 @@ async def auto_create_transport_expense(order: dict, update_data: dict, current_
             'category_id': transport_category['id'],
             'category_name': transport_category['name'],
             'date': now.strftime('%Y-%m-%d'),
-            'amount': invoice_value,
-            'payment_type': 'net_banking',  # Default for transport
-            'payment_account': 'company_account',
-            'paid_by': None,
-            'reason': f'Transport for Order #{order_number}',
+            'amount': payment_amount,
+            'payment_type': 'cash' if expense_account == 'cash' else 'net_banking',
+            'payment_account': expense_account or 'company_account',
+            'paid_by': expense_paid_by,
+            'reason': f'Transport for Order #{order_number} via {transport_name}',
             'transport_id': order.get('transport_id'),
             'transport_name': transport_name,
             'transport_location': delivery_station,
@@ -3687,7 +3695,7 @@ async def auto_create_transport_expense(order: dict, update_data: dict, current_
         }
         
         await db.expenses.insert_one(expense_doc)
-        logger.info(f"Auto-created transport expense for order {order_number}")
+        logger.info(f"Auto-created transport expense ₹{payment_amount} for order {order_number}")
     except Exception as e:
         logger.error(f"Failed to auto-create transport expense: {str(e)}")
 

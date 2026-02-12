@@ -127,3 +127,50 @@
 .glass-header {
     @apply bg-white/80 backdrop-blur-md border-b border-slate-200/50;
 }
+
+/* Print styles */
+@media print {
+    body {
+        font-family: Arial, sans-serif;
+        background: white;
+        color: black;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    /* Hide dialog overlay when printing */
+    [role="dialog"] {
+        position: static !important;
+        box-shadow: none !important;
+    }
+    
+    /* Print container styles */
+    .print\:p-4 {
+        padding: 1rem !important;
+    }
+    
+    /* Ensure table borders print properly */
+    table {
+        border-collapse: collapse !important;
+    }
+    
+    th, td {
+        border: 1px solid #d1d5db !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+    
+    /* Background colors for print */
+    .bg-gray-100, .bg-gray-50 {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    /* Page breaks */
+    @page {
+        margin: 1cm;
+        size: A4;
+    }
+}

@@ -315,25 +315,34 @@ export const Orders = () => {
 
   const openEditModal = (order) => {
     setSelectedOrder(order);
-    setEditItems(order.items.map(item => ({ ...item, remove: false, originalQty: item.quantity })));
+    setEditItems(order.items.map(item => ({ 
+      ...item, 
+      remove: false, 
+      originalQty: item.quantity,
+      editQty: item.quantity  // String to allow "10+5" format
+    })));
     setItemsToMarkPending({});
     setShowEditModal(true);
   };
 
   const handleQuantityChange = (index, newQty) => {
-    const qty = parseInt(newQty) || 0;
-    if (qty < 0) return;
-    
+    // Allow both number and scheme format like "10+5"
     const newItems = [...editItems];
-    newItems[index].quantity = qty;
-    newItems[index].remove = qty === 0;
+    newItems[index].editQty = newQty;
+    newItems[index].quantity = newQty;
+    
+    // Check if empty or zero
+    const isZero = newQty === '' || newQty === '0';
+    newItems[index].remove = isZero;
+    
     setEditItems(newItems);
   };
 
   const handleMarkOutOfStock = (index) => {
     const newItems = [...editItems];
     newItems[index].remove = true;
-    newItems[index].quantity = 0;
+    newItems[index].quantity = '0';
+    newItems[index].editQty = '0';
     setEditItems(newItems);
     
     // Auto-check "mark as pending"
@@ -347,6 +356,7 @@ export const Orders = () => {
     const newItems = [...editItems];
     newItems[index].remove = false;
     newItems[index].quantity = newItems[index].originalQty;
+    newItems[index].editQty = newItems[index].originalQty;
     setEditItems(newItems);
     
     setItemsToMarkPending(prev => ({

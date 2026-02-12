@@ -409,95 +409,155 @@ export const Medicals = () => {
                 ))}
               </SelectContent>
             </Select>
+            {selectedIds.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowBulkDeleteModal(true)}
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete ({selectedIds.length})
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Medicals List */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-        </div>
-      ) : medicals.length > 0 ? (
-        <div className="grid gap-4">
-          {medicals.map((medical) => (
-            <Card key={medical.id} className={`card-hover ${isFollowUpDue(medical) ? 'border-l-4 border-l-red-500' : ''}`} data-testid={`medical-card-${medical.id}`}>
-              <CardContent className="pt-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Store className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-slate-800">{medical.name}</h3>
-                        <Badge variant="outline" className="text-xs">{medical.customer_code}</Badge>
-                        <Badge className={getStatusColor(medical.lead_status)}>{medical.lead_status}</Badge>
-                        {medical.priority && (
-                          <Badge className={getPriorityColor(medical.priority)}>
-                            {getPriorityLabel(medical.priority)}
-                          </Badge>
-                        )}
-                        {isFollowUpDue(medical) && (
-                          <Badge className="bg-red-500 text-white animate-pulse">
-                            <AlertTriangle className="w-3 h-3 mr-1" />
-                            Follow-up Due
-                          </Badge>
-                        )}
-                      </div>
-                      {medical.proprietor_name && (
-                        <p className="text-sm text-slate-600">Prop: {medical.proprietor_name}</p>
-                      )}
-                      <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {medical.phone}
-                        </span>
-                        {medical.gst_number && (
-                          <span className="flex items-center gap-1">
-                            <FileText className="w-3 h-3" />
-                            GST: {medical.gst_number}
-                          </span>
-                        )}
-                        {medical.last_contact_date && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Last: {formatDate(medical.last_contact_date)}
-                          </span>
-                        )}
-                        {medical.follow_up_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            Follow-up: {formatDate(medical.follow_up_date)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => fetchMedicalDetails(medical)} title="View Details">
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleMarkContacted(medical)} title="Mark Contacted">
-                      <PhoneCall className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEditModal(medical)} title="Edit">
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEmailModal(medical)} title="Send Email">
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openDeleteModal(medical)} className="text-red-600 hover:text-red-700" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
+      {/* Medicals Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Medicals List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            </div>
+          ) : medicals.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedIds.length === medicals.length && medicals.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        data-testid="select-all-checkbox"
+                      />
+                    </TableHead>
+                    <TableHead>Medical</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Follow-up</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Contact</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {medicals.map((medical) => (
+                    <TableRow 
+                      key={medical.id} 
+                      className={`${isFollowUpDue(medical) ? 'bg-red-50' : ''} ${selectedIds.includes(medical.id) ? 'bg-blue-50' : ''}`}
+                      data-testid={`medical-row-${medical.id}`}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(medical.id)}
+                          onCheckedChange={(checked) => handleSelectOne(medical.id, checked)}
+                          data-testid={`select-medical-${medical.id}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Store className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{medical.name}</p>
+                            <p className="text-xs text-slate-500">{medical.customer_code}</p>
+                            {medical.proprietor_name && <p className="text-xs text-slate-400">Prop: {medical.proprietor_name}</p>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="flex items-center gap-1 text-sm">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {medical.phone}
+                          </p>
+                          {medical.gst_number && (
+                            <p className="flex items-center gap-1 text-xs text-slate-500">
+                              <FileText className="w-3 h-3" />
+                              GST: {medical.gst_number}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(medical.lead_status)}>
+                          {medical.lead_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getPriorityColor(medical.priority)}>
+                          {getPriorityLabel(medical.priority)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {medical.follow_up_date ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span className={isFollowUpDue(medical) ? 'text-red-600 font-medium' : ''}>
+                              {formatDate(medical.follow_up_date)}
+                            </span>
+                          </div>
+                        ) : <span className="text-slate-400">-</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {medical.last_contact_date ? (
+                          <div className="flex items-center gap-1 text-sm">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {formatDate(medical.last_contact_date)}
+                          </div>
+                        ) : <span className="text-slate-400">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fetchMedicalDetails(medical)} title="View Details">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleMarkContacted(medical)} title="Mark Contacted">
+                            <PhoneCall className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditModal(medical)} title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEmailModal(medical)} title="Send Email">
+                            <Mail className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => openDeleteModal(medical)} title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Store className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">No medicals found</p>
+              <Button onClick={() => setShowAddModal(true)} variant="outline" className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Medical
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
           <CardContent className="py-16">
             <div className="flex flex-col items-center text-slate-400">
               <Store className="w-16 h-16 mb-4" />

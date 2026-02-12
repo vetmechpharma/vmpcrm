@@ -3548,6 +3548,27 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
     
     await db.orders.insert_one(order_doc)
     
+    # Handle pending items (out of stock items)
+    if order_data.pending_items and len(order_data.pending_items) > 0:
+        for pending_item in order_data.pending_items:
+            pending_doc = {
+                'id': str(uuid.uuid4()),
+                'order_id': order_id,
+                'original_order_number': order_number,
+                'doctor_phone': clean_phone,
+                'doctor_name': order_data.customer_name,
+                'item_id': pending_item.get('item_id'),
+                'item_code': pending_item.get('item_code'),
+                'item_name': pending_item.get('item_name'),
+                'quantity': pending_item.get('quantity', '1'),
+                'status': 'pending',
+                'created_at': now.isoformat()
+            }
+            await db.pending_items.insert_one(pending_doc)
+        
+        # Send WhatsApp notification for out of stock items
+        background_tasks.add_task(send_whatsapp_out_of_stock, order_doc, order_data.pending_items)
+    
     # Send WhatsApp confirmation
     background_tasks.add_task(
         send_whatsapp_order,
@@ -3562,7 +3583,8 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
         "order_number": order_number,
         "order_id": order_id,
         "customer_type": entity_type,
-        "customer_id": entity_id
+        "customer_id": entity_id,
+        "pending_items_count": len(order_data.pending_items) if order_data.pending_items else 0
     }
 
 @api_router.get("/orders", response_model=List[OrderResponse])

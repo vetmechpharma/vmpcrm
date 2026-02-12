@@ -459,6 +459,16 @@ export const Doctors = () => {
                 ))}
               </SelectContent>
             </Select>
+            {selectedIds.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowBulkDeleteModal(true)}
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete ({selectedIds.length})
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -478,6 +488,13 @@ export const Doctors = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedIds.length === doctors.length && doctors.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        data-testid="select-all-checkbox"
+                      />
+                    </TableHead>
                     <TableHead>Doctor</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Status</TableHead>

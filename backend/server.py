@@ -3554,7 +3554,9 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
             pending_doc = {
                 'id': str(uuid.uuid4()),
                 'order_id': order_id,
+                'original_order_id': order_id,  # Add original_order_id for compatibility
                 'original_order_number': order_number,
+                'original_order_date': now.isoformat(),  # Add order date
                 'doctor_phone': clean_phone,
                 'doctor_name': order_data.customer_name,
                 'item_id': pending_item.get('item_id'),

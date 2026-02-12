@@ -484,7 +484,15 @@ export const Orders = () => {
 
     setSaving(true);
     try {
-      const response = await ordersAPI.create(newOrderForm);
+      // Convert quantity to string for API
+      const orderData = {
+        ...newOrderForm,
+        items: newOrderForm.items.map(item => ({
+          ...item,
+          quantity: String(item.quantity)
+        }))
+      };
+      const response = await ordersAPI.create(orderData);
       toast.success(`Order ${response.data.order_number} created successfully!`);
       setShowAddModal(false);
       fetchOrders();

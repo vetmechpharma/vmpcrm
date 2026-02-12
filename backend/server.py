@@ -3977,7 +3977,7 @@ async def get_pending_items_by_doctor(phone: str, current_user: dict = Depends(g
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         
-        order_date = item.get('original_order_date')
+        order_date = item.get('original_order_date') or item.get('created_at')
         if isinstance(order_date, str):
             order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
         

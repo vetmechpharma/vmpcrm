@@ -70,6 +70,10 @@ export const Orders = () => {
   const [existingDoctor, setExistingDoctor] = useState(null);
   const [lookingUpDoctor, setLookingUpDoctor] = useState(false);
   const [itemSearch, setItemSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   // Transport form
   const [newTransport, setNewTransport] = useState({

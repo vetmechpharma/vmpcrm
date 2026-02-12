@@ -693,31 +693,144 @@ export const Orders = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {/* Customer Details */}
+            {/* Customer Search */}
             <div className="space-y-4">
               <h4 className="font-medium flex items-center gap-2">
-                <User className="w-4 h-4" /> Customer Details
+                <User className="w-4 h-4" /> Select Customer
               </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Name *</Label>
-                  <Input
-                    value={newOrderForm.doctor_name}
-                    onChange={(e) => setNewOrderForm({...newOrderForm, doctor_name: e.target.value})}
-                    placeholder="Customer name"
-                    data-testid="new-order-name"
-                  />
+              
+              {selectedCustomer ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{selectedCustomer.name}</p>
+                        <p className="text-sm text-slate-600">{selectedCustomer.phone} • {selectedCustomer.customer_code}</p>
+                        <Badge className={
+                          selectedCustomer.type === 'doctor' ? 'bg-blue-100 text-blue-700' :
+                          selectedCustomer.type === 'medical' ? 'bg-purple-100 text-purple-700' :
+                          'bg-orange-100 text-orange-700'
+                        }>
+                          {selectedCustomer.type_label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={clearSelectedCustomer}>
+                      Change
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Phone *</Label>
-                  <Input
-                    value={newOrderForm.doctor_phone}
-                    onChange={(e) => setNewOrderForm({...newOrderForm, doctor_phone: e.target.value})}
-                    placeholder="Phone number"
-                    data-testid="new-order-phone"
-                  />
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      value={customerSearch}
+                      onChange={(e) => searchCustomers(e.target.value)}
+                      placeholder="Search by name or phone across Doctors, Medicals, Agencies..."
+                      className="pl-10"
+                      data-testid="customer-search"
+                    />
+                    {searchingCustomers && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                    )}
+                  </div>
+                  
+                  {customerResults.length > 0 && (
+                    <div className="border rounded-lg max-h-48 overflow-y-auto">
+                      {customerResults.map((customer) => (
+                        <div
+                          key={`${customer.type}-${customer.id}`}
+                          className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between border-b last:border-0"
+                          onClick={() => selectCustomer(customer)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4 text-slate-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{customer.name}</p>
+                              <p className="text-sm text-slate-500">{customer.phone} • {customer.customer_code}</p>
+                            </div>
+                          </div>
+                          <Badge className={
+                            customer.type === 'doctor' ? 'bg-blue-100 text-blue-700' :
+                            customer.type === 'medical' ? 'bg-purple-100 text-purple-700' :
+                            'bg-orange-100 text-orange-700'
+                          }>
+                            {customer.type_label}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {customerSearch.length >= 2 && customerResults.length === 0 && !searchingCustomers && (
+                    <p className="text-sm text-slate-500 text-center py-2">No existing customers found. Enter details below to create new.</p>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Customer Details (for new or editing) */}
+            {!selectedCustomer && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-slate-600">Or enter new customer details:</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Name *</Label>
+                    <Input
+                      value={newOrderForm.customer_name}
+                      onChange={(e) => setNewOrderForm({...newOrderForm, customer_name: e.target.value})}
+                      placeholder="Customer name"
+                      data-testid="new-order-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone *</Label>
+                    <Input
+                      value={newOrderForm.customer_phone}
+                      onChange={(e) => setNewOrderForm({...newOrderForm, customer_phone: e.target.value})}
+                      placeholder="Phone number"
+                      data-testid="new-order-phone"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={newOrderForm.customer_email}
+                      onChange={(e) => setNewOrderForm({...newOrderForm, customer_email: e.target.value})}
+                      placeholder="Email address"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Customer Type</Label>
+                    <Select value={newOrderForm.customer_type} onValueChange={(v) => setNewOrderForm({...newOrderForm, customer_type: v})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="doctor">Doctor</SelectItem>
+                        <SelectItem value="medical">Medical</SelectItem>
+                        <SelectItem value="agency">Agency</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label>Address</Label>
+                    <Input
+                      value={newOrderForm.customer_address}
+                      onChange={(e) => setNewOrderForm({...newOrderForm, customer_address: e.target.value})}
+                      placeholder="Delivery address"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
+              </div>
+            )}
                   <Label>Email</Label>
                   <Input
                     type="email"

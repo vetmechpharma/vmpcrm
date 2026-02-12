@@ -375,7 +375,15 @@ export const Orders = () => {
   const handleSaveEditedItems = async () => {
     setSaving(true);
     try {
-      const remainingItems = editItems.filter(item => !item.remove && item.quantity > 0);
+      // Filter and keep items with valid quantity (not empty, not just "0")
+      const remainingItems = editItems.filter(item => {
+        if (item.remove) return false;
+        const qty = String(item.quantity || item.editQty || '');
+        return qty !== '' && qty !== '0';
+      }).map(item => ({
+        ...item,
+        quantity: String(item.quantity || item.editQty)
+      }));
       
       const pendingItems = editItems
         .filter((item, index) => item.remove && itemsToMarkPending[index])
@@ -393,7 +401,7 @@ export const Orders = () => {
       
       const removedCount = editItems.filter(item => item.remove).length;
       const pendingCount = pendingItems.length;
-      const modifiedCount = editItems.filter(item => !item.remove && item.quantity !== item.originalQty).length;
+      const modifiedCount = editItems.filter(item => !item.remove && String(item.quantity) !== String(item.originalQty)).length;
       
       let message = 'Order items updated';
       if (modifiedCount > 0) message += `, ${modifiedCount} qty changed`;
@@ -408,6 +416,49 @@ export const Orders = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Print order
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Order-${selectedOrder?.order_number}`,
+  });
+
+  const openPrintModal = (order) => {
+    setSelectedOrder(order);
+    setShowPrintModal(true);
+  };
+
+  // Send order via WhatsApp
+  const sendOrderWhatsApp = (order) => {
+    const companyName = companySettings?.company_name || 'VMP CRM';
+    const companyPhone = companySettings?.phone || '';
+    
+    let message = `*${companyName}*\n`;
+    message += `📦 *Order: ${order.order_number}*\n\n`;
+    message += `👤 *Customer:* ${order.doctor_name}\n`;
+    message += `📱 *Phone:* ${order.doctor_phone}\n`;
+    if (order.doctor_address) message += `📍 *Address:* ${order.doctor_address}\n`;
+    message += `\n*━━━━ ORDER ITEMS ━━━━*\n\n`;
+    
+    order.items?.forEach((item, idx) => {
+      message += `${idx + 1}. *${item.item_name}*\n`;
+      message += `   Code: ${item.item_code}\n`;
+      message += `   Qty: ${item.quantity}`;
+      if (item.rate) message += ` | Rate: ₹${item.rate}`;
+      if (item.mrp) message += ` | MRP: ₹${item.mrp}`;
+      message += `\n\n`;
+    });
+    
+    message += `*━━━━━━━━━━━━━━━━━*\n`;
+    message += `📅 Date: ${formatDateTime(order.created_at)}\n`;
+    if (order.status) message += `📊 Status: ${STATUS_CONFIG[order.status]?.label || order.status}\n`;
+    if (companyPhone) message += `\n📞 Contact: ${companyPhone}`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    const phone = order.doctor_phone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/91${phone}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const openCustomerModal = async (order) => {

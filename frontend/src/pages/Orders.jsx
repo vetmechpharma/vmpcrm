@@ -1015,34 +1015,102 @@ export const Orders = () => {
               )}
 
               {/* Selected Items */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {newOrderForm.items.length > 0 ? (
-                  newOrderForm.items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.item_name}</p>
-                        <p className="text-sm text-slate-500">{item.item_code} | ₹{item.rate}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateOrderItemQty(index, item.quantity - 1)}>
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateOrderItemQty(index, e.target.value)}
-                          className="w-16 h-8 text-center"
-                          min="1"
-                        />
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateOrderItemQty(index, item.quantity + 1)}>
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => removeOrderItem(index)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                  <>
+                    {/* Helper text */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        Enter qty as number (10) or with free scheme (10+5). Mark items "Out of Stock" to track for customer follow-up.
+                      </p>
                     </div>
-                  ))
+                    
+                    {newOrderForm.items.map((item, index) => (
+                      <div key={index} className={`p-4 rounded-lg border ${item.outOfStock ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-800">{item.item_name}</p>
+                            <p className="text-sm text-slate-500">{item.item_code}</p>
+                            <div className="flex gap-3 mt-1 text-xs text-slate-600">
+                              <span>Rate: ₹{item.rate}</span>
+                              {item.mrp && <span>MRP: ₹{item.mrp}</span>}
+                              {item.gst && <span>GST: {item.gst}%</span>}
+                            </div>
+                          </div>
+                          {!item.outOfStock ? (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
+                                <Input
+                                  type="text"
+                                  value={item.quantity}
+                                  onChange={(e) => updateOrderItemQty(index, e.target.value)}
+                                  className="w-24 h-9 text-center"
+                                  placeholder="10 or 10+5"
+                                />
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => markNewOrderItemOutOfStock(index)}
+                                className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9"
+                              >
+                                Out of Stock
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-9 w-9 text-red-500" 
+                                onClick={() => removeOrderItem(index)}
+                                title="Remove item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-red-100 text-red-700">Out of Stock</Badge>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => restoreNewOrderItem(index)} 
+                                className="text-green-600 border-green-300 hover:bg-green-50"
+                              >
+                                Restore
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-9 w-9 text-red-500" 
+                                onClick={() => removeOrderItem(index)}
+                                title="Remove item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        {item.outOfStock && (
+                          <div className="mt-3 pt-3 border-t border-red-200">
+                            <p className="text-sm text-red-600 flex items-center gap-1">
+                              <AlertTriangle className="w-4 h-4" />
+                              This item will be tracked as pending for customer follow-up
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* Summary */}
+                    <div className="p-3 bg-slate-100 rounded-lg">
+                      <p className="text-sm text-slate-600">
+                        <strong>{newOrderForm.items.filter(i => !i.outOfStock && i.quantity !== '0').length}</strong> available item(s)
+                        {newOrderForm.items.filter(i => i.outOfStock).length > 0 && (
+                          <>, <strong className="text-orange-600">{newOrderForm.items.filter(i => i.outOfStock).length}</strong> out of stock (will be tracked as pending)</>
+                        )}
+                      </p>
+                    </div>
+                  </>
                 ) : (
                   <p className="text-center py-8 text-slate-400">Search and add items above</p>
                 )}

@@ -3563,37 +3563,6 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
         "customer_type": entity_type,
         "customer_id": entity_id
     }
-        'id': order_id,
-        'order_number': order_number,
-        'doctor_id': doctor_id,
-        'doctor_name': order_data.doctor_name,
-        'doctor_phone': clean_phone,
-        'doctor_email': order_data.doctor_email,
-        'doctor_address': order_data.doctor_address,
-        'items': [item.dict() for item in order_data.items],
-        'status': 'pending',
-        'created_by': current_user['name'],
-        'created_by_id': current_user['id'],
-        'source': 'admin_panel',
-        'created_at': now.isoformat()
-    }
-    
-    await db.orders.insert_one(order_doc)
-    
-    # Send WhatsApp confirmation
-    background_tasks.add_task(
-        send_whatsapp_order,
-        clean_phone,
-        order_data.items,
-        order_number,
-        order_data.doctor_name
-    )
-    
-    return {
-        "message": "Order created successfully",
-        "order_number": order_number,
-        "order_id": order_id
-    }
 
 @api_router.get("/orders", response_model=List[OrderResponse])
 async def get_orders(

@@ -713,6 +713,10 @@ class OrderStatusUpdate(BaseModel):
     tracking_url: Optional[str] = None
     delivery_station: Optional[str] = None
     payment_mode: Optional[str] = None  # "to_pay" or "paid"
+    payment_amount: Optional[float] = None  # Amount for to_pay or paid
+    # Expense details (only for 'paid' payment mode)
+    expense_paid_by: Optional[str] = None  # Who paid for the transport
+    expense_account: Optional[str] = None  # Which account was used
     # Package counts (only for shipped status)
     boxes_count: Optional[int] = None
     cans_count: Optional[int] = None

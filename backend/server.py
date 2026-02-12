@@ -632,6 +632,14 @@ class OTPVerify(BaseModel):
     location: Optional[str] = None
     device_info: Optional[str] = None
 
+class ManualOrderCreate(BaseModel):
+    doctor_name: str
+    doctor_phone: str
+    doctor_email: Optional[str] = None
+    doctor_address: Optional[str] = None
+    items: List[OrderItem]
+    link_to_doctor: bool = False  # Option to create/link to doctor record
+
 class OrderResponse(BaseModel):
     id: str
     order_number: str

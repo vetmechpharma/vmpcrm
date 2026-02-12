@@ -145,6 +145,7 @@ export const ordersAPI = {
   updateItems: (id, data) => api.put(`/orders/${id}/items`, data),
   updateCustomer: (id, data) => api.put(`/orders/${id}/customer`, data),
   lookupDoctor: (id) => api.get(`/orders/${id}/lookup-doctor`),
+  searchCustomers: (q) => api.get('/customers/search', { params: { q } }),
 };
 
 // Pending Items APIs

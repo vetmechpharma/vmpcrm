@@ -139,6 +139,7 @@ export const Orders = () => {
     fetchOrders();
     fetchTransports();
     fetchItems();
+    fetchCompanySettings();
   }, [statusFilter]);
 
   const fetchOrders = async () => {
@@ -152,6 +153,18 @@ export const Orders = () => {
       toast.error('Failed to fetch orders');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompanySettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/public/company-settings`);
+      if (response.ok) {
+        const data = await response.json();
+        setCompanySettings(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch company settings');
     }
   };
 

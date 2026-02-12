@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ordersAPI, transportAPI, pendingItemsAPI, itemsAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
+import { useReactToPrint } from 'react-to-print';
 import { 
   Loader2, 
   ShoppingCart, 
@@ -33,7 +34,9 @@ import {
   Edit,
   AlertTriangle,
   Minus,
-  Search
+  Search,
+  Printer,
+  MessageSquare
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 

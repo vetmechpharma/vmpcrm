@@ -218,7 +218,14 @@ class TokenResponse(BaseModel):
 class DoctorCreate(BaseModel):
     name: str
     reg_no: str
-    address: str
+    address: Optional[str] = None  # Legacy field for backward compatibility
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None  # Preferred transport
     email: EmailStr
     phone: str
     lead_status: str = "Pipeline"
@@ -228,6 +235,13 @@ class DoctorUpdate(BaseModel):
     name: Optional[str] = None
     reg_no: Optional[str] = None
     address: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     lead_status: Optional[str] = None
@@ -241,7 +255,15 @@ class DoctorResponse(BaseModel):
     customer_code: str
     name: str
     reg_no: str
-    address: str
+    address: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None  # Populated from transport lookup
     email: str
     phone: str
     lead_status: str

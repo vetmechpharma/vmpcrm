@@ -1435,6 +1435,12 @@ async def create_medical(medical_data: MedicalCreate, current_user: dict = Depen
     customer_code = await generate_medical_code()
     now = datetime.now(timezone.utc)
     
+    # Get transport name if transport_id provided
+    transport_name = None
+    if medical_data.transport_id:
+        transport = await db.transports.find_one({'id': medical_data.transport_id}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
     medical_doc = {
         'id': medical_id,
         'customer_code': customer_code,
@@ -1443,13 +1449,19 @@ async def create_medical(medical_data: MedicalCreate, current_user: dict = Depen
         'gst_number': medical_data.gst_number,
         'drug_license': medical_data.drug_license,
         'address': medical_data.address,
+        'address_line_1': medical_data.address_line_1,
+        'address_line_2': medical_data.address_line_2,
         'state': medical_data.state,
         'district': medical_data.district,
         'pincode': medical_data.pincode,
+        'delivery_station': medical_data.delivery_station,
+        'transport_id': medical_data.transport_id,
         'email': medical_data.email,
         'phone': medical_data.phone,
         'alternate_phone': medical_data.alternate_phone,
         'lead_status': medical_data.lead_status,
+        'birthday': medical_data.birthday,
+        'anniversary': medical_data.anniversary,
         'created_at': now.isoformat(),
         'updated_at': now.isoformat(),
         'created_by': current_user['id']
@@ -1465,13 +1477,20 @@ async def create_medical(medical_data: MedicalCreate, current_user: dict = Depen
         gst_number=medical_data.gst_number,
         drug_license=medical_data.drug_license,
         address=medical_data.address,
+        address_line_1=medical_data.address_line_1,
+        address_line_2=medical_data.address_line_2,
         state=medical_data.state,
         district=medical_data.district,
         pincode=medical_data.pincode,
+        delivery_station=medical_data.delivery_station,
+        transport_id=medical_data.transport_id,
+        transport_name=transport_name,
         email=medical_data.email,
         phone=medical_data.phone,
         alternate_phone=medical_data.alternate_phone,
         lead_status=medical_data.lead_status,
+        birthday=medical_data.birthday,
+        anniversary=medical_data.anniversary,
         created_at=now,
         updated_at=now
     )

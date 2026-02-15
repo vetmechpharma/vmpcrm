@@ -391,10 +391,24 @@ Build a simple CRM for managing doctor leads. Features include:
   - Opens wa.me link with pre-filled message
   - Also available in Print Modal via "Send WhatsApp" button
 
+## Bug Fixes
+
+### Order Status Update Bug - FIXED Feb 15, 2026
+- **Issue**: Order status updates were failing for some orders, especially when updating to "Ready to Despatch" with payment details
+- **Root Cause**: Frontend was sending empty strings (`''`) for numeric fields (`payment_amount`, `invoice_value`) instead of `null`. Pydantic expects float or null, not empty string
+- **Fix Location**: `/app/frontend/src/pages/Orders.jsx` lines 261-270 in `handleSaveOrder()` function
+- **Fix**: Added data sanitization to convert empty strings to null before API call:
+  ```javascript
+  payment_amount: updateForm.payment_amount === '' ? null : updateForm.payment_amount,
+  invoice_value: updateForm.invoice_value === '' ? null : updateForm.invoice_value
+  ```
+- **Testing**: 14/14 backend tests passed, all status transitions verified (Pending→Confirmed, Pending→Ready to Despatch with To Pay/Paid modes, Ready to Despatch→Shipped, Shipped→Delivered, Cancellation)
+- **Test File**: `/app/backend/tests/test_order_status_update.py`
+
 ## Prioritized Backlog
 
 ### P0 (Critical) 
-- [ ] **Refactor `server.py`**: Backend is >4000 lines monolithic file - needs to be split into routers/models/services
+- [ ] **Refactor `server.py`**: Backend is >5000 lines monolithic file - needs to be split into routers/models/services
 
 ### P1 (High Priority)
 - [ ] **Customer Order History**: View all past orders when clicking a customer (Doctor/Medical/Agency)

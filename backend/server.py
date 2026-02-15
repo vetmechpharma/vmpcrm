@@ -1207,6 +1207,13 @@ async def get_doctors(
     
     doctors = await db.doctors.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
     
+    # Get all transport IDs to fetch names in one query
+    transport_ids = [doc.get('transport_id') for doc in doctors if doc.get('transport_id')]
+    transport_map = {}
+    if transport_ids:
+        transports = await db.transports.find({'id': {'$in': transport_ids}}, {'_id': 0, 'id': 1, 'name': 1}).to_list(100)
+        transport_map = {t['id']: t['name'] for t in transports}
+    
     result = []
     for doc in doctors:
         created_at = doc.get('created_at')
@@ -1222,6 +1229,14 @@ async def get_doctors(
             name=doc['name'],
             reg_no=doc.get('reg_no', ''),
             address=doc.get('address', ''),
+            address_line_1=doc.get('address_line_1'),
+            address_line_2=doc.get('address_line_2'),
+            district=doc.get('district'),
+            state=doc.get('state'),
+            pincode=doc.get('pincode'),
+            delivery_station=doc.get('delivery_station'),
+            transport_id=doc.get('transport_id'),
+            transport_name=transport_map.get(doc.get('transport_id')),
             email=doc.get('email', ''),
             phone=doc['phone'],
             lead_status=doc.get('lead_status', 'Pipeline'),
@@ -1241,6 +1256,12 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
     
+    # Get transport name if transport_id exists
+    transport_name = None
+    if doctor.get('transport_id'):
+        transport = await db.transports.find_one({'id': doctor['transport_id']}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
     created_at = doctor.get('created_at')
     updated_at = doctor.get('updated_at') or doctor.get('created_at')
     if isinstance(created_at, str):
@@ -1254,6 +1275,14 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
         name=doctor['name'],
         reg_no=doctor.get('reg_no', ''),
         address=doctor.get('address', ''),
+        address_line_1=doctor.get('address_line_1'),
+        address_line_2=doctor.get('address_line_2'),
+        district=doctor.get('district'),
+        state=doctor.get('state'),
+        pincode=doctor.get('pincode'),
+        delivery_station=doctor.get('delivery_station'),
+        transport_id=doctor.get('transport_id'),
+        transport_name=transport_name,
         email=doctor.get('email', ''),
         phone=doctor['phone'],
         lead_status=doctor.get('lead_status', 'Pipeline'),
@@ -1278,6 +1307,12 @@ async def update_doctor(doctor_id: str, doctor_data: DoctorUpdate, current_user:
     
     updated_doctor = await db.doctors.find_one({'id': doctor_id}, {'_id': 0})
     
+    # Get transport name if transport_id exists
+    transport_name = None
+    if updated_doctor.get('transport_id'):
+        transport = await db.transports.find_one({'id': updated_doctor['transport_id']}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
     created_at = updated_doctor.get('created_at')
     updated_at = updated_doctor.get('updated_at') or updated_doctor.get('created_at')
     if isinstance(created_at, str):
@@ -1291,6 +1326,14 @@ async def update_doctor(doctor_id: str, doctor_data: DoctorUpdate, current_user:
         name=updated_doctor['name'],
         reg_no=updated_doctor.get('reg_no', ''),
         address=updated_doctor.get('address', ''),
+        address_line_1=updated_doctor.get('address_line_1'),
+        address_line_2=updated_doctor.get('address_line_2'),
+        district=updated_doctor.get('district'),
+        state=updated_doctor.get('state'),
+        pincode=updated_doctor.get('pincode'),
+        delivery_station=updated_doctor.get('delivery_station'),
+        transport_id=updated_doctor.get('transport_id'),
+        transport_name=transport_name,
         email=updated_doctor.get('email', ''),
         phone=updated_doctor['phone'],
         lead_status=updated_doctor.get('lead_status', 'Pipeline'),

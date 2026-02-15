@@ -790,10 +790,10 @@ export const Doctors = () => {
               </div>
               <div className="space-y-2">
                 <Label>Preferred Transport</Label>
-                <Select value={formData.transport_id} onValueChange={(v) => setFormData({...formData, transport_id: v})}>
+                <Select value={formData.transport_id || 'none'} onValueChange={(v) => setFormData({...formData, transport_id: v === 'none' ? '' : v})}>
                   <SelectTrigger><SelectValue placeholder="Select Transport" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {transports.map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                     ))}

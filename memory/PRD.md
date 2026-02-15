@@ -391,6 +391,17 @@ Build a simple CRM for managing doctor leads. Features include:
   - Opens wa.me link with pre-filled message
   - Also available in Print Modal via "Send WhatsApp" button
 
+## Order Email Notifications - COMPLETED Feb 15, 2026
+- [x] **Order Confirmation Email**: Automatic email sent to customer when order is placed
+  - Triggered for both manual orders (staff) and public showcase orders
+  - Professional HTML email template with company branding
+  - Includes: Order number, date, customer details, address
+  - Items table with: Item code, name, quantity, rate, amount
+  - Total amount calculation (handles scheme quantities like "10+5")
+  - Uses existing SMTP configuration
+  - Email logs tracked in Email Logs page with status (sent/failed)
+  - Only sends if customer has email address configured
+
 ## Bug Fixes
 
 ### Order Status Update Bug - FIXED Feb 15, 2026

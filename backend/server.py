@@ -291,10 +291,14 @@ class MedicalCreate(BaseModel):
     proprietor_name: Optional[str] = None
     gst_number: Optional[str] = None
     drug_license: Optional[str] = None
-    address: Optional[str] = None
+    address: Optional[str] = None  # Legacy field
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
     pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None  # Preferred transport
     email: Optional[EmailStr] = None
     phone: str
     alternate_phone: Optional[str] = None
@@ -308,9 +312,13 @@ class MedicalUpdate(BaseModel):
     gst_number: Optional[str] = None
     drug_license: Optional[str] = None
     address: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
     pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     alternate_phone: Optional[str] = None
@@ -329,9 +337,14 @@ class MedicalResponse(BaseModel):
     gst_number: Optional[str] = None
     drug_license: Optional[str] = None
     address: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
     state: Optional[str] = None
     district: Optional[str] = None
     pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None  # Populated from transport lookup
     email: Optional[str] = None
     phone: str
     alternate_phone: Optional[str] = None

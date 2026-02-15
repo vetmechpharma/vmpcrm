@@ -81,16 +81,27 @@ export const Medicals = () => {
     gst_number: '',
     drug_license: '',
     address: '',
+    address_line_1: '',
+    address_line_2: '',
     state: '',
     district: '',
     pincode: '',
+    delivery_station: '',
+    transport_id: '',
     email: '',
     phone: '',
     alternate_phone: '',
     lead_status: 'Pipeline',
     priority: 'moderate',
     follow_up_date: '',
+    birthday: '',
+    anniversary: '',
   });
+
+  // States, Districts, and Transports data
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [transports, setTransports] = useState([]);
 
   const [emailData, setEmailData] = useState({
     subject: '',
@@ -100,6 +111,42 @@ export const Medicals = () => {
   useEffect(() => {
     fetchMedicals();
   }, [search, statusFilter]);
+
+  useEffect(() => {
+    fetchStatesAndTransports();
+  }, []);
+
+  // Fetch districts when state changes
+  useEffect(() => {
+    if (formData.state) {
+      fetchDistricts(formData.state);
+    } else {
+      setDistricts([]);
+    }
+  }, [formData.state]);
+
+  const fetchStatesAndTransports = async () => {
+    try {
+      const [statesRes, transportsRes] = await Promise.all([
+        locationAPI.getStates(),
+        transportAPI.getAll()
+      ]);
+      setStates(statesRes.data.states || []);
+      setTransports(transportsRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch states/transports');
+    }
+  };
+
+  const fetchDistricts = async (state) => {
+    try {
+      const response = await locationAPI.getDistricts(state);
+      setDistricts(response.data.districts || []);
+    } catch (error) {
+      console.error('Failed to fetch districts');
+      setDistricts([]);
+    }
+  };
 
   const fetchMedicals = async () => {
     setLoading(true);

@@ -373,6 +373,13 @@ export const Doctors = () => {
       name: '',
       reg_no: '',
       address: '',
+      address_line_1: '',
+      address_line_2: '',
+      state: '',
+      district: '',
+      pincode: '',
+      delivery_station: '',
+      transport_id: '',
       email: '',
       phone: '',
       lead_status: 'Pipeline',
@@ -380,6 +387,7 @@ export const Doctors = () => {
       priority: 'moderate',
       follow_up_date: '',
     });
+    setDistricts([]);
   };
 
   const getPriorityLabel = (priority) => {

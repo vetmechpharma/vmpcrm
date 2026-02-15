@@ -3185,6 +3185,217 @@ Regards,
         logger.error(f"WhatsApp order message error: {str(e)}")
         await log_whatsapp_message(clean_mobile, 'order_confirmation', message, 'failed', recipient_name=doctor_name, error_message=str(e))
 
+async def send_order_confirmation_email(order_doc: dict, items: list):
+    """Send order confirmation email to customer"""
+    try:
+        # Check if customer has email
+        customer_email = order_doc.get('doctor_email')
+        if not customer_email:
+            logger.info(f"No email address for order {order_doc.get('order_number')}, skipping email")
+            return
+        
+        # Get SMTP config
+        smtp_config = await db.smtp_config.find_one({}, {'_id': 0})
+        if not smtp_config:
+            logger.warning("SMTP not configured, skipping order confirmation email")
+            return
+        
+        # Get company settings
+        company = await db.company_settings.find_one({}, {'_id': 0})
+        company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+        company_address = company.get('address', '') if company else ''
+        company_phone = company.get('phone', '') if company else ''
+        company_email = company.get('email', '') if company else ''
+        
+        customer_name = order_doc.get('doctor_name', 'Customer')
+        customer_phone = order_doc.get('doctor_phone', '')
+        customer_address = order_doc.get('doctor_address', '')
+        order_number = order_doc.get('order_number', '')
+        order_date = datetime.now(timezone.utc).strftime('%d %b %Y, %I:%M %p')
+        
+        # Build items table rows
+        items_rows = ""
+        total_amount = 0
+        for idx, item in enumerate(items, 1):
+            item_name = item.get('item_name', '') if isinstance(item, dict) else getattr(item, 'item_name', '')
+            item_code = item.get('item_code', '') if isinstance(item, dict) else getattr(item, 'item_code', '')
+            quantity = item.get('quantity', '1') if isinstance(item, dict) else getattr(item, 'quantity', '1')
+            rate = item.get('rate', 0) if isinstance(item, dict) else getattr(item, 'rate', 0)
+            mrp = item.get('mrp', 0) if isinstance(item, dict) else getattr(item, 'mrp', 0)
+            
+            # Calculate amount (handle scheme quantities like "10+5")
+            try:
+                if '+' in str(quantity):
+                    qty_parts = str(quantity).split('+')
+                    total_qty = sum(int(q.strip()) for q in qty_parts)
+                else:
+                    total_qty = int(quantity)
+                amount = float(rate or 0) * total_qty
+                total_amount += amount
+            except:
+                amount = 0
+            
+            items_rows += f"""
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #eee;">{idx}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee;">{item_code}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee;">{item_name}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">{quantity}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">₹{rate:.2f}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">₹{amount:.2f}</td>
+            </tr>"""
+        
+        # Build HTML email
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">{company_name}</h1>
+            <p style="color: #b8d4e8; margin: 10px 0 0 0; font-size: 14px;">Order Confirmation</p>
+        </div>
+        
+        <!-- Order Status Banner -->
+        <div style="background-color: #10b981; padding: 15px; text-align: center;">
+            <span style="color: #ffffff; font-size: 16px; font-weight: bold;">✓ Order Received Successfully!</span>
+        </div>
+        
+        <!-- Content -->
+        <div style="padding: 30px;">
+            <!-- Greeting -->
+            <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
+                Dear <strong>{customer_name}</strong>,
+            </p>
+            <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                Thank you for your order! We have received your order and will start processing it shortly.
+            </p>
+            
+            <!-- Order Info Box -->
+            <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0;">
+                            <strong style="color: #64748b;">Order Number:</strong>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                            <strong style="color: #1e3a5f;">{order_number}</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0;">
+                            <strong style="color: #64748b;">Order Date:</strong>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                            <span style="color: #333;">{order_date}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0;">
+                            <strong style="color: #64748b;">Phone:</strong>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                            <span style="color: #333;">{customer_phone}</span>
+                        </td>
+                    </tr>
+                    {f'''<tr>
+                        <td style="padding: 8px 0;">
+                            <strong style="color: #64748b;">Address:</strong>
+                        </td>
+                        <td style="padding: 8px 0; text-align: right;">
+                            <span style="color: #333;">{customer_address}</span>
+                        </td>
+                    </tr>''' if customer_address else ''}
+                </table>
+            </div>
+            
+            <!-- Items Table -->
+            <h3 style="color: #1e3a5f; margin: 25px 0 15px 0; font-size: 16px;">Order Items</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background-color: #1e3a5f; color: #ffffff;">
+                        <th style="padding: 12px; text-align: left;">#</th>
+                        <th style="padding: 12px; text-align: left;">Code</th>
+                        <th style="padding: 12px; text-align: left;">Item Name</th>
+                        <th style="padding: 12px; text-align: center;">Qty</th>
+                        <th style="padding: 12px; text-align: right;">Rate</th>
+                        <th style="padding: 12px; text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items_rows}
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f8fafc;">
+                        <td colspan="5" style="padding: 15px; text-align: right; font-weight: bold; color: #1e3a5f;">
+                            Total Amount:
+                        </td>
+                        <td style="padding: 15px; text-align: right; font-weight: bold; color: #10b981; font-size: 16px;">
+                            ₹{total_amount:.2f}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <!-- Note -->
+            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+                <p style="margin: 0; color: #92400e; font-size: 13px;">
+                    <strong>Note:</strong> This is an order confirmation. The final invoice will be shared once your order is shipped.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #1e3a5f; padding: 25px; text-align: center;">
+            <p style="color: #ffffff; margin: 0 0 5px 0; font-weight: bold;">{company_name}</p>
+            <p style="color: #b8d4e8; margin: 0; font-size: 12px;">{company_address}</p>
+            {f'<p style="color: #b8d4e8; margin: 5px 0 0 0; font-size: 12px;">📞 {company_phone}</p>' if company_phone else ''}
+            {f'<p style="color: #b8d4e8; margin: 5px 0 0 0; font-size: 12px;">✉️ {company_email}</p>' if company_email else ''}
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        # Create email message
+        msg = MIMEMultipart()
+        msg['From'] = f"{smtp_config['from_name']} <{smtp_config['from_email']}>"
+        msg['To'] = f"{customer_name} <{customer_email}>"
+        msg['Subject'] = f"Order Confirmation - {order_number} | {company_name}"
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        # Send email
+        with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
+            server.starttls()
+            server.login(smtp_config['smtp_username'], smtp_config['smtp_password'])
+            server.sendmail(smtp_config['from_email'], [customer_email], msg.as_string())
+        
+        logger.info(f"Order confirmation email sent to {customer_email} for order {order_number}")
+        
+        # Log the email
+        log_id = str(uuid.uuid4())
+        email_log = {
+            'id': log_id,
+            'doctor_id': order_doc.get('doctor_id'),
+            'doctor_name': customer_name,
+            'doctor_email': customer_email,
+            'subject': f"Order Confirmation - {order_number}",
+            'body': f"Order confirmation email for {order_number}",
+            'status': 'sent',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'sent_at': datetime.now(timezone.utc).isoformat(),
+            'sent_by': 'system'
+        }
+        await db.email_logs.insert_one(email_log)
+        
+    except Exception as e:
+        logger.error(f"Failed to send order confirmation email: {str(e)}")
+
 async def send_whatsapp_status_update(order: dict, new_status: str, update_data: dict = None):
     """Send WhatsApp notification for order status changes"""
     config = await get_whatsapp_config()

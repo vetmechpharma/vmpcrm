@@ -1133,12 +1133,25 @@ async def create_doctor(doctor_data: DoctorCreate, current_user: dict = Depends(
     customer_code = await generate_customer_code()
     now = datetime.now(timezone.utc)
     
+    # Get transport name if transport_id provided
+    transport_name = None
+    if doctor_data.transport_id:
+        transport = await db.transports.find_one({'id': doctor_data.transport_id}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
     doctor_doc = {
         'id': doctor_id,
         'customer_code': customer_code,
         'name': doctor_data.name,
         'reg_no': doctor_data.reg_no,
         'address': doctor_data.address,
+        'address_line_1': doctor_data.address_line_1,
+        'address_line_2': doctor_data.address_line_2,
+        'district': doctor_data.district,
+        'state': doctor_data.state,
+        'pincode': doctor_data.pincode,
+        'delivery_station': doctor_data.delivery_station,
+        'transport_id': doctor_data.transport_id,
         'email': doctor_data.email,
         'phone': doctor_data.phone,
         'lead_status': doctor_data.lead_status,
@@ -1156,6 +1169,14 @@ async def create_doctor(doctor_data: DoctorCreate, current_user: dict = Depends(
         name=doctor_data.name,
         reg_no=doctor_data.reg_no,
         address=doctor_data.address,
+        address_line_1=doctor_data.address_line_1,
+        address_line_2=doctor_data.address_line_2,
+        district=doctor_data.district,
+        state=doctor_data.state,
+        pincode=doctor_data.pincode,
+        delivery_station=doctor_data.delivery_station,
+        transport_id=doctor_data.transport_id,
+        transport_name=transport_name,
         email=doctor_data.email,
         phone=doctor_data.phone,
         lead_status=doctor_data.lead_status,

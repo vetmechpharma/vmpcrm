@@ -3369,15 +3369,7 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
         msg['Subject'] = f"Order Confirmation - {order_number} | {company_name}"
         msg.attach(MIMEText(html_body, 'html'))
         
-        # Send email
-        with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
-            server.starttls()
-            server.login(smtp_config['smtp_username'], smtp_config['smtp_password'])
-            server.sendmail(smtp_config['from_email'], [customer_email], msg.as_string())
-        
-        logger.info(f"Order confirmation email sent to {customer_email} for order {order_number}")
-        
-        # Log the email
+        # Log entry for tracking
         log_id = str(uuid.uuid4())
         email_log = {
             'id': log_id,
@@ -3386,12 +3378,32 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
             'doctor_email': customer_email,
             'subject': f"Order Confirmation - {order_number}",
             'body': f"Order confirmation email for {order_number}",
-            'status': 'sent',
+            'status': 'pending',
             'created_at': datetime.now(timezone.utc).isoformat(),
-            'sent_at': datetime.now(timezone.utc).isoformat(),
             'sent_by': 'system'
         }
         await db.email_logs.insert_one(email_log)
+        
+        # Send email
+        try:
+            with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
+                server.starttls()
+                server.login(smtp_config['smtp_username'], smtp_config['smtp_password'])
+                server.sendmail(smtp_config['from_email'], [customer_email], msg.as_string())
+            
+            logger.info(f"Order confirmation email sent to {customer_email} for order {order_number}")
+            
+            # Update log as sent
+            await db.email_logs.update_one(
+                {'id': log_id},
+                {'$set': {'status': 'sent', 'sent_at': datetime.now(timezone.utc).isoformat()}}
+            )
+        except Exception as smtp_error:
+            logger.error(f"SMTP error sending order confirmation email: {str(smtp_error)}")
+            await db.email_logs.update_one(
+                {'id': log_id},
+                {'$set': {'status': 'failed', 'error_message': str(smtp_error)}}
+            )
         
     except Exception as e:
         logger.error(f"Failed to send order confirmation email: {str(e)}")

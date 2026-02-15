@@ -3868,6 +3868,12 @@ async def verify_otp_and_submit_order(request: OTPVerify):
         location=request.location
     )
     
+    # Send Email confirmation to customer (if email available)
+    await send_order_confirmation_email(
+        order_doc,
+        [item.model_dump() for item in valid_items]
+    )
+    
     return OrderResponse(
         id=order_id,
         order_number=order_number,

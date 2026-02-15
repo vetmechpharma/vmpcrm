@@ -229,4 +229,10 @@ export const publicAPI = {
   verifyOTP: (data) => axios.post(`${API_URL}/api/public/verify-otp`, data),
 };
 
+// Location APIs (public, no auth required)
+export const locationAPI = {
+  getStates: () => axios.get(`${API_URL}/api/public/states`),
+  getDistricts: (state) => axios.get(`${API_URL}/api/public/districts/${encodeURIComponent(state)}`),
+};
+
 export default api;

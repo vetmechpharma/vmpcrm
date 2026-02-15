@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doctorsAPI, emailAPI, tasksAPI } from '../lib/api';
+import { doctorsAPI, emailAPI, tasksAPI, transportAPI, locationAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -34,7 +34,8 @@ import {
   AlertTriangle,
   PhoneCall,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Truck
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate } from '../lib/utils';
 

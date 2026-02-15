@@ -342,12 +342,28 @@ export const Doctors = () => {
     }
   };
 
-  const openEditModal = (doctor) => {
+  const openEditModal = async (doctor) => {
     setSelectedDoctor(doctor);
+    // If doctor has a state, fetch districts first
+    if (doctor.state) {
+      try {
+        const response = await locationAPI.getDistricts(doctor.state);
+        setDistricts(response.data.districts || []);
+      } catch (error) {
+        console.error('Failed to fetch districts');
+      }
+    }
     setFormData({
       name: doctor.name,
       reg_no: doctor.reg_no,
-      address: doctor.address,
+      address: doctor.address || '',
+      address_line_1: doctor.address_line_1 || '',
+      address_line_2: doctor.address_line_2 || '',
+      state: doctor.state || '',
+      district: doctor.district || '',
+      pincode: doctor.pincode || '',
+      delivery_station: doctor.delivery_station || '',
+      transport_id: doctor.transport_id || '',
       email: doctor.email,
       phone: doctor.phone,
       lead_status: doctor.lead_status,

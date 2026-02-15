@@ -106,6 +106,42 @@ export const Doctors = () => {
     fetchDoctors();
   }, [search, statusFilter]);
 
+  useEffect(() => {
+    fetchStatesAndTransports();
+  }, []);
+
+  // Fetch districts when state changes
+  useEffect(() => {
+    if (formData.state) {
+      fetchDistricts(formData.state);
+    } else {
+      setDistricts([]);
+    }
+  }, [formData.state]);
+
+  const fetchStatesAndTransports = async () => {
+    try {
+      const [statesRes, transportsRes] = await Promise.all([
+        locationAPI.getStates(),
+        transportAPI.getAll()
+      ]);
+      setStates(statesRes.data.states || []);
+      setTransports(transportsRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch states/transports');
+    }
+  };
+
+  const fetchDistricts = async (state) => {
+    try {
+      const response = await locationAPI.getDistricts(state);
+      setDistricts(response.data.districts || []);
+    } catch (error) {
+      console.error('Failed to fetch districts');
+      setDistricts([]);
+    }
+  };
+
   const fetchDoctors = async () => {
     setLoading(true);
     try {

@@ -4083,6 +4083,13 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
         order_data.customer_name
     )
     
+    # Send Email confirmation to customer
+    background_tasks.add_task(
+        send_order_confirmation_email,
+        order_doc,
+        [item.dict() for item in order_data.items]
+    )
+    
     return {
         "message": "Order created successfully",
         "order_number": order_number,

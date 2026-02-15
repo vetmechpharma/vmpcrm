@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ordersAPI, transportAPI, pendingItemsAPI, itemsAPI } from '../lib/api';
+import { ordersAPI, transportAPI, pendingItemsAPI, itemsAPI, doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';

@@ -259,7 +259,16 @@ export const Orders = () => {
     
     setSaving(true);
     try {
-      await ordersAPI.updateStatus(selectedOrder.id, updateForm);
+      // Sanitize form data - convert empty strings to null for numeric fields
+      const sanitizedData = {
+        ...updateForm,
+        payment_amount: updateForm.payment_amount === '' ? null : updateForm.payment_amount,
+        invoice_value: updateForm.invoice_value === '' ? null : updateForm.invoice_value,
+        boxes_count: updateForm.boxes_count || 0,
+        cans_count: updateForm.cans_count || 0,
+        bags_count: updateForm.bags_count || 0,
+      };
+      await ordersAPI.updateStatus(selectedOrder.id, sanitizedData);
       const statusMessages = {
         'ready_to_despatch': 'marked ready to despatch',
         'shipped': 'shipped',

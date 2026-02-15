@@ -3071,6 +3071,21 @@ async def get_public_categories():
         'subcategories': {k: sorted(list(v)) for k, v in subcategories_map.items()}
     }
 
+# ============== LOCATION DATA ROUTES (PUBLIC) ==============
+
+@api_router.get("/public/states")
+async def get_states():
+    """Get list of all Indian states and union territories"""
+    return {"states": get_all_states()}
+
+@api_router.get("/public/districts/{state}")
+async def get_districts(state: str):
+    """Get list of districts for a given state"""
+    districts = get_districts_by_state(state)
+    if not districts:
+        return {"districts": [], "message": "No districts found for the given state"}
+    return {"districts": districts}
+
 @api_router.get("/public/doctor/{mobile}")
 async def get_doctor_by_mobile(mobile: str):
     """Get doctor details by mobile number for auto-fill"""

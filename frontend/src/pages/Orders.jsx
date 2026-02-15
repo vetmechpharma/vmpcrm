@@ -189,15 +189,54 @@ export const Orders = () => {
     }
   };
 
-  const openUpdateModal = (order) => {
+  const openUpdateModal = async (order) => {
     setSelectedOrder(order);
+    
+    // Initialize form with order data
+    let deliveryStation = order.delivery_station || '';
+    let transportId = order.transport_id || '';
+    let transportName = order.transport_name || '';
+    
+    // If order doesn't have delivery station/transport set, try to get from customer
+    if ((!deliveryStation || !transportId) && order.doctor_id) {
+      try {
+        // Determine customer type from order
+        let customerData = null;
+        if (order.doctor_customer_code?.startsWith('VMP-D')) {
+          const res = await doctorsAPI.getOne(order.doctor_id);
+          customerData = res.data;
+        } else if (order.doctor_customer_code?.startsWith('VMP-M')) {
+          const res = await medicalsAPI.getOne(order.doctor_id);
+          customerData = res.data;
+        } else if (order.doctor_customer_code?.startsWith('VMP-A')) {
+          const res = await agenciesAPI.getOne(order.doctor_id);
+          customerData = res.data;
+        }
+        
+        if (customerData) {
+          // Use customer's delivery preferences if order doesn't have them
+          if (!deliveryStation && customerData.delivery_station) {
+            deliveryStation = customerData.delivery_station;
+          }
+          if (!transportId && customerData.transport_id) {
+            transportId = customerData.transport_id;
+            // Find transport name
+            const transport = transports.find(t => t.id === transportId);
+            transportName = transport?.name || '';
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch customer preferences:', error);
+      }
+    }
+    
     setUpdateForm({
       status: order.status,
-      transport_id: order.transport_id || '',
-      transport_name: order.transport_name || '',
+      transport_id: transportId,
+      transport_name: transportName,
       tracking_number: order.tracking_number || '',
       tracking_url: order.tracking_url || '',
-      delivery_station: order.delivery_station || '',
+      delivery_station: deliveryStation,
       payment_mode: order.payment_mode || '',
       payment_amount: order.payment_amount || '',
       expense_paid_by: order.expense_paid_by || '',

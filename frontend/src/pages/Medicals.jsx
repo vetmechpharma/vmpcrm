@@ -637,6 +637,7 @@ export const Medicals = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
+              {/* Basic Info */}
               <div className="col-span-2 space-y-2">
                 <Label>Medical Name *</Label>
                 <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="ABC Medical Store" data-testid="medical-name-input" />
@@ -665,21 +666,78 @@ export const Medicals = () => {
                 <Label>Drug License</Label>
                 <Input value={formData.drug_license} onChange={(e) => setFormData({...formData, drug_license: e.target.value})} placeholder="DL123456" />
               </div>
+
+              {/* Address Section */}
+              <div className="col-span-2 pt-2 border-t">
+                <h4 className="text-sm font-medium text-slate-700 mb-3">Address Details</h4>
+              </div>
               <div className="col-span-2 space-y-2">
-                <Label>Address</Label>
-                <Input value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} placeholder="123 Main Street" />
+                <Label>Address Line 1</Label>
+                <Input value={formData.address_line_1} onChange={(e) => setFormData({...formData, address_line_1: e.target.value})} placeholder="Building/Street" />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Address Line 2</Label>
+                <Input value={formData.address_line_2} onChange={(e) => setFormData({...formData, address_line_2: e.target.value})} placeholder="Area/Landmark" />
               </div>
               <div className="space-y-2">
                 <Label>State</Label>
-                <Input value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} placeholder="Karnataka" />
+                <Select value={formData.state} onValueChange={(v) => setFormData({...formData, state: v, district: ''})}>
+                  <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {states.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>District</Label>
-                <Input value={formData.district} onChange={(e) => setFormData({...formData, district: e.target.value})} placeholder="Bangalore" />
+                <Select value={formData.district} onValueChange={(v) => setFormData({...formData, district: v})} disabled={!formData.state}>
+                  <SelectTrigger><SelectValue placeholder={formData.state ? "Select District" : "Select state first"} /></SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {districts.map((district) => (
+                      <SelectItem key={district} value={district}>{district}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Pincode</Label>
-                <Input value={formData.pincode} onChange={(e) => setFormData({...formData, pincode: e.target.value})} placeholder="560001" />
+                <Input value={formData.pincode} onChange={(e) => setFormData({...formData, pincode: e.target.value})} placeholder="560001" maxLength={6} />
+              </div>
+
+              {/* Delivery Preferences */}
+              <div className="col-span-2 pt-2 border-t">
+                <h4 className="text-sm font-medium text-slate-700 mb-3">Delivery Preferences</h4>
+              </div>
+              <div className="space-y-2">
+                <Label>Delivery Station</Label>
+                <Input value={formData.delivery_station} onChange={(e) => setFormData({...formData, delivery_station: e.target.value})} placeholder="Station name" />
+              </div>
+              <div className="space-y-2">
+                <Label>Preferred Transport</Label>
+                <Select value={formData.transport_id || 'none'} onValueChange={(v) => setFormData({...formData, transport_id: v === 'none' ? '' : v})}>
+                  <SelectTrigger><SelectValue placeholder="Select Transport" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {transports.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Other Details */}
+              <div className="col-span-2 pt-2 border-t">
+                <h4 className="text-sm font-medium text-slate-700 mb-3">Other Details</h4>
+              </div>
+              <div className="space-y-2">
+                <Label>Birthday</Label>
+                <Input type="date" value={formData.birthday} onChange={(e) => setFormData({...formData, birthday: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Anniversary</Label>
+                <Input type="date" value={formData.anniversary} onChange={(e) => setFormData({...formData, anniversary: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>Lead Status</Label>

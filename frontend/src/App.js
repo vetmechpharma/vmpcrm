@@ -17,10 +17,17 @@ import { Orders } from './pages/Orders';
 import { PendingItems } from './pages/PendingItems';
 import { Reminders } from './pages/Reminders';
 import { PublicShowcase } from './pages/PublicShowcase';
+import Customers from './pages/Customers';
+import Support from './pages/Support';
 import CustomerRegister from './pages/CustomerRegister';
 import CustomerLogin from './pages/CustomerLogin';
 import CustomerLayout from './pages/CustomerLayout';
 import CustomerDashboard from './pages/CustomerDashboard';
+import CustomerItems from './pages/CustomerItems';
+import CustomerOrders from './pages/CustomerOrders';
+import CustomerTasks from './pages/CustomerTasks';
+import CustomerSupport from './pages/CustomerSupport';
+import CustomerProfile from './pages/CustomerProfile';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 

@@ -466,10 +466,19 @@ Build a simple CRM for managing doctor leads. Features include:
   - Customers.jsx - approve/reject customer registrations
   - Support.jsx - manage support tickets
 
+### Phase 3: Portal Customer → Admin List Integration - COMPLETED Feb 17, 2026
+- [x] **Auto-Create Record on Approval**: When portal customer is approved, create record in doctors/medicals/agencies collection
+- [x] **Fields Copied**: name, phone, email, address, customer_code, reg_no (doctors), proprietor_name/gst_number/drug_license (medicals/agencies)
+- [x] **Portal Customer Flags**: `is_portal_customer: true`, `portal_customer_id: <id>`
+- [x] **Lead Status**: Auto-set to "Customer" for approved portal customers
+- [x] **UI Badge**: Green "Portal" badge shown next to lead status in admin list
+- [x] **WhatsApp Notification**: Approval/rejection notification sent to customer
+
 ### Bug Fixes Applied:
 - GET/PUT /api/items/{item_id} returns role-based pricing fields
 - GET /api/public/transports endpoint for customer profile
 - Dashboard stats fallback for missing updated_at field
+- MedicalResponse missing transport_map initialization
 
 ### Test Reports: 
 - `/app/test_reports/iteration_13.json` - Backend tests (17/17 PASSED)

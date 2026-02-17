@@ -2156,6 +2156,8 @@ async def update_agency(agency_id: str, agency_data: AgencyUpdate, current_user:
         follow_up_date=updated.get('follow_up_date'),
         birthday=updated.get('birthday'),
         anniversary=updated.get('anniversary'),
+        is_portal_customer=updated.get('is_portal_customer', False),
+        portal_customer_id=updated.get('portal_customer_id'),
         created_at=created_at,
         updated_at=updated_at
     )

@@ -449,6 +449,118 @@ export const Settings = () => {
         </CardContent>
       </Card>
 
+      {/* Fallback OTP Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Key className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <CardTitle>Fallback OTP Management</CardTitle>
+              <CardDescription>Manage static OTPs for customer registration when WhatsApp fails</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!isAdmin && (
+            <Alert className="mb-6 bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                Only administrators can manage fallback OTPs.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Alert className="mb-6 bg-blue-50 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              <strong>How it works:</strong> If a customer cannot receive WhatsApp OTP, admins can share one of these static codes verbally. These codes are reusable and hidden from users.
+            </AlertDescription>
+          </Alert>
+
+          {/* Add New OTP */}
+          {isAdmin && (
+            <div className="mb-6">
+              <Label className="mb-2 block">Add New Fallback OTP</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter 4-digit OTP"
+                  value={newOTP}
+                  onChange={(e) => setNewOTP(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="flex-1 font-mono text-center tracking-widest"
+                  maxLength={4}
+                  data-testid="new-fallback-otp-input"
+                />
+                <Button 
+                  type="button"
+                  onClick={handleAddFallbackOTP}
+                  disabled={addingOTP || newOTP.length !== 4}
+                  data-testid="add-fallback-otp-btn"
+                >
+                  {addingOTP ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Add OTP
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* OTP List */}
+          <div className="space-y-2">
+            {fallbackOTPs.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">
+                No fallback OTPs configured yet. Add some to help customers who can't receive WhatsApp messages.
+              </div>
+            ) : (
+              fallbackOTPs.map((otp) => (
+                <div 
+                  key={otp.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    otp.is_active ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'
+                  }`}
+                  data-testid={`fallback-otp-${otp.otp}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="font-mono text-xl font-bold tracking-widest">
+                      {otp.otp}
+                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      otp.is_active 
+                        ? 'bg-emerald-100 text-emerald-700' 
+                        : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {otp.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Used: {otp.used_count || 0} times
+                    </span>
+                  </div>
+                  
+                  {isAdmin && (
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={otp.is_active}
+                        onCheckedChange={() => handleToggleFallbackOTP(otp.id)}
+                        data-testid={`toggle-otp-${otp.otp}`}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteFallbackOTP(otp.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        data-testid={`delete-otp-${otp.otp}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Common SMTP Providers */}
       <Card>
         <CardHeader>

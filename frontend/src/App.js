@@ -68,6 +68,14 @@ function AppRoutes() {
       {/* Public Routes */}
       <Route path="/showcase" element={<PublicShowcase />} />
       
+      {/* Customer Portal Routes */}
+      <Route path="/customer/register" element={<CustomerRegister />} />
+      <Route path="/customer/login" element={<CustomerLogin />} />
+      <Route path="/customer" element={<CustomerLayout />}>
+        <Route path="dashboard" element={<CustomerDashboard />} />
+        <Route index element={<Navigate to="/customer/dashboard" replace />} />
+      </Route>
+      
       <Route 
         path="/login" 
         element={

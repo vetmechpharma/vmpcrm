@@ -2100,6 +2100,8 @@ async def get_agency(agency_id: str, current_user: dict = Depends(get_current_us
         follow_up_date=agency.get('follow_up_date'),
         birthday=agency.get('birthday'),
         anniversary=agency.get('anniversary'),
+        is_portal_customer=agency.get('is_portal_customer', False),
+        portal_customer_id=agency.get('portal_customer_id'),
         created_at=created_at,
         updated_at=updated_at
     )

@@ -1504,6 +1504,8 @@ async def update_doctor(doctor_id: str, doctor_data: DoctorUpdate, current_user:
         priority=updated_doctor.get('priority'),
         last_contact_date=updated_doctor.get('last_contact_date'),
         follow_up_date=updated_doctor.get('follow_up_date'),
+        is_portal_customer=updated_doctor.get('is_portal_customer', False),
+        portal_customer_id=updated_doctor.get('portal_customer_id'),
         created_at=created_at,
         updated_at=updated_at
     )

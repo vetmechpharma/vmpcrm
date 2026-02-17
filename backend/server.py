@@ -2946,6 +2946,18 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         mrp=updated_item['mrp'],
         rate=updated_item['rate'],
         gst=updated_item.get('gst', 0),
+        # Role-based pricing - Doctors
+        rate_doctors=updated_item.get('rate_doctors'),
+        offer_doctors=updated_item.get('offer_doctors'),
+        special_offer_doctors=updated_item.get('special_offer_doctors'),
+        # Role-based pricing - Medicals
+        rate_medicals=updated_item.get('rate_medicals'),
+        offer_medicals=updated_item.get('offer_medicals'),
+        special_offer_medicals=updated_item.get('special_offer_medicals'),
+        # Role-based pricing - Agencies
+        rate_agencies=updated_item.get('rate_agencies'),
+        offer_agencies=updated_item.get('offer_agencies'),
+        special_offer_agencies=updated_item.get('special_offer_agencies'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item_id}/image" if has_image else None,
         created_at=created_at

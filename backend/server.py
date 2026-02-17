@@ -3638,6 +3638,27 @@ async def customer_verify_otp(request: CustomerOTPVerify):
     otp_key = f"{clean_phone}_{request.purpose}"
     
     stored = customer_otp_store.get(otp_key)
+    
+    # First check if it's a fallback OTP (admin-managed)
+    fallback_otp = await db.fallback_otps.find_one({'otp': request.otp, 'is_active': True}, {'_id': 0})
+    if fallback_otp:
+        # Increment usage count
+        await db.fallback_otps.update_one(
+            {'id': fallback_otp['id']},
+            {'$inc': {'used_count': 1}}
+        )
+        logger.info(f"Fallback OTP used for phone {clean_phone}")
+        
+        # Store as verified for registration flow
+        customer_otp_store[otp_key] = {
+            'otp': request.otp,
+            'expires': datetime.now(timezone.utc) + timedelta(minutes=30),
+            'verified': True,
+            'is_fallback': True
+        }
+        return {"message": "OTP verified successfully", "verified": True}
+    
+    # Check regular OTP
     if not stored:
         raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new OTP.")
     

@@ -278,6 +278,16 @@ export const Items = () => {
         rate: parseFloat(formData.rate),
         gst: parseFloat(formData.gst) || 0,
         custom_fields: formData.custom_fields,
+        // Role-based pricing
+        rate_doctors: formData.rate_doctors ? parseFloat(formData.rate_doctors) : null,
+        offer_doctors: formData.offer_doctors || null,
+        special_offer_doctors: formData.special_offer_doctors || null,
+        rate_medicals: formData.rate_medicals ? parseFloat(formData.rate_medicals) : null,
+        offer_medicals: formData.offer_medicals || null,
+        special_offer_medicals: formData.special_offer_medicals || null,
+        rate_agencies: formData.rate_agencies ? parseFloat(formData.rate_agencies) : null,
+        offer_agencies: formData.offer_agencies || null,
+        special_offer_agencies: formData.special_offer_agencies || null,
       };
 
       // Only include image if a new one was uploaded

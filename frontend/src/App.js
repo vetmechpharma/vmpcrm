@@ -17,6 +17,10 @@ import { Orders } from './pages/Orders';
 import { PendingItems } from './pages/PendingItems';
 import { Reminders } from './pages/Reminders';
 import { PublicShowcase } from './pages/PublicShowcase';
+import CustomerRegister from './pages/CustomerRegister';
+import CustomerLogin from './pages/CustomerLogin';
+import CustomerLayout from './pages/CustomerLayout';
+import CustomerDashboard from './pages/CustomerDashboard';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 

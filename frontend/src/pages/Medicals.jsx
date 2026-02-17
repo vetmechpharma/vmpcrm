@@ -565,9 +565,16 @@ export const Medicals = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(medical.lead_status)}>
-                          {medical.lead_status}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge className={getStatusColor(medical.lead_status)}>
+                            {medical.lead_status}
+                          </Badge>
+                          {medical.is_portal_customer && (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
+                              Portal
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getPriorityColor(medical.priority)}>

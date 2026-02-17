@@ -431,12 +431,53 @@ Build a simple CRM for managing doctor leads. Features include:
 - **Testing**: 14/14 backend tests passed, all status transitions verified (Pending→Confirmed, Pending→Ready to Despatch with To Pay/Paid modes, Ready to Despatch→Shipped, Shipped→Delivered, Cancellation)
 - **Test File**: `/app/backend/tests/test_order_status_update.py`
 
+## Customer Portal & Role-Based Pricing - IN PROGRESS Feb 17, 2026
+
+### Completed:
+- [x] **Backend Models**: Customer portal models (CustomerRegister, CustomerLogin, CustomerOTPRequest, CustomerResponse, etc.)
+- [x] **Role-Based Pricing in Items**: rate_doctors, rate_medicals, rate_agencies + offer/special_offer for each role
+- [x] **Customer Authentication APIs**:
+  - POST /api/customer/send-otp (WhatsApp 4-digit OTP)
+  - POST /api/customer/verify-otp
+  - POST /api/customer/register (with admin approval required)
+  - POST /api/customer/login
+  - POST /api/customer/reset-password
+  - GET/PUT /api/customer/profile
+- [x] **Customer Portal APIs**:
+  - GET /api/customer/items (role-based pricing)
+  - GET /api/customer/orders (order history)
+  - GET /api/customer/tasks (assigned tasks)
+- [x] **Support Ticket System**:
+  - POST/GET /api/customer/tickets
+  - POST /api/customer/tickets/{id}/reply
+  - Admin: GET /api/support/tickets, PUT status, POST reply
+- [x] **Admin Customer Management**:
+  - GET /api/customers (list all)
+  - PUT /api/customers/{id}/approve (approve/reject)
+- [x] **Frontend Pages Created**:
+  - CustomerRegister.jsx (3-step registration with OTP)
+  - CustomerLogin.jsx
+  - CustomerLayout.jsx (sidebar navigation)
+  - CustomerDashboard.jsx
+
+### Remaining:
+- [ ] CustomerItems.jsx (products with role-based pricing)
+- [ ] CustomerOrders.jsx (order history)
+- [ ] CustomerTasks.jsx (view tasks)
+- [ ] CustomerSupport.jsx (create/view tickets)
+- [ ] CustomerProfile.jsx (edit profile)
+- [ ] ForgotPassword.jsx
+- [ ] Admin Customers page (approve/reject registrations)
+- [ ] Admin Support page (manage tickets)
+- [ ] Update Items.jsx form with role-based pricing fields
+
 ## Prioritized Backlog
 
 ### P0 (Critical) 
 - [ ] **Refactor `server.py`**: Backend is >5000 lines monolithic file - needs to be split into routers/models/services
 
 ### P1 (High Priority)
+- [ ] **Complete Customer Portal Frontend** (remaining pages listed above)
 - [ ] **Customer Order History**: View all past orders when clicking a customer (Doctor/Medical/Agency)
 - [ ] **Stock/Inventory Management**: Track item quantities with low-stock alerts
 - [ ] **Payment Tracking**: Track payments received against orders
@@ -459,13 +500,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [ ] Custom lead status configuration
 
 ## Next Tasks
-1. Configure SMTP with your email provider credentials
-2. Start adding doctor leads
-3. Consider implementing bulk email feature for marketing campaigns
-4. Add export functionality for reporting
+1. Complete Customer Portal frontend pages
+2. Add Customers and Support pages to admin panel
+3. Update Items form with role-based pricing fields
+4. Test full customer registration and approval flow
 
 ## Tech Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
 - **Frontend**: React 19, React Router, Axios, Tailwind CSS, Shadcn/UI, Recharts
 - **Database**: MongoDB
-- **Auth**: JWT tokens
+- **Auth**: JWT tokens (separate for admin and customers)

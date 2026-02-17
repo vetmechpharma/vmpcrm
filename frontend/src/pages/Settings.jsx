@@ -19,6 +19,11 @@ export const Settings = () => {
   const [whatsappConfig, setWhatsappConfig] = useState(null);
   const [testMobile, setTestMobile] = useState('');
   
+  // Fallback OTP state
+  const [fallbackOTPs, setFallbackOTPs] = useState([]);
+  const [newOTP, setNewOTP] = useState('');
+  const [addingOTP, setAddingOTP] = useState(false);
+  
   const [formData, setFormData] = useState({
     smtp_server: '',
     smtp_port: 587,

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { toast } from 'sonner';
-import { ListTodo, CheckCircle, Clock, AlertCircle, Calendar, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
+import { ListTodo, CheckCircle, Clock, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -12,6 +10,7 @@ const CustomerTasks = () => {
   const { customer } = useOutletContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pending');
 
   useEffect(() => {
     fetchTasks();
@@ -25,97 +24,64 @@ const CustomerTasks = () => {
       });
       setTasks(response.data || []);
     } catch (error) {
-      toast.error('Failed to load tasks');
+      console.error('Failed to fetch tasks');
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    if (status === 'completed') {
-      return (
-        <Badge className="bg-green-100 text-green-800 border border-green-300">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Completed
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">
-        <Clock className="w-3 h-3 mr-1" />
-        Pending
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority) => {
-    const styles = {
-      low: 'bg-slate-100 text-slate-700',
-      moderate: 'bg-amber-100 text-amber-700',
-      high: 'bg-red-100 text-red-700'
-    };
-    return <Badge className={styles[priority] || styles.low}>{(priority || 'normal').toUpperCase()}</Badge>;
-  };
-
   const isOverdue = (dueDate) => {
     if (!dueDate) return false;
-    return new Date(dueDate) < new Date() && dueDate;
+    return new Date(dueDate) < new Date();
   };
+
+  const getPriorityConfig = (priority) => {
+    const configs = {
+      low: { color: 'bg-slate-100 text-slate-600', label: 'Low' },
+      moderate: { color: 'bg-amber-100 text-amber-700', label: 'Medium' },
+      high: { color: 'bg-red-100 text-red-700', label: 'High' }
+    };
+    return configs[priority] || configs.low;
+  };
+
+  const pendingTasks = tasks.filter(t => t.status !== 'completed');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const filteredTasks = activeTab === 'pending' ? pendingTasks : completedTasks;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
   }
 
-  const pendingTasks = tasks.filter(t => t.status !== 'completed');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">My Tasks</h1>
-        <p className="text-slate-500">Tasks assigned to you by the team</p>
-      </div>
-
+    <div className="px-4 py-6 md:px-6 space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <Card>
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <ListTodo className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                <Clock className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-xl font-bold">{tasks.length}</p>
-                <p className="text-xs text-slate-500">Total Tasks</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{pendingTasks.length}</p>
+                <p className="text-2xl font-bold text-slate-800">{pendingTasks.length}</p>
                 <p className="text-xs text-slate-500">Pending</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xl font-bold">{completedTasks.length}</p>
+                <p className="text-2xl font-bold text-slate-800">{completedTasks.length}</p>
                 <p className="text-xs text-slate-500">Completed</p>
               </div>
             </div>
@@ -123,98 +89,118 @@ const CustomerTasks = () => {
         </Card>
       </div>
 
-      {tasks.length === 0 ? (
-        <Card>
+      {/* Tabs */}
+      <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'pending'
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-500'
+          }`}
+          data-testid="tab-pending"
+        >
+          Pending ({pendingTasks.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('completed')}
+          className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'completed'
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-500'
+          }`}
+          data-testid="tab-completed"
+        >
+          Completed ({completedTasks.length})
+        </button>
+      </div>
+
+      {/* Tasks List */}
+      {filteredTasks.length === 0 ? (
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="py-12 text-center">
             <ListTodo className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500">No tasks assigned to you</p>
+            <p className="text-slate-500">
+              {activeTab === 'pending' ? 'No pending tasks' : 'No completed tasks'}
+            </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Pending Tasks */}
-          {pendingTasks.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-yellow-600" />
-                Pending Tasks ({pendingTasks.length})
-              </h2>
-              <div className="space-y-3">
-                {pendingTasks.map((task) => (
-                  <Card 
-                    key={task.id} 
-                    className={`${isOverdue(task.due_date) && task.status !== 'completed' ? 'border-red-200 bg-red-50/50' : ''}`}
-                    data-testid={`task-${task.id}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-medium text-slate-800">{task.title}</h3>
-                            {getPriorityBadge(task.priority)}
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-slate-600 mb-2">{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 text-xs text-slate-500">
-                            {task.due_date && (
-                              <span className={`flex items-center gap-1 ${isOverdue(task.due_date) ? 'text-red-600 font-medium' : ''}`}>
-                                <Calendar className="w-3 h-3" />
-                                Due: {new Date(task.due_date).toLocaleDateString()}
-                                {isOverdue(task.due_date) && ' (Overdue)'}
-                              </span>
-                            )}
-                            {task.created_by && (
-                              <span>Assigned by: {task.created_by}</span>
-                            )}
-                          </div>
-                        </div>
-                        {getStatusBadge(task.status)}
+        <div className="space-y-3">
+          {filteredTasks.map((task) => {
+            const priorityConfig = getPriorityConfig(task.priority);
+            const overdue = isOverdue(task.due_date) && task.status !== 'completed';
+            
+            return (
+              <Card 
+                key={task.id}
+                className={`rounded-2xl border-0 shadow-sm transition-all ${
+                  overdue ? 'ring-2 ring-red-200 bg-red-50/50' : ''
+                } ${task.status === 'completed' ? 'opacity-70' : ''}`}
+                data-testid={`task-${task.id}`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    {/* Status Icon */}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      task.status === 'completed' 
+                        ? 'bg-emerald-100' 
+                        : overdue 
+                          ? 'bg-red-100' 
+                          : 'bg-amber-100'
+                    }`}>
+                      {task.status === 'completed' ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      ) : overdue ? (
+                        <AlertCircle className="w-5 h-5 text-red-600" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-amber-600" />
+                      )}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h3 className={`font-semibold text-slate-800 text-sm ${
+                          task.status === 'completed' ? 'line-through text-slate-500' : ''
+                        }`}>
+                          {task.title}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${priorityConfig.color}`}>
+                          {priorityConfig.label}
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                Completed Tasks ({completedTasks.length})
-              </h2>
-              <div className="space-y-3">
-                {completedTasks.map((task) => (
-                  <Card key={task.id} className="opacity-75" data-testid={`task-${task.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-medium text-slate-800 line-through">{task.title}</h3>
-                            {getPriorityBadge(task.priority)}
-                          </div>
-                          {task.description && (
-                            <p className="text-sm text-slate-500 line-through mb-2">{task.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 text-xs text-slate-400">
-                            {task.due_date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                Due: {new Date(task.due_date).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {getStatusBadge(task.status)}
+                      
+                      {task.description && (
+                        <p className={`text-sm mb-2 line-clamp-2 ${
+                          task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-600'
+                        }`}>
+                          {task.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-3 text-xs">
+                        {task.due_date && (
+                          <span className={`flex items-center gap-1 ${
+                            overdue ? 'text-red-600 font-medium' : 'text-slate-500'
+                          }`}>
+                            <Calendar className="w-3 h-3" />
+                            {overdue && 'Overdue: '}
+                            {new Date(task.due_date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {task.created_by && (
+                          <span className="text-slate-400">
+                            by {task.created_by}
+                          </span>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

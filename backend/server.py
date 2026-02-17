@@ -2722,6 +2722,9 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         except Exception as e:
             logger.error(f"Image processing error: {str(e)}")
     
+    # Set default role-based pricing from rate if not provided
+    rate = item_data.rate or 0
+    
     item_doc = {
         'id': item_id,
         'item_code': item_code,
@@ -2729,13 +2732,25 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         'main_categories': item_data.main_categories or [],
         'subcategories': item_data.subcategories or [],
         'composition': item_data.composition,
+        'mrp': item_data.mrp,
+        'gst': item_data.gst,
+        # Role-based pricing - default to rate if not provided
+        'rate_doctors': item_data.rate_doctors if item_data.rate_doctors is not None else rate,
+        'offer_doctors': item_data.offer_doctors or item_data.offer,
+        'special_offer_doctors': item_data.special_offer_doctors or item_data.special_offer,
+        'rate_medicals': item_data.rate_medicals if item_data.rate_medicals is not None else rate,
+        'offer_medicals': item_data.offer_medicals or item_data.offer,
+        'special_offer_medicals': item_data.special_offer_medicals or item_data.special_offer,
+        'rate_agencies': item_data.rate_agencies if item_data.rate_agencies is not None else rate,
+        'offer_agencies': item_data.offer_agencies or item_data.offer,
+        'special_offer_agencies': item_data.special_offer_agencies or item_data.special_offer,
+        # Legacy fields
+        'rate': rate,
         'offer': item_data.offer,
         'special_offer': item_data.special_offer,
-        'mrp': item_data.mrp,
-        'rate': item_data.rate,
-        'gst': item_data.gst,
         'custom_fields': [cf.model_dump() for cf in (item_data.custom_fields or [])],
         'image_webp': processed_image,
+        'has_image': processed_image is not None,
         'created_at': now.isoformat(),
         'updated_at': now.isoformat(),
         'created_by': current_user['id']
@@ -2750,11 +2765,20 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         main_categories=item_data.main_categories or [],
         subcategories=item_data.subcategories or [],
         composition=item_data.composition,
+        mrp=item_data.mrp,
+        gst=item_data.gst,
+        rate_doctors=item_doc['rate_doctors'],
+        offer_doctors=item_doc['offer_doctors'],
+        special_offer_doctors=item_doc['special_offer_doctors'],
+        rate_medicals=item_doc['rate_medicals'],
+        offer_medicals=item_doc['offer_medicals'],
+        special_offer_medicals=item_doc['special_offer_medicals'],
+        rate_agencies=item_doc['rate_agencies'],
+        offer_agencies=item_doc['offer_agencies'],
+        special_offer_agencies=item_doc['special_offer_agencies'],
+        rate=rate,
         offer=item_data.offer,
         special_offer=item_data.special_offer,
-        mrp=item_data.mrp,
-        rate=item_data.rate,
-        gst=item_data.gst,
         custom_fields=item_data.custom_fields or [],
         image_url=f"/api/items/{item_id}/image" if processed_image else None,
         created_at=now

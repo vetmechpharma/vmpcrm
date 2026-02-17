@@ -1683,6 +1683,13 @@ async def get_medicals(
     
     medicals = await db.medicals.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
     
+    # Get all transport IDs to fetch names in one query
+    transport_ids = [doc.get('transport_id') for doc in medicals if doc.get('transport_id')]
+    transport_map = {}
+    if transport_ids:
+        transports = await db.transports.find({'id': {'$in': transport_ids}}, {'_id': 0, 'id': 1, 'name': 1}).to_list(100)
+        transport_map = {t['id']: t['name'] for t in transports}
+    
     result = []
     for doc in medicals:
         created_at = doc.get('created_at')

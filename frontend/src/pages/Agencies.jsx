@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { agenciesAPI, emailAPI, tasksAPI } from '../lib/api';
+import { agenciesAPI, emailAPI, tasksAPI, transportAPI, locationAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -36,7 +36,8 @@ import {
   Eye,
   Building,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Truck
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate } from '../lib/utils';
 

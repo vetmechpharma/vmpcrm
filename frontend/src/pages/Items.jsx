@@ -107,6 +107,16 @@ export const Items = () => {
       gst: '',
       custom_fields: [],
       image_base64: null,
+      // Role-based pricing
+      rate_doctors: '',
+      offer_doctors: '',
+      special_offer_doctors: '',
+      rate_medicals: '',
+      offer_medicals: '',
+      special_offer_medicals: '',
+      rate_agencies: '',
+      offer_agencies: '',
+      special_offer_agencies: '',
     });
     setImagePreview(null);
     setNewFieldName('');

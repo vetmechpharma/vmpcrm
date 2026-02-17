@@ -4205,24 +4205,33 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     
     await db.portal_customers.update_one({'id': customer_id}, {'$set': update_data})
     
-    # Send WhatsApp notification
+    # Send WhatsApp notification using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('api_key'):
+    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
             if approval.status == 'approved':
-                message = f"🎉 Great news, {customer['name']}!\n\nYour VMP CRM account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
+                message = f"Great news, {customer['name']}!\n\nYour VMP CRM account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
             else:
                 reason = approval.rejection_reason or "Please contact support for more details."
                 message = f"Hello {customer['name']},\n\nUnfortunately, your VMP CRM registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance."
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                await client.post(config['api_url'], params={
-                    'apikey': config['api_key'],
-                    'mobile': customer['phone'],
-                    'msg': message
-                })
+            # Ensure mobile has 91 prefix for India
+            wa_mobile = customer['phone'] if customer['phone'].startswith('91') else f"91{customer['phone'][-10:]}"
             
-            await log_whatsapp_message(customer['phone'], 'account_status', message, 'success', recipient_name=customer['name'])
+            params = {
+                'action': 'send',
+                'senderId': config['sender_id'],
+                'authToken': config['auth_token'],
+                'messageText': message,
+                'receiverId': wa_mobile
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(config['api_url'], params=params)
+                if response.status_code == 200:
+                    await log_whatsapp_message(wa_mobile, 'account_status', message, 'success', recipient_name=customer['name'])
+                else:
+                    logger.error(f"WhatsApp notification failed: {response.status_code}")
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     

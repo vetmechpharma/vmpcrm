@@ -193,6 +193,22 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/customers" 
+        element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/support" 
+        element={
+          <ProtectedRoute>
+            <Support />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/company-settings" 
         element={
           <ProtectedRoute>

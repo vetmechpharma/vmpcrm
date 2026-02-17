@@ -202,6 +202,14 @@ export const whatsappAPI = {
   testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
 };
 
+// Fallback OTP APIs
+export const fallbackOTPAPI = {
+  getAll: () => api.get('/fallback-otps'),
+  create: (data) => api.post('/fallback-otps', data),
+  toggle: (id) => api.put(`/fallback-otps/${id}/toggle`),
+  delete: (id) => api.delete(`/fallback-otps/${id}`),
+};
+
 // WhatsApp Logs APIs
 export const whatsappLogsAPI = {
   getAll: (params) => api.get('/whatsapp-logs', { params }),

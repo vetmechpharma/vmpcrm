@@ -1,66 +1,66 @@
 <analysis>**original_problem_statement:**
 The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers (Doctors, Medicals, Agencies), products, and a complex ordering system.
 
-PRODUCT REQUIREMENTS:
-- **Core CRM:** Manage Doctors, Medicals, and Agencies with bulk operations.
-- **Product Management:** Manage items, including bulk import via Excel.
-- **Order Management:**
-    - Public product showcase and a two-step checkout.
-    - Admin panel for creating and managing orders.
-    - Admins/staff can manually create orders and link them to existing customers.
-    - Support for scheme-based quantities (e.g., 10+5) in both new and existing orders.
-    - Ability to mark items as Out of Stock during order creation, which are tracked as pending.
-    - Advanced shipping/payment tracking:
-        - To Pay option records a shipping amount for reference.
-        - Paid option records the amount and automatically creates an expense entry under Transport Charges.
-    - Ability to print orders and send details via WhatsApp.
-- **Admin & User Management:** Customizable login, role-based user privileges.
-- **Logging & Reporting:** Logs for all outgoing WhatsApp messages and an expense tracking module.
-- **UI/UX:** A modern, data-table format for managing Doctors, Medicals, and Agencies.
-- **Reminder System:** For various events with WhatsApp notifications.
+**Recent User Request:**
+The user wants to add a customer-facing portal with the following features:
+-   **Separate Registration/Login:** Allow Doctors, Medicals, and Agencies to register and log in to their own accounts. Registration should require WhatsApp OTP verification and admin approval before access is granted.
+-   **Role-Based Product Showcase:** Each role (Doctor, Medical, Agency) will see different pricing and offers for the same products. The item schema needs to be updated to store separate rates and offers for each role.
+-   **Customer Account Management:**
+    -   View order history.
+    -   Edit profile information (address, delivery preferences).
+    -   View tasks assigned to them by admins.
+-   **Support Ticket System:** Customers can create support tickets (e.g., for damaged products) from their portal. Admins can view and reply to these tickets from a new Support page in the admin panel.
+
+**PRODUCT REQUIREMENTS:**
+-   **Core CRM:** Manage Doctors, Medicals, and Agencies with bulk operations.
+-   **Product Management:** Manage items, including bulk import and role-based pricing.
+-   **Order Management:** Public product showcase, admin order creation, scheme-based quantities, out-of-stock tracking, advanced shipping/payment tracking, print/WhatsApp functionality.
+-   **Admin & User Management:** Customizable login, role-based user privileges.
+-   **Customer Portal:** Separate registration/login for customers, role-based pricing, order history, profile management, and a support ticket system.
+-   **Logging & Reporting:** Logs for outgoing messages and an expense tracking module.
+-   **Reminder System:** For various events with WhatsApp notifications.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM with a FastAPI backend, React frontend, and MongoDB. All core modules are implemented. Recent work has focused on significantly enhancing the order management system with features like scheme-based quantities, out-of-stock tracking, and advanced payment/expense handling for shipping. The Doctors, Medicals, and Agencies pages now have a unified, modern data-table UI with bulk delete capabilities. A bulk item import feature using Excel has also been added.
+A full-stack CRM with a FastAPI backend, React frontend, and MongoDB. The core admin-facing modules for managing customers, products, and orders are implemented. The agent has recently:
+1.  Fixed a critical bug in the order status update flow.
+2.  Added order confirmation emails.
+3.  Enhanced the address fields for all customer types (Doctors, Medicals, Agencies) to include address lines, state/district dropdowns, pincode, delivery station, and transport preferences.
+4.  Begun the implementation of the customer portal by creating the backend models (), API endpoints for registration/login, and placeholder frontend pages.
+5.  Updated the backend  model to support role-based pricing.
 
 **Last working item**:
-- **Last item agent was working**: The user reported a bug where updating the order status is failing or not working correctly for some orders. The agent has acknowledged the issue but has not started debugging yet.
-- **Status**: NOT STARTED
+- **Last item agent was working**: Building the foundation for the new Customer Portal. The agent created the backend models and API endpoints for customer registration/login and updated the item model for role-based pricing. On the frontend, placeholder pages for registration, login, and a basic portal layout were created, but they lack full functionality.
+- **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: both
+- **Which testing method agent to use?**: both (The feature is large and involves both frontend and backend. Comprehensive testing is required after implementation is complete).
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1**: Orders status updates are failing or not working properly. (Priority: P0)
-
-**Issues Detail**:
-- **Issue 1**: Order status update bug
-    - **Attempted fixes**: None yet.
-    - **Next debug checklist**:
-        1.  **Backend ():**
-            -   Review the  endpoint and the  function.
-            -   Check the Pydantic models () for any mismatches with the data being sent from the frontend.
-            -   Add print statements or logging to trace the data received and the logic flow, especially how , , , etc., are handled.
-            -   Verify the database update logic ().
-        2.  **Frontend ():**
-            -   Inspect the  function.
-            -   Check the  state object to ensure it's constructed correctly before being sent to the API.
-            -   Use browser developer tools to inspect the network request payload sent when the status is updated.
-        3.  **Replication**: Try to replicate the issue by updating the status of different orders (e.g., ones with and without payment details).
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical workflow for managing orders. Fixing it will ensure admins can accurately track and progress orders through the fulfillment pipeline.
-    - **Status**: NOT STARTED
-    - **Is recurring issue?**: N
-    - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on other issue**: No.
+None.
 
 **In progress Task List**:
-None.
+- **Task 1**: Complete the Customer Portal Feature (Priority: P0)
+    - **Where to resume**: The foundational files have been created. The next steps are to build out the UI and logic for each part of the portal.
+        -   **Backend**: The API endpoints exist but may need refinement as the frontend is built. The support ticket logic needs to be added.
+        -   **Frontend**:
+            -   Complete  to handle form submission and WhatsApp OTP verification.
+            -   Complete .
+            -   Build  to display products with role-specific pricing.
+            -   Build  to show order history.
+            -   Build  to create and view support tickets.
+            -   Build  to allow users to edit their details.
+            -   Update  in the admin panel to allow admins to set the new Doctor/Medical/Agency prices and offers.
+            -   Create admin pages for approving new customer registrations and managing support tickets.
+    - **What will be achieved with this?**: A fully functional portal for customers to self-serve, view role-specific pricing, track orders, and communicate with support, reducing admin overhead.
+    - **Status**: IN PROGRESS
+    - **Should Test frontend/backend/both after fix?**: both
+    - **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - (P0) **Refactor :** This monolithic file is now over 5,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (routers, models, services).
-    - (P1) **Customer Order History:** Create a view where clicking a customer (Doctor/Medical/Agency) shows all their past orders.
+    - (P0) **Refactor :** This monolithic file is now over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (routers, models, services) after the customer portal is complete.
     - (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
     - (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
 - **Future Tasks:**
@@ -69,17 +69,20 @@ None.
     - (P2) Sales target management.
 
 **Completed work in this session**
-- **Order Management Major Enhancements:**
-    - **Print & WhatsApp Functionality**: Implemented a complete Print Modal for orders and a button to send order details via WhatsApp.
-    - **Advanced Quantity & Stocking**: Enhanced the Add Order modal to match the Edit Order modal, allowing scheme-based quantities (e.g., 10+5) and an Out of Stock feature that tracks pending items.
-    - **Shipping Payment & Expense Tracking**: Integrated payment tracking into the shipping status update. Paid shipments now automatically create an expense entry.
-- **Bulk Customer Management:**
-    - Implemented bulk delete functionality for Doctors, Medicals, and Agencies.
-    - Refactored the Medicals and Agencies pages from a card layout to a modern data-table UI, ensuring a consistent look and feel with the Doctors page.
-- **Bulk Item Import:** Added a feature to bulk import items from an Excel spreadsheet, including a downloadable template.
+- **Bug Fix**: Resolved a critical issue where updating order status failed due to empty strings being sent for numeric fields from the frontend.
+- **Order Confirmation Emails**: Implemented a feature to automatically send order confirmation emails to customers when an order is placed. The system also logs failed email attempts.
+- **Enhanced Customer Address Fields**:
+    - Updated , , and  models and UI to include , , , and .
+    - Created a backend API to serve a list of Indian states and their corresponding districts.
+    - Implemented dynamic, dependent dropdowns for State and District in the customer forms.
+- **Order Page Enhancement**: The Ready to Despatch modal on the  page now auto-fills the delivery station and transport method from the customer's profile.
+- **Customer Portal Foundation**:
+    - Created backend models and API routes for customer registration, login, and profile management.
+    - Updated the  model and associated CRUD endpoints to handle role-based pricing (separate prices/offers for Doctors, Medicals, and Agencies).
+    - Created placeholder frontend pages for the customer portal (, , , etc.).
 
 **Earlier issues found/mentioned but not fixed**
-- **Issue 1**: **Monolithic  file**: This has been a known issue and is now critically important to address. The file's size makes it difficult to navigate, debug, and extend.
+- **Issue 1**: **Monolithic  file**: This has been a known issue and is now critically important to address. The file's size makes it difficult to navigate, debug, and extend. It has grown significantly in this session.
 
 **Known issue recurrence from previous fork**
 - None.
@@ -88,88 +91,91 @@ None.
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio.  was added for Excel processing.
+- **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
 - **Frontend:** React, TailwindCSS, Shadcn/UI, , .
-- **Architecture:** The application remains a monolithic backend with a React SPA frontend. The session's work further increased the complexity of  and , making refactoring more urgent.
+- **Architecture:** Monolithic backend with a React SPA frontend. The session's work has added a new customer portal area to both frontend and backend.
 
 **key DB schema**
-- **orders**:
-    -  objects now store  as a  to support schemes.
-    - Added  (array) to track out-of-stock items from manual orders.
-    - Transport status object now includes  (float),  (str), and  (str).
 - **items**:
-    - Schema supports multiple  and  (arrays of strings).
+    - Added , ,  (float).
+    - Added , ,  (string).
+    - Added , ,  (string).
+- **doctors, medicals, agencies**:
+    - Added , ,  (string).
+    - Added  (ObjectId, refers to  collection).
+- **customers** (New Collection):
+    - , , ,  (hashed),  ('Doctor', 'Medical', 'Agency'), , , , . Links to a corresponding document in , , or  collection.
 
 **changes in tech stack**
--  added to the backend for Excel file reading.
--  added to the frontend.
+- None.
 
 **All files of reference**
-- **Heavily Modified**: , .
-- **Rewritten/Refactored**: , .
-- **Modified**: , , , .
-- **Reports**: , , , , .
+- **Heavily Modified**: , , , .
+- **New Files**:
+    - 
+    - All files under 
+- **Modified**: , , .
+- **Reports**: , 
 
 **Areas that need refactoring**:
-- ** (CRITICAL)**: The top priority after the current bug fix. The file is unmaintainable.
-- ** (High Priority)**: This file is now extremely large and complex, managing multiple modals and states. It should be broken down into smaller components (, , , , etc.).
+- ** (CRITICAL)**: The absolute top priority after the customer portal feature is complete. The file is unmaintainable.
+- **, , **: These files now contain a lot of duplicated logic for the address form. This could be extracted into a reusable component.
 
 **key api endpoints**
 - **New Endpoints:**
-    - 
-    - 
-    - 
-    - 
-    - 
+    - : Returns list of Indian states.
+    - : Returns districts for a given state.
+    - : Customer registration.
+    - : Verify WhatsApp OTP for registration.
+    - : Customer login.
+    - : Get customer profile.
 - **Modified Endpoints:**
-    - : Updated to handle .
-    - : Logic updated to handle advanced payment/expense details.
+    - All , ,  GET/POST/PUT endpoints were updated to handle the new address fields.
+    - All  GET/POST/PUT endpoints were updated to handle the new role-based pricing fields.
 
 **Critical Info for New Agent**
-- **Immediate Task (P0):** Your first priority is to investigate and fix the bug where order status updates are failing. Refer to the debug checklist provided in the Issues Detail section. This is a blocker for core functionality.
-- **Next Steps:** After fixing the bug, you MUST prioritize advising the user to refactor . It is a major source of technical debt and risk.
-- **User Provided Test Data:** The user has specified three phone numbers for testing: , , and . Use these numbers for creating test customers and orders.
+- **Immediate Task (P0):** Your priority is to continue and complete the Customer Portal feature. This is a large, multi-step task outlined in the In progress Task List. Do not start other tasks until this is done.
+- **Key Missing Pieces**: The most important parts to implement next are the functional UIs for the portal pages (item showcase, order history, support tickets) and the corresponding admin pages (customer approval, support management, item price editing).
+- **Next Major Task**: After the customer portal is verified by the user, you MUST propose and begin the refactoring of . It is a serious risk to the project's stability and future development.
 
 **documents and test reports created in this job**
--  (updated multiple times)
-- 
-- 
-- 
+-  (updated)
 - 
 - 
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. **User:**  - **Status: NOT STARTED**
-9.  **User:**  - **Status: COMPLETED**
-8.  **User:**  - **Status: COMPLETED**
-7.  **User:**  - **Status: COMPLETED**
-6.  **User:**  - **Status: ACKNOWLEDGED**
-5.  **User:**  - **Status: COMPLETED**
-4.  **User:**  - **Status: HANDLED** (Agent completed the print/whatsapp feature).
-3.  **User:**  (part of agent's flow, not user message)
-2.  **User:**  (part of agent's flow, not user message)
-1.  **User:**  - **Status: HANDLED**
+10.  - User initiated the major feature request for a customer portal with role-based pricing, registration, order history, and a support ticket system. **Status: IN PROGRESS**
+9.  - User confirmed requirements for the portal: admin approval, default pricing copy, profile editing, and WhatsApp OTP. **Status: ACKNOWLEDGED**
+8.  - User instruction to continue with the implementation of enhanced address fields. **Status: COMPLETED**
+7.  - User instruction to continue. **Status: COMPLETED**
+6.  - User requested to add detailed address fields to all customer types and use them in the order process. **Status: COMPLETED**
+5.  - Agent asked for clarification on address fields. User chose state/district dropdowns. **Status: COMPLETED**
+4.  - User provided details for the order confirmation email. **Status: COMPLETED**
+3.  - User requested order confirmation emails be sent when an order is created. **Status: COMPLETED**
+2.  - User prompt to start the session. **Status: HANDLED**
+1. User prompt to start the session. **Status: HANDLED**
 
 **Project Health Check:**
-- **Working:** Most features are functional.
-- **Broken:** The Order Status Update workflow is reportedly buggy.
-- **Mocked:** WhatsApp integration relies on an external webhook; delivery cannot be confirmed in the environment.
+- **Working**: Core CRM features (customer/product/order management), order status updates, email notifications, enhanced address system.
+- **Broken**: None.
+- **In-progress**: The entire Customer Portal feature is mid-development. The frontend pages are mostly placeholders and the backend needs the support ticket logic.
 
 **3rd Party Integrations**
 - **Custom SMTP:** For emails.
-- **WhatsApp API (BotMasterSender):** Generic webhook API.
+- **WhatsApp API (BotMasterSender):** Generic webhook API used for order updates and now planned for OTP.
 - **openpyxl:** For reading  files on the backend.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. The testing agent was used successfully after every major feature implementation in this session.
+- **Testing agent used after significant changes:** YES. Used to validate the order status bug fix and the address enhancement feature.
 - **Troubleshoot agent used after agent stuck in loop:** NO.
-- **Test files created:** None. Testing was performed via the testing agent which generates JSON reports.
-- **Known regressions:** The user has just reported a new bug with order status updates.
+- **Test files created:** None.
+- **Known regressions:** None.
 
 **Credentials to test flow:**
-- **Email:** 
-- **Password:** 
+- **Admin Email:** 
+- **Admin Password:** 
 
 **What agent forgot to execute**
-- The Stock Arrived notification feature remains unimplemented from the initial backlog.
-- The critical refactoring of  has been consistently postponed in favor of new features.</analysis>
+- **Admin UI for Role-Based Pricing**: The backend  model was updated for role-based pricing, but the admin frontend () was not updated to allow admins to view or edit these new price fields.
+- **Admin Pages for Portal Management**: The agent did not create the admin-side pages required to manage the new portal (e.g., a page to approve new customers, a page to manage support tickets).
+- ** Refactoring**: This critical task has been postponed again.</analysis>

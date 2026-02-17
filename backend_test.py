@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class VMPCRMTester:
-    def __init__(self, base_url: str = "https://pharma-orders-5.preview.emergentagent.com"):
+    def __init__(self, base_url: str = "https://pharma-portal-9.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.user_id = None

@@ -20,7 +20,9 @@ import {
   Receipt,
   Bell,
   MessageSquare,
-  UserCog
+  UserCog,
+  UserCheck,
+  LifeBuoy
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
@@ -35,6 +37,8 @@ const navItems = [
   { path: '/expenses', icon: Receipt, label: 'Expenses' },
   { path: '/reminders', icon: Bell, label: 'Reminders' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
+  { path: '/customers', icon: UserCheck, label: 'Portal Customers' },
+  { path: '/support', icon: LifeBuoy, label: 'Support Tickets' },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
   { path: '/users', icon: UserCog, label: 'Users', adminOnly: true },

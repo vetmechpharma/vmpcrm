@@ -5876,6 +5876,29 @@ async def get_transports(current_user: dict = Depends(get_current_user)):
     
     return result
 
+@api_router.get("/public/transports", response_model=List[TransportResponse])
+async def get_public_transports():
+    """Public transports list for customer portal selection"""
+    transports = await db.transports.find({}, {'_id': 0}).sort('name', 1).to_list(100)
+    
+    result = []
+    for t in transports:
+        created_at = t['created_at']
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append(TransportResponse(
+            id=t['id'],
+            name=t['name'],
+            tracking_url_template=t.get('tracking_url_template'),
+            is_local=t.get('is_local', False),
+            contact_number=t.get('contact_number'),
+            alternate_number=t.get('alternate_number'),
+            created_at=created_at
+        ))
+    
+    return result
+
 @api_router.delete("/transports/{transport_id}")
 async def delete_transport(transport_id: str, current_user: dict = Depends(get_current_user)):
     if current_user['role'] != 'admin':

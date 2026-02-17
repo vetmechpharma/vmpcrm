@@ -614,6 +614,119 @@ class CategoryResponse(BaseModel):
     name: str
     count: int
 
+# ============== CUSTOMER PORTAL MODELS ==============
+
+class CustomerRegister(BaseModel):
+    """Customer registration request"""
+    name: str
+    phone: str
+    email: Optional[EmailStr] = None
+    password: str
+    role: str  # doctor, medical, agency
+    # Role-specific fields
+    reg_no: Optional[str] = None  # For doctors
+    proprietor_name: Optional[str] = None  # For medicals/agencies
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    # Address fields
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
+
+class CustomerLogin(BaseModel):
+    phone: str
+    password: str
+
+class CustomerOTPRequest(BaseModel):
+    phone: str
+    purpose: str = "register"  # register, reset_password
+
+class CustomerOTPVerify(BaseModel):
+    phone: str
+    otp: str
+    purpose: str = "register"
+
+class CustomerResetPassword(BaseModel):
+    phone: str
+    otp: str
+    new_password: str
+
+class CustomerProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    reg_no: Optional[str] = None
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
+
+class CustomerResponse(BaseModel):
+    id: str
+    customer_code: str
+    name: str
+    phone: str
+    email: Optional[str] = None
+    role: str  # doctor, medical, agency
+    status: str  # pending_approval, approved, rejected, suspended
+    reg_no: Optional[str] = None
+    proprietor_name: Optional[str] = None
+    gst_number: Optional[str] = None
+    drug_license: Optional[str] = None
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    pincode: Optional[str] = None
+    delivery_station: Optional[str] = None
+    transport_id: Optional[str] = None
+    transport_name: Optional[str] = None
+    created_at: datetime
+    approved_at: Optional[datetime] = None
+    approved_by: Optional[str] = None
+
+class CustomerApproval(BaseModel):
+    status: str  # approved, rejected
+    rejection_reason: Optional[str] = None
+
+# ============== SUPPORT TICKET MODELS ==============
+
+class TicketCreate(BaseModel):
+    subject: str
+    description: str
+    order_id: Optional[str] = None  # Link to order if related
+    priority: str = "medium"  # low, medium, high
+
+class TicketReply(BaseModel):
+    message: str
+
+class TicketResponse(BaseModel):
+    id: str
+    ticket_number: str
+    customer_id: str
+    customer_name: str
+    customer_phone: str
+    customer_role: str
+    subject: str
+    description: str
+    order_id: Optional[str] = None
+    order_number: Optional[str] = None
+    priority: str
+    status: str  # open, in_progress, resolved, closed
+    replies: List[dict] = []
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: Optional[datetime] = None
+
 # ============== COMPANY SETTINGS MODELS ==============
 
 class CompanySettingsCreate(BaseModel):

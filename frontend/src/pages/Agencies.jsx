@@ -344,23 +344,38 @@ export const Agencies = () => {
     }
   };
 
-  const openEditModal = (agency) => {
+  const openEditModal = async (agency) => {
     setSelectedAgency(agency);
+    // If agency has a state, fetch districts first
+    if (agency.state) {
+      try {
+        const response = await locationAPI.getDistricts(agency.state);
+        setDistricts(response.data.districts || []);
+      } catch (error) {
+        console.error('Failed to fetch districts');
+      }
+    }
     setFormData({
       name: agency.name,
       proprietor_name: agency.proprietor_name || '',
       gst_number: agency.gst_number || '',
       drug_license: agency.drug_license || '',
       address: agency.address || '',
+      address_line_1: agency.address_line_1 || '',
+      address_line_2: agency.address_line_2 || '',
       state: agency.state || '',
       district: agency.district || '',
       pincode: agency.pincode || '',
+      delivery_station: agency.delivery_station || '',
+      transport_id: agency.transport_id || '',
       email: agency.email || '',
       phone: agency.phone,
       alternate_phone: agency.alternate_phone || '',
       lead_status: agency.lead_status,
       priority: agency.priority || 'moderate',
       follow_up_date: agency.follow_up_date || '',
+      birthday: agency.birthday || '',
+      anniversary: agency.anniversary || '',
     });
     setShowEditModal(true);
   };
@@ -382,16 +397,23 @@ export const Agencies = () => {
       gst_number: '',
       drug_license: '',
       address: '',
+      address_line_1: '',
+      address_line_2: '',
       state: '',
       district: '',
       pincode: '',
+      delivery_station: '',
+      transport_id: '',
       email: '',
       phone: '',
       alternate_phone: '',
       lead_status: 'Pipeline',
       priority: 'moderate',
       follow_up_date: '',
+      birthday: '',
+      anniversary: '',
     });
+    setDistricts([]);
   };
 
   const getPriorityLabel = (priority) => {

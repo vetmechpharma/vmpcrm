@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Package, ShoppingBag, ListTodo, LifeBuoy, Clock, CheckCircle } from 'lucide-react';
+import { useOutletContext, Link } from 'react-router-dom';
+import { Card, CardContent } from '../components/ui/card';
+import { 
+  ShoppingBag, 
+  Package, 
+  Clock, 
+  CheckCircle, 
+  ChevronRight,
+  LifeBuoy,
+  ListTodo,
+  TrendingUp,
+  Loader2,
+  Bell
+} from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const CustomerDashboard = () => {
   const { customer } = useOutletContext();
-  const [stats, setStats] = useState({
-    ordersCount: 0,
-    pendingOrders: 0,
-    tasksCount: 0,
-    openTickets: 0
-  });
+  const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,10 +30,12 @@ const CustomerDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('customerToken');
+      const headers = { Authorization: `Bearer ${token}` };
+      
       const [ordersRes, tasksRes, ticketsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/customer/orders`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/api/customer/tasks`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API_URL}/api/customer/tickets`, { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API_URL}/api/customer/orders`, { headers }),
+        axios.get(`${API_URL}/api/customer/tasks`, { headers }),
+        axios.get(`${API_URL}/api/customer/tickets`, { headers })
       ]);
 
       const orders = ordersRes.data || [];
@@ -36,13 +43,14 @@ const CustomerDashboard = () => {
       const tickets = ticketsRes.data || [];
 
       setStats({
-        ordersCount: orders.length,
-        pendingOrders: orders.filter(o => o.status === 'pending').length,
-        tasksCount: tasks.filter(t => t.status !== 'completed').length,
-        openTickets: tickets.filter(t => t.status !== 'closed' && t.status !== 'resolved').length
+        totalOrders: orders.length,
+        pendingOrders: orders.filter(o => !['delivered', 'cancelled'].includes(o.status)).length,
+        completedOrders: orders.filter(o => o.status === 'delivered').length,
+        pendingTasks: tasks.filter(t => t.status !== 'completed').length,
+        openTickets: tickets.filter(t => t.status === 'open').length
       });
 
-      setRecentOrders(orders.slice(0, 5));
+      setRecentOrders(orders.slice(0, 3));
     } catch (error) {
       console.error('Failed to fetch dashboard data');
     } finally {
@@ -50,110 +58,193 @@ const CustomerDashboard = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      ready_to_despatch: 'bg-purple-100 text-purple-800',
-      shipped: 'bg-indigo-100 text-indigo-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      pending: 'bg-amber-100 text-amber-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      ready_to_despatch: 'bg-purple-100 text-purple-700',
+      shipped: 'bg-indigo-100 text-indigo-700',
+      delivered: 'bg-emerald-100 text-emerald-700',
+      cancelled: 'bg-red-100 text-red-700'
     };
-    return <Badge className={colors[status] || 'bg-slate-100'}>{status.replace(/_/g, ' ')}</Badge>;
+    return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const formatStatus = (status) => {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Welcome, {customer?.name}!</h1>
-        <p className="text-slate-500">Here's an overview of your account</p>
+    <div className="px-4 py-6 md:px-6 space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-600/20">
+        <p className="text-emerald-100 text-sm">Welcome back,</p>
+        <h1 className="text-xl font-bold mt-1" style={{ fontFamily: 'Manrope, sans-serif' }}>
+          {customer?.name}
+        </h1>
+        <p className="text-emerald-200 text-sm mt-1 capitalize">{customer?.role} • {customer?.customer_code}</p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/customer/items" className="active:scale-95 transition-transform">
+          <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Package className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-slate-800">Browse</p>
+                <p className="text-xs text-slate-500">Products</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/customer/orders" className="active:scale-95 transition-transform">
+          <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <ShoppingBag className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-slate-800">Track</p>
+                <p className="text-xs text-slate-500">Orders</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.ordersCount}</p>
-                <p className="text-sm text-slate-500">Total Orders</p>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <ShoppingBag className="w-5 h-5 text-slate-400" />
+              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+              </span>
             </div>
+            <p className="text-2xl font-bold text-slate-800">{stats?.totalOrders || 0}</p>
+            <p className="text-xs text-slate-500">Total Orders</p>
           </CardContent>
         </Card>
-
-        <Card>
+        
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.pendingOrders}</p>
-                <p className="text-sm text-slate-500">Pending</p>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <Clock className="w-5 h-5 text-amber-500" />
             </div>
+            <p className="text-2xl font-bold text-slate-800">{stats?.pendingOrders || 0}</p>
+            <p className="text-xs text-slate-500">In Progress</p>
           </CardContent>
         </Card>
-
-        <Card>
+        
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ListTodo className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.tasksCount}</p>
-                <p className="text-sm text-slate-500">Active Tasks</p>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <ListTodo className="w-5 h-5 text-purple-500" />
             </div>
+            <p className="text-2xl font-bold text-slate-800">{stats?.pendingTasks || 0}</p>
+            <p className="text-xs text-slate-500">Tasks</p>
           </CardContent>
         </Card>
-
-        <Card>
+        
+        <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <LifeBuoy className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.openTickets}</p>
-                <p className="text-sm text-slate-500">Open Tickets</p>
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <LifeBuoy className="w-5 h-5 text-blue-500" />
             </div>
+            <p className="text-2xl font-bold text-slate-800">{stats?.openTickets || 0}</p>
+            <p className="text-xs text-slate-500">Open Tickets</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Orders */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentOrders.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <ShoppingBag className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p>No orders yet</p>
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold text-slate-800" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Recent Orders
+          </h2>
+          <Link to="/customer/orders" className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+            View All <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+        
+        {recentOrders.length === 0 ? (
+          <Card className="rounded-2xl border-0 shadow-sm">
+            <CardContent className="py-8 text-center">
+              <ShoppingBag className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+              <p className="text-slate-500 text-sm">No orders yet</p>
+              <Link 
+                to="/customer/items" 
+                className="inline-block mt-3 text-sm text-emerald-600 font-medium"
+              >
+                Browse Products
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {recentOrders.map((order) => (
+              <Link 
+                key={order.id} 
+                to="/customer/orders"
+                className="block active:scale-[0.98] transition-transform"
+              >
+                <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-slate-800 text-sm">
+                            #{order.order_number || order.id.slice(-6)}
+                          </p>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                            {formatStatus(order.status)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate">
+                          {order.items?.length || 0} items • ₹{order.total_amount?.toLocaleString()}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Help Section */}
+      <Card className="rounded-2xl border-0 shadow-sm bg-slate-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <LifeBuoy className="w-6 h-6 text-blue-600" />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{order.order_number}</p>
-                    <p className="text-sm text-slate-500">
-                      {order.items?.length || 0} items • {new Date(order.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  {getStatusBadge(order.status)}
-                </div>
-              ))}
+            <div className="flex-1">
+              <p className="font-semibold text-slate-800 text-sm">Need Help?</p>
+              <p className="text-xs text-slate-500">Create a support ticket</p>
             </div>
-          )}
+            <Link 
+              to="/customer/support"
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-full active:scale-95 transition-transform"
+            >
+              Get Help
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -869,7 +869,7 @@ export const Doctors = () => {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><span className="text-slate-500">Phone:</span> {selectedDoctor.phone}</div>
                 <div><span className="text-slate-500">Email:</span> {selectedDoctor.email || 'N/A'}</div>
-                <div><span className="text-slate-500">Status:</span> <Badge className={getStatusColor(selectedDoctor.lead_status)}>{selectedDoctor.lead_status}</Badge></div>
+                <div><span className="text-slate-500">Status:</span> <Badge className={getStatusColor(selectedDoctor.lead_status)}>{selectedDoctor.lead_status}</Badge> {selectedDoctor.is_portal_customer && <Badge className="bg-emerald-100 text-emerald-700 ml-1">Portal Customer</Badge>}</div>
                 <div><span className="text-slate-500">Priority:</span> <Badge className={getPriorityColor(selectedDoctor.priority || 'moderate')}>{getPriorityLabel(selectedDoctor.priority || 'moderate')}</Badge></div>
                 <div><span className="text-slate-500">Last Contact:</span> {selectedDoctor.last_contact_date ? formatDate(selectedDoctor.last_contact_date) : 'Never'}</div>
                 <div><span className="text-slate-500">Follow-up:</span> {selectedDoctor.follow_up_date ? formatDate(selectedDoctor.follow_up_date) : 'Not set'}</div>

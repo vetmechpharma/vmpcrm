@@ -128,6 +128,51 @@
     @apply bg-white/80 backdrop-blur-md border-b border-slate-200/50;
 }
 
+
+/* Safe area insets for mobile */
+.safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Touch feedback */
+.touch-feedback {
+    @apply active:scale-95 transition-transform duration-100;
+}
+
+/* Mobile-first emerald theme */
+.emerald-gradient {
+    @apply bg-gradient-to-br from-emerald-600 to-teal-600;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* Print styles */
 @media print {
     body {

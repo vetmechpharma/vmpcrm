@@ -81,7 +81,7 @@ const CustomerProfile = () => {
     try {
       const [statesRes, transportsRes] = await Promise.all([
         locationAPI.getStates(),
-        axios.get(`${API_URL}/api/transports`)
+        axios.get(`${API_URL}/api/public/transports`)
       ]);
       setStates(statesRes.data.states || []);
       setTransports(transportsRes.data || []);

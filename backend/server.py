@@ -2654,8 +2654,8 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     recent_docs = await db.doctors.find({}, {'_id': 0}).sort('created_at', -1).to_list(5)
     recent_doctors = []
     for doc in recent_docs:
-        created_at = doc['created_at']
-        updated_at = doc['updated_at']
+        created_at = doc.get('created_at', datetime.now(timezone.utc))
+        updated_at = doc.get('updated_at', created_at)  # Fallback to created_at if missing
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
         if isinstance(updated_at, str):

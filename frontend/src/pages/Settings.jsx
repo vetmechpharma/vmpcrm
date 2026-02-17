@@ -148,6 +148,47 @@ export const Settings = () => {
     }
   };
 
+  // Fallback OTP Handlers
+  const handleAddFallbackOTP = async () => {
+    if (!newOTP || newOTP.length !== 4 || !/^\d{4}$/.test(newOTP)) {
+      toast.error('Please enter a valid 4-digit OTP');
+      return;
+    }
+
+    setAddingOTP(true);
+    try {
+      await fallbackOTPAPI.create({ otp: newOTP });
+      toast.success('Fallback OTP added successfully');
+      setNewOTP('');
+      fetchConfigs();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to add OTP');
+    } finally {
+      setAddingOTP(false);
+    }
+  };
+
+  const handleToggleFallbackOTP = async (id) => {
+    try {
+      await fallbackOTPAPI.toggle(id);
+      fetchConfigs();
+    } catch (error) {
+      toast.error('Failed to toggle OTP status');
+    }
+  };
+
+  const handleDeleteFallbackOTP = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this OTP?')) return;
+    
+    try {
+      await fallbackOTPAPI.delete(id);
+      toast.success('OTP deleted');
+      fetchConfigs();
+    } catch (error) {
+      toast.error('Failed to delete OTP');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -161,7 +202,7 @@ export const Settings = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 mt-1">Configure SMTP and WhatsApp integrations</p>
+        <p className="text-slate-500 mt-1">Configure SMTP, WhatsApp, and OTP settings</p>
       </div>
 
       {/* WhatsApp Configuration */}

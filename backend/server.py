@@ -4380,18 +4380,25 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
         }
     )
     
-    # Notify customer via WhatsApp
+    # Notify customer via WhatsApp using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('api_key'):
+    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
-            message = f"📬 New reply on your support ticket #{ticket['ticket_number']}:\n\n{reply.message[:200]}{'...' if len(reply.message) > 200 else ''}\n\n- {current_user['name']}"
+            message = f"New reply on your support ticket #{ticket['ticket_number']}:\n\n{reply.message[:200]}{'...' if len(reply.message) > 200 else ''}\n\n- {current_user['name']}"
+            
+            # Ensure mobile has 91 prefix for India
+            wa_mobile = ticket['customer_phone'] if ticket['customer_phone'].startswith('91') else f"91{ticket['customer_phone'][-10:]}"
+            
+            params = {
+                'action': 'send',
+                'senderId': config['sender_id'],
+                'authToken': config['auth_token'],
+                'messageText': message,
+                'receiverId': wa_mobile
+            }
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                await client.post(config['api_url'], params={
-                    'apikey': config['api_key'],
-                    'mobile': ticket['customer_phone'],
-                    'msg': message
-                })
+                await client.get(config['api_url'], params=params)
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     

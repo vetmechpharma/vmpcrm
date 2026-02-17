@@ -1,151 +1,187 @@
 {
-  "identity": {
-    "name": "VMP CRM",
-    "tone": "Professional, Efficient, Trustworthy, Clean",
-    "archetype": "The Performance Pro (Medical Variant)",
-    "description": "A streamlined CRM for managing doctor relationships and leads with precision and clarity."
-  },
-  "typography": {
-    "font_family": {
-      "headings": "Manrope, sans-serif",
-      "body": "Inter, sans-serif",
-      "mono": "JetBrains Mono, monospace"
+  "design_system": {
+    "identity": {
+      "name": "PharmaFlow Mobile",
+      "archetype": "Clinical Organic",
+      "core_values": ["Trust", "Efficiency", "Humanity"],
+      "vibe": "Clean but not sterile. Efficient but not robotic. A medical tool that feels like a consumer app."
     },
-    "weights": {
-      "headings": "font-bold tracking-tight",
-      "subheadings": "font-semibold tracking-normal",
-      "body": "font-normal"
+    "typography": {
+      "font_family": {
+        "heading": "Manrope, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-2xl font-bold tracking-tight leading-tight",
+        "h2": "text-xl font-bold tracking-tight",
+        "h3": "text-lg font-semibold tracking-normal",
+        "body_lg": "text-base font-medium leading-relaxed",
+        "body_base": "text-sm font-normal leading-relaxed",
+        "caption": "text-xs font-medium tracking-wide uppercase text-slate-500"
+      }
     },
-    "sizes": {
-      "h1": "text-3xl md:text-4xl",
-      "h2": "text-2xl md:text-3xl",
-      "h3": "text-xl md:text-2xl",
-      "body": "text-sm md:text-base",
-      "small": "text-xs"
-    },
-    "instructions": "Import Manrope from Google Fonts. Use Manrope for all headings (h1-h3) and Inter for body text. Ensure high readability for data tables."
-  },
-  "colors": {
-    "palette": {
+    "colors": {
       "primary": {
-        "DEFAULT": "#0f172a",
-        "foreground": "#f8fafc"
+        "DEFAULT": "#059669",
+        "foreground": "#FFFFFF",
+        "50": "#ECFDF5",
+        "100": "#D1FAE5",
+        "200": "#A7F3D0",
+        "300": "#6EE7B7",
+        "400": "#34D399",
+        "500": "#10B981",
+        "600": "#059669",
+        "700": "#047857",
+        "800": "#065F46",
+        "900": "#064E3B"
       },
       "secondary": {
-        "DEFAULT": "#f1f5f9",
-        "foreground": "#0f172a"
+        "DEFAULT": "#F1F5F9",
+        "foreground": "#0F172A"
       },
       "accent": {
-        "DEFAULT": "#3b82f6",
-        "foreground": "#ffffff"
+        "DEFAULT": "#F43F5E",
+        "foreground": "#FFFFFF"
       },
-      "background": "#ffffff",
-      "surface": "#f8fafc",
-      "border": "#e2e8f0",
-      "success": "#10b981",
-      "warning": "#f59e0b",
-      "error": "#ef4444",
-      "info": "#0ea5e9"
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#475569",
+        "muted": "#94A3B8"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
     },
-    "status_colors": {
-      "Customer": "bg-emerald-100 text-emerald-700 border-emerald-200",
-      "Contacted": "bg-blue-100 text-blue-700 border-blue-200",
-      "Pipeline": "bg-amber-100 text-amber-700 border-amber-200",
-      "Not Interested": "bg-slate-100 text-slate-700 border-slate-200",
-      "Closed": "bg-red-100 text-red-700 border-red-200"
+    "layout": {
+      "container": "max-w-md mx-auto md:max-w-5xl bg-slate-50 min-h-screen pb-20 md:pb-0",
+      "spacing": {
+        "page_x": "px-4 md:px-6",
+        "page_y": "py-6",
+        "section_gap": "gap-6"
+      },
+      "radius": {
+        "card": "rounded-2xl",
+        "button": "rounded-full",
+        "input": "rounded-xl"
+      },
+      "shadows": {
+        "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-200",
+        "floating": "shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+      }
     },
-    "forbidden": [
-      "#1B93A4",
-      "#7351B7"
-    ]
-  },
-  "layout": {
-    "spacing": {
-      "container_padding": "p-6 md:p-8 lg:p-10",
-      "section_gap": "gap-6 md:gap-8",
-      "component_gap": "gap-4"
+    "components": {
+      "Button": {
+        "base": "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background h-12 px-6",
+        "variants": {
+          "default": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-emerald-500/20",
+          "outline": "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700",
+          "ghost": "hover:bg-slate-100 hover:text-slate-900",
+          "link": "text-primary underline-offset-4 hover:underline"
+        }
+      },
+      "Card": {
+        "base": "rounded-2xl border border-slate-100 bg-white text-card-foreground shadow-sm overflow-hidden"
+      },
+      "Input": {
+        "base": "flex h-12 w-full rounded-xl border-0 bg-slate-50 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:bg-white transition-all duration-200"
+      },
+      "Badge": {
+        "base": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        "variants": {
+          "default": "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "secondary": "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "outline": "text-foreground"
+        }
+      }
     },
-    "grid_system": {
-      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6",
-      "form": "grid grid-cols-1 md:grid-cols-2 gap-6"
+    "visual_enhancers": {
+      "glass": "bg-white/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-white/60",
+      "gradient_text": "bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500",
+      "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E\")"
     },
-    "structure": {
-      "sidebar_width": "w-64",
-      "header_height": "h-16",
-      "max_content_width": "max-w-7xl mx-auto"
-    },
-    "z_index": {
-      "modal": 50,
-      "dropdown": 40,
-      "header": 30,
-      "sidebar": 20
+    "motion": {
+      "page_transition": {
+        "initial": { "opacity": 0, "x": 20 },
+        "animate": { "opacity": 1, "x": 0 },
+        "exit": { "opacity": 0, "x": -20 },
+        "transition": { "duration": 0.3, "ease": "easeOut" }
+      },
+      "list_stagger": {
+        "container": {
+          "hidden": { "opacity": 0 },
+          "show": {
+            "opacity": 1,
+            "transition": { "staggerChildren": 0.05 }
+          }
+        },
+        "item": {
+          "hidden": { "opacity": 0, "y": 10 },
+          "show": { "opacity": 1, "y": 0 }
+        }
+      },
+      "tap_feedback": "active:scale-95 transition-transform duration-100"
     }
   },
-  "components": {
-    "buttons": {
-      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-md px-4 py-2 transition-all active:scale-95",
-      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md px-4 py-2 transition-all active:scale-95",
-      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-md px-4 py-2 transition-all",
-      "destructive": "bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-4 py-2 transition-all"
+  "image_urls": {
+    "hero": {
+      "pharmacist_mobile": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=1000",
+      "doctor_consult": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=1000"
     },
-    "cards": {
-      "base": "bg-card text-card-foreground rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow duration-200",
-      "padding": "p-6"
-    },
-    "inputs": {
-      "base": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-    },
-    "tables": {
-      "wrapper": "w-full overflow-auto rounded-md border border-border",
-      "header": "bg-muted/50 text-muted-foreground font-medium text-xs uppercase tracking-wider",
-      "row": "hover:bg-muted/50 transition-colors border-b border-border last:border-0"
-    }
-  },
-  "visual_enhancers": {
-    "shadows": {
-      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
-      "dropdown": "shadow-[0_4px_20px_rgba(0,0,0,0.08)]"
-    },
-    "borders": {
-      "subtle": "border border-slate-200 dark:border-slate-800"
-    },
-    "glassmorphism": {
-      "header": "bg-white/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-white/60"
-    },
-    "animation": {
-      "hover_lift": "hover:-translate-y-1 transition-transform duration-200 ease-out",
-      "fade_in": "animate-in fade-in duration-300"
-    }
-  },
-  "assets": {
-    "images": {
-      "login_background": "https://images.pexels.com/photos/7108396/pexels-photo-7108396.jpeg",
-      "doctor_avatar_male": "https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg",
-      "doctor_avatar_female": "https://images.pexels.com/photos/5214995/pexels-photo-5214995.jpeg",
-      "placeholder_logo": "https://via.placeholder.com/150?text=VMP+CRM"
+    "placeholders": {
+      "medicine_box": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=800",
+      "pills_bottle": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80&w=800",
+      "delivery_box": "https://images.unsplash.com/photo-1586528243235-c6e6c4a4ccbf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxkZWxpdmVyeSUyMGJveGVzJTIwbWVkaWNhbCUyMGxvZ2lzdGljc3xlbnwwfHx8fDE3NzEzNTQ2ODJ8MA&ixlib=rb-4.1.0&q=85"
     },
     "icons": {
-      "library": "lucide-react",
-      "style": "stroke-width={1.5} size={20}"
+      "logo_placeholder": "https://via.placeholder.com/150x50?text=PharmaFlow"
     }
   },
-  "universal_guidelines": [
-    "Use 'Manrope' for all headings to give a modern, medical-tech feel.",
-    "Ensure all interactive elements have a hover state and active state.",
-    "Use 'sonner' for all toast notifications.",
-    "Implement a responsive sidebar that collapses on mobile.",
-    "Use 'recharts' for any data visualization (e.g., leads by status).",
-    "All forms must use 'react-hook-form' and 'zod' for validation.",
-    "Do not use gradients for backgrounds; stick to clean, solid colors or subtle patterns.",
-    "Ensure high contrast for text, especially in the data table.",
-    "Use 'data-testid' for all key interactive elements."
-  ],
+  "universal_guidelines": {
+    "do": [
+      "Use 'Manrope' for all headings to create a modern, friendly medical feel.",
+      "Use 'Inter' for body text for maximum legibility.",
+      "Use strictly defined 'Deep Emerald' (#059669) as the primary brand color.",
+      "Use 'Soft Sage' (#ECFDF5) for backgrounds of active items or success states.",
+      "Implement a 'Bottom Navigation' bar on mobile screens (fixed at bottom).",
+      "Make all touch targets (buttons, inputs, list items) at least 44px high.",
+      "Use 'Card' components with rounded-2xl corners and subtle shadows for all grouped content.",
+      "Ensure all text inputs have a font size of 16px to prevent iOS zoom on focus.",
+      "Use skeleton loaders instead of spinners for initial data fetching.",
+      "Add 'data-testid' to all interactive elements."
+    ],
+    "dont": [
+      "DO NOT use generic teal (#1B93A4) or standard 'Bootstrap Blue'.",
+      "DO NOT use sharp corners (rounded-none or rounded-sm) - keep it organic (rounded-xl+).",
+      "DO NOT use gradients for backgrounds (except specific hero sections if needed).",
+      "DO NOT use serif fonts.",
+      "DO NOT clutter the mobile view - hide secondary actions in menus.",
+      "DO NOT use 'alert' dialogs for non-critical errors - use 'sonner' toasts."
+    ]
+  },
   "instructions_to_main_agent": {
-    "step_1": "Install 'Manrope' font via Google Fonts in index.css.",
-    "step_2": "Update tailwind.config.js to include the new font family and custom colors.",
-    "step_3": "Create a reusable 'Layout' component that includes the Sidebar and Header.",
-    "step_4": "Implement the Dashboard page with the Bento Grid layout.",
-    "step_5": "Build the Doctors List page using the Shadcn Table component with search and filter.",
-    "step_6": "Create the Add/Edit Doctor form using Shadcn Form components."
+    "setup": [
+      "Update 'tailwind.config.js' to include the new color palette (Emerald/Slate) and radius settings.",
+      "Update 'index.css' to set the new base styles (background color, text color).",
+      "Install 'lucide-react' for icons if not present.",
+      "Create a 'Layout' component that handles the responsive structure (Sidebar on desktop, Bottom Nav on mobile)."
+    ],
+    "components": [
+      "Refactor 'Button' to be pill-shaped (rounded-full).",
+      "Create a 'BottomNav' component for mobile navigation.",
+      "Create a 'ProductCard' component with image, price, and 'Add to Order' button.",
+      "Create an 'OrderCard' component showing status with color-coded badges."
+    ],
+    "pages": {
+      "dashboard": "Create a 'Home' view with 'Quick Actions' (New Order, Track Order) and 'Recent Activity'.",
+      "products": "Create a searchable grid of products with category filters.",
+      "orders": "Create a list view of orders with filter tabs (Active, Past, Cancelled).",
+      "profile": "Create a profile settings page with delivery address management."
+    }
   }
 }

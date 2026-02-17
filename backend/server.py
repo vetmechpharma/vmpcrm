@@ -3615,21 +3615,32 @@ async def customer_send_otp(request: CustomerOTPRequest):
         'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
     }
     
-    # Send OTP via WhatsApp
+    # Send OTP via WhatsApp using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('api_key'):
+    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
             purpose_text = "registration" if request.purpose == "register" else "password reset"
             message = f"Your VMP CRM verification code for {purpose_text} is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
             
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                await client.post(config['api_url'], params={
-                    'apikey': config['api_key'],
-                    'mobile': clean_phone,
-                    'msg': message
-                })
+            # Ensure mobile has 91 prefix for India
+            wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
             
-            await log_whatsapp_message(clean_phone, 'otp', message, 'success')
+            params = {
+                'action': 'send',
+                'senderId': config['sender_id'],
+                'authToken': config['auth_token'],
+                'messageText': message,
+                'receiverId': wa_mobile
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(config['api_url'], params=params)
+                if response.status_code == 200:
+                    await log_whatsapp_message(wa_mobile, 'otp', message, 'success')
+                    logger.info(f"OTP sent successfully to {wa_mobile}")
+                else:
+                    await log_whatsapp_message(wa_mobile, 'otp', message, 'failed', error_message=f"Status: {response.status_code}")
+                    logger.error(f"WhatsApp OTP failed: {response.status_code} - {response.text}")
         except Exception as e:
             logger.error(f"WhatsApp OTP error: {str(e)}")
             await log_whatsapp_message(clean_phone, 'otp', f"OTP: {otp}", 'failed', error_message=str(e))

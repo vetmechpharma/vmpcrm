@@ -1875,6 +1875,12 @@ async def get_agency(agency_id: str, current_user: dict = Depends(get_current_us
     if isinstance(updated_at, str):
         updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
     
+    # Get transport name if transport_id exists
+    transport_name = None
+    if agency.get('transport_id'):
+        transport = await db.transports.find_one({'id': agency['transport_id']})
+        transport_name = transport['name'] if transport else None
+    
     return AgencyResponse(
         id=agency['id'],
         customer_code=agency['customer_code'],
@@ -1883,9 +1889,14 @@ async def get_agency(agency_id: str, current_user: dict = Depends(get_current_us
         gst_number=agency.get('gst_number'),
         drug_license=agency.get('drug_license'),
         address=agency.get('address'),
+        address_line_1=agency.get('address_line_1'),
+        address_line_2=agency.get('address_line_2'),
         state=agency.get('state'),
         district=agency.get('district'),
         pincode=agency.get('pincode'),
+        delivery_station=agency.get('delivery_station'),
+        transport_id=agency.get('transport_id'),
+        transport_name=transport_name,
         email=agency.get('email'),
         phone=agency['phone'],
         alternate_phone=agency.get('alternate_phone'),
@@ -1893,6 +1904,8 @@ async def get_agency(agency_id: str, current_user: dict = Depends(get_current_us
         priority=agency.get('priority'),
         last_contact_date=agency.get('last_contact_date'),
         follow_up_date=agency.get('follow_up_date'),
+        birthday=agency.get('birthday'),
+        anniversary=agency.get('anniversary'),
         created_at=created_at,
         updated_at=updated_at
     )

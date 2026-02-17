@@ -433,51 +433,51 @@ Build a simple CRM for managing doctor leads. Features include:
 
 ## Customer Portal & Role-Based Pricing - COMPLETED Feb 17, 2026
 
-### Completed:
+### Phase 1: Backend & Core Features - COMPLETED
 - [x] **Backend Models**: Customer portal models (CustomerRegister, CustomerLogin, CustomerOTPRequest, CustomerResponse, etc.)
 - [x] **Role-Based Pricing in Items**: rate_doctors, rate_medicals, rate_agencies + offer/special_offer for each role
-- [x] **Customer Authentication APIs**:
-  - POST /api/customer/send-otp (WhatsApp 4-digit OTP)
-  - POST /api/customer/verify-otp
-  - POST /api/customer/register (with admin approval required)
-  - POST /api/customer/login
-  - POST /api/customer/reset-password
-  - GET/PUT /api/customer/profile
-- [x] **Customer Portal APIs**:
-  - GET /api/customer/items (role-based pricing)
-  - GET /api/customer/orders (order history)
-  - GET /api/customer/tasks (assigned tasks)
-- [x] **Support Ticket System**:
-  - POST/GET /api/customer/tickets
-  - POST /api/customer/tickets/{id}/reply
-  - Admin: GET /api/support/tickets, PUT status, POST reply
-- [x] **Admin Customer Management**:
-  - GET /api/customers (list all)
-  - PUT /api/customers/{id}/approve (approve/reject)
-- [x] **Frontend Pages Created**:
-  - CustomerRegister.jsx (3-step registration with OTP)
-  - CustomerLogin.jsx
-  - CustomerLayout.jsx (sidebar navigation)
-  - CustomerDashboard.jsx
-  - CustomerItems.jsx (products with role-based pricing)
-  - CustomerOrders.jsx (order history)
-  - CustomerTasks.jsx (view assigned tasks)
-  - CustomerSupport.jsx (create/view tickets)
-  - CustomerProfile.jsx (edit profile)
-- [x] **Admin Pages Created**:
-  - Customers.jsx (approve/reject customer registrations)
-  - Support.jsx (manage support tickets)
-- [x] **Items.jsx Updated**: Role-based pricing fields (Doctor/Medical/Agency)
-- [x] **App.js Routes Added**: All customer portal and admin pages
-- [x] **Layout.jsx Sidebar Updated**: Portal Customers and Support Tickets links
+- [x] **Customer Authentication APIs**: send-otp, verify-otp, register, login, reset-password, profile
+- [x] **Customer Portal APIs**: items (role-based pricing), orders, tasks
+- [x] **Support Ticket System**: create/view tickets, replies
+- [x] **Admin Customer Management**: list, approve/reject
+
+### Phase 2: Mobile-First UI Redesign - COMPLETED Feb 17, 2026
+- [x] **Design System**: "PharmaFlow Mobile" - Clinical Organic theme
+  - Primary: Deep Emerald (#059669)
+  - Secondary: Soft Sage (#ECFDF5)
+  - Typography: Manrope (headings), Inter (body)
+  - Shapes: rounded-2xl cards, rounded-full buttons
+- [x] **Mobile Components**:
+  - BottomNav.jsx - 5-item navigation (Home, Products, Orders, Support, Profile)
+  - Glassmorphism headers
+  - Touch-friendly inputs (h-12 minimum)
+  - Safe area support for iOS notch
+- [x] **Customer Portal Pages** (mobile-first):
+  - CustomerLogin.jsx - phone/password with emerald gradient header
+  - CustomerRegister.jsx - 3-step OTP flow with progress bar
+  - CustomerLayout.jsx - bottom nav on mobile, sidebar on desktop
+  - CustomerDashboard.jsx - welcome banner, quick actions, stats cards
+  - CustomerItems.jsx - product grid with filters and role-based pricing
+  - CustomerOrders.jsx - tabbed view (Active/Completed/Cancelled)
+  - CustomerSupport.jsx - ticket creation and conversation view
+  - CustomerProfile.jsx - profile editing with delivery preferences
+  - CustomerTasks.jsx - pending/completed tabs
+- [x] **Admin Pages**:
+  - Customers.jsx - approve/reject customer registrations
+  - Support.jsx - manage support tickets
 
 ### Bug Fixes Applied:
-- Fixed GET /api/items/{item_id} to return role-based pricing fields
-- Fixed PUT /api/items/{item_id} to return role-based pricing fields
+- GET/PUT /api/items/{item_id} returns role-based pricing fields
+- GET /api/public/transports endpoint for customer profile
+- Dashboard stats fallback for missing updated_at field
 
-### Test Report: `/app/test_reports/iteration_13.json`
-- Backend: 17/17 tests PASSED
-- Frontend: All UI pages verified working
+### Test Reports: 
+- `/app/test_reports/iteration_13.json` - Backend tests (17/17 PASSED)
+- `/app/test_reports/iteration_14.json` - Frontend mobile UI tests (100% PASSED)
+
+### Test Credentials:
+- **Admin**: admin@vmpcrm.com / admin123
+- **Customer**: 9999777766 / test123
 
 ## Prioritized Backlog
 

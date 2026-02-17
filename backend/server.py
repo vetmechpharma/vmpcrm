@@ -704,6 +704,19 @@ class CustomerApproval(BaseModel):
     status: str  # approved, rejected
     rejection_reason: Optional[str] = None
 
+# ============== FALLBACK OTP MODELS ==============
+
+class FallbackOTPCreate(BaseModel):
+    otp: str
+
+class FallbackOTPResponse(BaseModel):
+    id: str
+    otp: str
+    is_active: bool
+    used_count: int
+    created_at: datetime
+    created_by: str
+
 # ============== SUPPORT TICKET MODELS ==============
 
 class TicketCreate(BaseModel):

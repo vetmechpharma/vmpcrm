@@ -219,6 +219,19 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
+// Portal Customers APIs
+export const portalCustomersAPI = {
+  getAll: (params) => api.get('/customers', { params }),
+  approve: (id, data) => api.put(`/customers/${id}/approve`, data),
+};
+
+// Support Tickets APIs  
+export const supportAPI = {
+  getTickets: (params) => api.get('/support/tickets', { params }),
+  updateStatus: (id, status) => api.put(`/support/tickets/${id}/status?status=${status}`),
+  addReply: (id, data) => api.post(`/support/tickets/${id}/reply`, data),
+};
+
 // Public APIs (no auth required)
 export const publicAPI = {
   getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),

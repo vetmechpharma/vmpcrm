@@ -2048,6 +2048,8 @@ async def get_agencies(
             follow_up_date=doc.get('follow_up_date'),
             birthday=doc.get('birthday'),
             anniversary=doc.get('anniversary'),
+            is_portal_customer=doc.get('is_portal_customer', False),
+            portal_customer_id=doc.get('portal_customer_id'),
             created_at=created_at,
             updated_at=updated_at
         ))

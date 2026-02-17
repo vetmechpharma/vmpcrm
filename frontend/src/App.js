@@ -80,6 +80,11 @@ function AppRoutes() {
       <Route path="/customer/login" element={<CustomerLogin />} />
       <Route path="/customer" element={<CustomerLayout />}>
         <Route path="dashboard" element={<CustomerDashboard />} />
+        <Route path="items" element={<CustomerItems />} />
+        <Route path="orders" element={<CustomerOrders />} />
+        <Route path="tasks" element={<CustomerTasks />} />
+        <Route path="support" element={<CustomerSupport />} />
+        <Route path="profile" element={<CustomerProfile />} />
         <Route index element={<Navigate to="/customer/dashboard" replace />} />
       </Route>
       

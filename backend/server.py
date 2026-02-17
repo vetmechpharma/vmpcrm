@@ -1815,6 +1815,13 @@ async def get_agencies(
     
     agencies = await db.agencies.find(query, {'_id': 0}).sort('created_at', -1).to_list(1000)
     
+    # Get all transport ids to lookup names
+    transport_ids = list(set([doc.get('transport_id') for doc in agencies if doc.get('transport_id')]))
+    transports_map = {}
+    if transport_ids:
+        transports = await db.transports.find({'id': {'$in': transport_ids}}).to_list(100)
+        transports_map = {t['id']: t['name'] for t in transports}
+    
     result = []
     for doc in agencies:
         created_at = doc.get('created_at')
@@ -1832,9 +1839,14 @@ async def get_agencies(
             gst_number=doc.get('gst_number'),
             drug_license=doc.get('drug_license'),
             address=doc.get('address'),
+            address_line_1=doc.get('address_line_1'),
+            address_line_2=doc.get('address_line_2'),
             state=doc.get('state'),
             district=doc.get('district'),
             pincode=doc.get('pincode'),
+            delivery_station=doc.get('delivery_station'),
+            transport_id=doc.get('transport_id'),
+            transport_name=transports_map.get(doc.get('transport_id')),
             email=doc.get('email'),
             phone=doc['phone'],
             alternate_phone=doc.get('alternate_phone'),
@@ -1842,6 +1854,8 @@ async def get_agencies(
             priority=doc.get('priority'),
             last_contact_date=doc.get('last_contact_date'),
             follow_up_date=doc.get('follow_up_date'),
+            birthday=doc.get('birthday'),
+            anniversary=doc.get('anniversary'),
             created_at=created_at,
             updated_at=updated_at
         ))

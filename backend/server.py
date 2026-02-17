@@ -357,6 +357,8 @@ class MedicalResponse(BaseModel):
     follow_up_date: Optional[str] = None
     birthday: Optional[str] = None
     anniversary: Optional[str] = None
+    is_portal_customer: Optional[bool] = False  # Flag for portal customers
+    portal_customer_id: Optional[str] = None  # Link to portal_customers
     created_at: datetime
     updated_at: datetime
 

@@ -2886,6 +2886,18 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         mrp=item['mrp'],
         rate=item['rate'],
         gst=item.get('gst', 0),
+        # Role-based pricing - Doctors
+        rate_doctors=item.get('rate_doctors'),
+        offer_doctors=item.get('offer_doctors'),
+        special_offer_doctors=item.get('special_offer_doctors'),
+        # Role-based pricing - Medicals
+        rate_medicals=item.get('rate_medicals'),
+        offer_medicals=item.get('offer_medicals'),
+        special_offer_medicals=item.get('special_offer_medicals'),
+        # Role-based pricing - Agencies
+        rate_agencies=item.get('rate_agencies'),
+        offer_agencies=item.get('offer_agencies'),
+        special_offer_agencies=item.get('special_offer_agencies'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item['id']}/image" if has_image else None,
         created_at=created_at

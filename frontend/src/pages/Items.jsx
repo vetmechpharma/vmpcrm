@@ -138,6 +138,16 @@ export const Items = () => {
       gst: item.gst.toString(),
       custom_fields: item.custom_fields || [],
       image_base64: null,
+      // Role-based pricing
+      rate_doctors: item.rate_doctors?.toString() || '',
+      offer_doctors: item.offer_doctors || '',
+      special_offer_doctors: item.special_offer_doctors || '',
+      rate_medicals: item.rate_medicals?.toString() || '',
+      offer_medicals: item.offer_medicals || '',
+      special_offer_medicals: item.special_offer_medicals || '',
+      rate_agencies: item.rate_agencies?.toString() || '',
+      offer_agencies: item.offer_agencies || '',
+      special_offer_agencies: item.special_offer_agencies || '',
     });
     setImagePreview(item.image_url ? `${API_URL}${item.image_url}` : null);
     setIsEditing(false);

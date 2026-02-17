@@ -810,6 +810,137 @@ export const Items = () => {
 
                 <Separator />
 
+                {/* Role-Based Pricing Section */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Label className="text-base font-semibold">Customer Portal Pricing</Label>
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Optional</span>
+                  </div>
+                  <p className="text-sm text-slate-500 mb-4">Set different prices and offers for each customer type. If left empty, the default rate/offer above will be used.</p>
+                  
+                  {/* Doctors Pricing */}
+                  <div className="p-4 border border-blue-200 rounded-lg bg-blue-50/50 mb-4">
+                    <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-blue-600 text-white rounded flex items-center justify-center text-xs">D</span>
+                      Doctor Pricing
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.rate_doctors}
+                          onChange={(e) => setFormData({ ...formData, rate_doctors: e.target.value })}
+                          placeholder={formData.rate || "Same as default"}
+                          disabled={!isFormMode}
+                          data-testid="rate-doctors-input"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Offer</Label>
+                        <Input
+                          value={formData.offer_doctors}
+                          onChange={(e) => setFormData({ ...formData, offer_doctors: e.target.value })}
+                          placeholder={formData.offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Special Offer</Label>
+                        <Input
+                          value={formData.special_offer_doctors}
+                          onChange={(e) => setFormData({ ...formData, special_offer_doctors: e.target.value })}
+                          placeholder={formData.special_offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Medicals Pricing */}
+                  <div className="p-4 border border-purple-200 rounded-lg bg-purple-50/50 mb-4">
+                    <h4 className="font-medium text-purple-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-purple-600 text-white rounded flex items-center justify-center text-xs">M</span>
+                      Medical Store Pricing
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.rate_medicals}
+                          onChange={(e) => setFormData({ ...formData, rate_medicals: e.target.value })}
+                          placeholder={formData.rate || "Same as default"}
+                          disabled={!isFormMode}
+                          data-testid="rate-medicals-input"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Offer</Label>
+                        <Input
+                          value={formData.offer_medicals}
+                          onChange={(e) => setFormData({ ...formData, offer_medicals: e.target.value })}
+                          placeholder={formData.offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Special Offer</Label>
+                        <Input
+                          value={formData.special_offer_medicals}
+                          onChange={(e) => setFormData({ ...formData, special_offer_medicals: e.target.value })}
+                          placeholder={formData.special_offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Agencies Pricing */}
+                  <div className="p-4 border border-orange-200 rounded-lg bg-orange-50/50">
+                    <h4 className="font-medium text-orange-800 mb-3 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-orange-600 text-white rounded flex items-center justify-center text-xs">A</span>
+                      Agency Pricing
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.rate_agencies}
+                          onChange={(e) => setFormData({ ...formData, rate_agencies: e.target.value })}
+                          placeholder={formData.rate || "Same as default"}
+                          disabled={!isFormMode}
+                          data-testid="rate-agencies-input"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Offer</Label>
+                        <Input
+                          value={formData.offer_agencies}
+                          onChange={(e) => setFormData({ ...formData, offer_agencies: e.target.value })}
+                          placeholder={formData.offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-slate-500">Special Offer</Label>
+                        <Input
+                          value={formData.special_offer_agencies}
+                          onChange={(e) => setFormData({ ...formData, special_offer_agencies: e.target.value })}
+                          placeholder={formData.special_offer || "Same as default"}
+                          disabled={!isFormMode}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
                 {/* Custom Fields Section */}
                 <div>
                   <div className="flex items-center justify-between mb-4">

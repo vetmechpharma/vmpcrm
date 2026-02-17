@@ -532,11 +532,25 @@ class ItemCreate(BaseModel):
     main_categories: Optional[List[str]] = []  # Main categories: Large Animals, Poultry, Pets (multiple)
     subcategories: Optional[List[str]] = []  # Subcategories: Injection, Liquids, Bolus, Powder
     composition: Optional[str] = None
-    offer: Optional[str] = None
-    special_offer: Optional[str] = None  # e.g., "Buy 20 pcs at Rs.50/-"
+    # Common pricing
     mrp: float
-    rate: float
     gst: float = 0
+    # Role-based pricing - Doctors
+    rate_doctors: Optional[float] = None
+    offer_doctors: Optional[str] = None
+    special_offer_doctors: Optional[str] = None
+    # Role-based pricing - Medicals
+    rate_medicals: Optional[float] = None
+    offer_medicals: Optional[str] = None
+    special_offer_medicals: Optional[str] = None
+    # Role-based pricing - Agencies
+    rate_agencies: Optional[float] = None
+    offer_agencies: Optional[str] = None
+    special_offer_agencies: Optional[str] = None
+    # Legacy fields (for backward compatibility)
+    rate: Optional[float] = None
+    offer: Optional[str] = None
+    special_offer: Optional[str] = None
     custom_fields: Optional[List[CustomField]] = []
     image_base64: Optional[str] = None  # Base64 encoded image
 
@@ -546,11 +560,24 @@ class ItemUpdate(BaseModel):
     main_categories: Optional[List[str]] = None
     subcategories: Optional[List[str]] = None
     composition: Optional[str] = None
+    mrp: Optional[float] = None
+    gst: Optional[float] = None
+    # Role-based pricing - Doctors
+    rate_doctors: Optional[float] = None
+    offer_doctors: Optional[str] = None
+    special_offer_doctors: Optional[str] = None
+    # Role-based pricing - Medicals
+    rate_medicals: Optional[float] = None
+    offer_medicals: Optional[str] = None
+    special_offer_medicals: Optional[str] = None
+    # Role-based pricing - Agencies
+    rate_agencies: Optional[float] = None
+    offer_agencies: Optional[str] = None
+    special_offer_agencies: Optional[str] = None
+    # Legacy fields
+    rate: Optional[float] = None
     offer: Optional[str] = None
     special_offer: Optional[str] = None
-    mrp: Optional[float] = None
-    rate: Optional[float] = None
-    gst: Optional[float] = None
     custom_fields: Optional[List[CustomField]] = None
     image_base64: Optional[str] = None
 
@@ -561,11 +588,24 @@ class ItemResponse(BaseModel):
     main_categories: List[str] = []
     subcategories: List[str] = []
     composition: Optional[str] = None
+    mrp: float
+    gst: float
+    # Role-based pricing - Doctors
+    rate_doctors: Optional[float] = None
+    offer_doctors: Optional[str] = None
+    special_offer_doctors: Optional[str] = None
+    # Role-based pricing - Medicals
+    rate_medicals: Optional[float] = None
+    offer_medicals: Optional[str] = None
+    special_offer_medicals: Optional[str] = None
+    # Role-based pricing - Agencies
+    rate_agencies: Optional[float] = None
+    offer_agencies: Optional[str] = None
+    special_offer_agencies: Optional[str] = None
+    # Legacy fields (for backward compatibility)
+    rate: float
     offer: Optional[str] = None
     special_offer: Optional[str] = None
-    mrp: float
-    rate: float
-    gst: float
     custom_fields: List[CustomField] = []
     image_url: Optional[str] = None
     created_at: datetime

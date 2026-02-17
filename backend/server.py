@@ -629,11 +629,16 @@ class CustomerRegister(BaseModel):
     email: Optional[EmailStr] = None
     password: str
     role: str  # doctor, medical, agency
-    # Role-specific fields
-    reg_no: Optional[str] = None  # For doctors
-    proprietor_name: Optional[str] = None  # For medicals/agencies
+    # Role-specific fields (Doctor)
+    reg_no: Optional[str] = None
+    dob: Optional[str] = None
+    # Role-specific fields (Medical/Agency)
+    proprietor_name: Optional[str] = None
     gst_number: Optional[str] = None
     drug_license: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    birthday: Optional[str] = None
+    anniversary: Optional[str] = None
     # Address fields
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None

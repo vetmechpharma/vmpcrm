@@ -1451,6 +1451,8 @@ async def get_doctor(doctor_id: str, current_user: dict = Depends(get_current_us
         priority=doctor.get('priority'),
         last_contact_date=doctor.get('last_contact_date'),
         follow_up_date=doctor.get('follow_up_date'),
+        is_portal_customer=doctor.get('is_portal_customer', False),
+        portal_customer_id=doctor.get('portal_customer_id'),
         created_at=created_at,
         updated_at=updated_at
     )

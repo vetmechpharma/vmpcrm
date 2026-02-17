@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { smtpAPI, whatsappAPI } from '../lib/api';
+import { smtpAPI, whatsappAPI, fallbackOTPAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send } from 'lucide-react';
+import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export const Settings = () => {

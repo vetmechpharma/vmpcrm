@@ -1740,19 +1740,31 @@ async def create_agency(agency_data: AgencyCreate, current_user: dict = Depends(
         'gst_number': agency_data.gst_number,
         'drug_license': agency_data.drug_license,
         'address': agency_data.address,
+        'address_line_1': agency_data.address_line_1,
+        'address_line_2': agency_data.address_line_2,
         'state': agency_data.state,
         'district': agency_data.district,
         'pincode': agency_data.pincode,
+        'delivery_station': agency_data.delivery_station,
+        'transport_id': agency_data.transport_id,
         'email': agency_data.email,
         'phone': agency_data.phone,
         'alternate_phone': agency_data.alternate_phone,
         'lead_status': agency_data.lead_status,
+        'birthday': agency_data.birthday,
+        'anniversary': agency_data.anniversary,
         'created_at': now.isoformat(),
         'updated_at': now.isoformat(),
         'created_by': current_user['id']
     }
     
     await db.agencies.insert_one(agency_doc)
+    
+    # Get transport name if transport_id is provided
+    transport_name = None
+    if agency_data.transport_id:
+        transport = await db.transports.find_one({'id': agency_data.transport_id})
+        transport_name = transport['name'] if transport else None
     
     return AgencyResponse(
         id=agency_id,
@@ -1762,13 +1774,20 @@ async def create_agency(agency_data: AgencyCreate, current_user: dict = Depends(
         gst_number=agency_data.gst_number,
         drug_license=agency_data.drug_license,
         address=agency_data.address,
+        address_line_1=agency_data.address_line_1,
+        address_line_2=agency_data.address_line_2,
         state=agency_data.state,
         district=agency_data.district,
         pincode=agency_data.pincode,
+        delivery_station=agency_data.delivery_station,
+        transport_id=agency_data.transport_id,
+        transport_name=transport_name,
         email=agency_data.email,
         phone=agency_data.phone,
         alternate_phone=agency_data.alternate_phone,
         lead_status=agency_data.lead_status,
+        birthday=agency_data.birthday,
+        anniversary=agency_data.anniversary,
         created_at=now,
         updated_at=now
     )

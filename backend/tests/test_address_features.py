@@ -367,14 +367,9 @@ class TestOrderAutoFillFromCustomer:
         assert data["transport_id"] == self.transport_id, f"Expected transport_id {self.transport_id}, got {data.get('transport_id')}"
         print(f"✓ Verified doctor has delivery preferences: station={data['delivery_station']}, transport={data.get('transport_name')}")
     
-    def test_16_cleanup_order_and_doctor(self):
-        """Cleanup: Delete test order and doctor"""
-        order_id = getattr(self.__class__, 'test_order_id', None)
+    def test_16_cleanup_doctor(self):
+        """Cleanup: Delete test doctor"""
         doctor_id = getattr(self.__class__, 'test_doctor_id', None)
-        
-        if order_id:
-            response = requests.delete(f"{BASE_URL}/api/orders/{order_id}", headers=self.headers)
-            print(f"  Order delete status: {response.status_code}")
         
         if doctor_id:
             response = requests.delete(f"{BASE_URL}/api/doctors/{doctor_id}", headers=self.headers)

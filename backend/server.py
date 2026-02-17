@@ -3410,6 +3410,744 @@ async def get_doctor_by_mobile(mobile: str):
         'customer_code': doctor['customer_code']
     }
 
+# ============== CUSTOMER PORTAL ROUTES ==============
+
+# Store OTPs in memory (in production, use Redis)
+customer_otp_store = {}
+
+async def generate_customer_code(role: str):
+    """Generate unique customer code based on role"""
+    prefix = "CUS"
+    if role == "doctor":
+        prefix = "DOC"
+    elif role == "medical":
+        prefix = "MED"
+    elif role == "agency":
+        prefix = "AGY"
+    
+    count = await db.portal_customers.count_documents({'role': role})
+    return f"{prefix}-{str(count + 1).zfill(4)}"
+
+async def generate_ticket_number():
+    """Generate unique ticket number"""
+    today = datetime.now(timezone.utc).strftime('%Y%m%d')
+    count = await db.support_tickets.count_documents({
+        'created_at': {'$regex': f'^{today[:4]}-{today[4:6]}-{today[6:8]}'}
+    })
+    return f"TKT-{today}-{str(count + 1).zfill(4)}"
+
+def create_customer_token(customer_id: str, role: str):
+    """Create JWT token for customer"""
+    payload = {
+        'customer_id': customer_id,
+        'role': role,
+        'type': 'customer',
+        'exp': datetime.now(timezone.utc) + timedelta(days=30)
+    }
+    return jwt.encode(payload, os.environ.get('JWT_SECRET', 'vmp-crm-secret-key-2024'), algorithm='HS256')
+
+async def get_current_customer(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
+    """Validate customer JWT token"""
+    try:
+        payload = jwt.decode(credentials.credentials, os.environ.get('JWT_SECRET', 'vmp-crm-secret-key-2024'), algorithms=['HS256'])
+        if payload.get('type') != 'customer':
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        
+        customer = await db.portal_customers.find_one({'id': payload['customer_id']}, {'_id': 0})
+        if not customer:
+            raise HTTPException(status_code=401, detail="Customer not found")
+        if customer['status'] != 'approved':
+            raise HTTPException(status_code=403, detail=f"Account is {customer['status']}")
+        return customer
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@api_router.post("/customer/send-otp")
+async def customer_send_otp(request: CustomerOTPRequest):
+    """Send OTP to customer for registration or password reset"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    if len(clean_phone) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    # Check if customer exists for password reset
+    if request.purpose == "reset_password":
+        customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+        if not customer:
+            raise HTTPException(status_code=404, detail="No account found with this phone number")
+    
+    # Generate 4-digit OTP
+    otp = str(random.randint(1000, 9999))
+    
+    # Store OTP with expiry (5 minutes)
+    customer_otp_store[f"{clean_phone}_{request.purpose}"] = {
+        'otp': otp,
+        'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
+    }
+    
+    # Send OTP via WhatsApp
+    config = await get_whatsapp_config()
+    if config.get('api_url') and config.get('api_key'):
+        try:
+            purpose_text = "registration" if request.purpose == "register" else "password reset"
+            message = f"Your VMP CRM verification code for {purpose_text} is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                await client.post(config['api_url'], params={
+                    'apikey': config['api_key'],
+                    'mobile': clean_phone,
+                    'msg': message
+                })
+            
+            await log_whatsapp_message(clean_phone, 'otp', message, 'success')
+        except Exception as e:
+            logger.error(f"WhatsApp OTP error: {str(e)}")
+            await log_whatsapp_message(clean_phone, 'otp', f"OTP: {otp}", 'failed', error_message=str(e))
+    
+    return {"message": "OTP sent successfully", "phone": clean_phone}
+
+@api_router.post("/customer/verify-otp")
+async def customer_verify_otp(request: CustomerOTPVerify):
+    """Verify OTP for customer"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    otp_key = f"{clean_phone}_{request.purpose}"
+    
+    stored = customer_otp_store.get(otp_key)
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new OTP.")
+    
+    if datetime.now(timezone.utc) > stored['expires']:
+        del customer_otp_store[otp_key]
+        raise HTTPException(status_code=400, detail="OTP expired. Please request a new OTP.")
+    
+    if stored['otp'] != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Mark OTP as verified
+    customer_otp_store[otp_key]['verified'] = True
+    
+    return {"message": "OTP verified successfully", "verified": True}
+
+@api_router.post("/customer/register", response_model=CustomerResponse)
+async def customer_register(request: CustomerRegister):
+    """Register new customer (requires OTP verification)"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    
+    # Verify OTP was verified
+    otp_key = f"{clean_phone}_register"
+    stored = customer_otp_store.get(otp_key)
+    if not stored or not stored.get('verified'):
+        raise HTTPException(status_code=400, detail="Please verify OTP first")
+    
+    # Check if phone already exists
+    existing = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+    
+    # Validate role
+    if request.role not in ['doctor', 'medical', 'agency']:
+        raise HTTPException(status_code=400, detail="Invalid role. Must be doctor, medical, or agency")
+    
+    customer_id = str(uuid.uuid4())
+    customer_code = await generate_customer_code(request.role)
+    now = datetime.now(timezone.utc)
+    
+    # Hash password
+    password_hash = bcrypt.hashpw(request.password.encode(), bcrypt.gensalt()).decode()
+    
+    customer_doc = {
+        'id': customer_id,
+        'customer_code': customer_code,
+        'name': request.name,
+        'phone': clean_phone,
+        'email': request.email,
+        'password_hash': password_hash,
+        'role': request.role,
+        'status': 'pending_approval',
+        'reg_no': request.reg_no,
+        'proprietor_name': request.proprietor_name,
+        'gst_number': request.gst_number,
+        'drug_license': request.drug_license,
+        'address_line_1': request.address_line_1,
+        'address_line_2': request.address_line_2,
+        'state': request.state,
+        'district': request.district,
+        'pincode': request.pincode,
+        'delivery_station': request.delivery_station,
+        'transport_id': request.transport_id,
+        'created_at': now.isoformat(),
+        'approved_at': None,
+        'approved_by': None
+    }
+    
+    await db.portal_customers.insert_one(customer_doc)
+    
+    # Clear OTP
+    del customer_otp_store[otp_key]
+    
+    # Get transport name if exists
+    transport_name = None
+    if request.transport_id:
+        transport = await db.transports.find_one({'id': request.transport_id}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
+    return CustomerResponse(
+        id=customer_id,
+        customer_code=customer_code,
+        name=request.name,
+        phone=clean_phone,
+        email=request.email,
+        role=request.role,
+        status='pending_approval',
+        reg_no=request.reg_no,
+        proprietor_name=request.proprietor_name,
+        gst_number=request.gst_number,
+        drug_license=request.drug_license,
+        address_line_1=request.address_line_1,
+        address_line_2=request.address_line_2,
+        state=request.state,
+        district=request.district,
+        pincode=request.pincode,
+        delivery_station=request.delivery_station,
+        transport_id=request.transport_id,
+        transport_name=transport_name,
+        created_at=now
+    )
+
+@api_router.post("/customer/login")
+async def customer_login(request: CustomerLogin):
+    """Customer login"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    
+    customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=401, detail="Invalid phone or password")
+    
+    if not bcrypt.checkpw(request.password.encode(), customer['password_hash'].encode()):
+        raise HTTPException(status_code=401, detail="Invalid phone or password")
+    
+    if customer['status'] == 'pending_approval':
+        raise HTTPException(status_code=403, detail="Your account is pending approval. Please wait for admin approval.")
+    
+    if customer['status'] == 'rejected':
+        raise HTTPException(status_code=403, detail="Your registration was rejected. Please contact support.")
+    
+    if customer['status'] == 'suspended':
+        raise HTTPException(status_code=403, detail="Your account has been suspended. Please contact support.")
+    
+    token = create_customer_token(customer['id'], customer['role'])
+    
+    return {
+        "access_token": token,
+        "customer": {
+            "id": customer['id'],
+            "name": customer['name'],
+            "phone": customer['phone'],
+            "role": customer['role'],
+            "customer_code": customer['customer_code']
+        }
+    }
+
+@api_router.post("/customer/reset-password")
+async def customer_reset_password(request: CustomerResetPassword):
+    """Reset customer password"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    
+    # Verify OTP
+    otp_key = f"{clean_phone}_reset_password"
+    stored = customer_otp_store.get(otp_key)
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP not found or expired")
+    
+    if stored['otp'] != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Update password
+    password_hash = bcrypt.hashpw(request.new_password.encode(), bcrypt.gensalt()).decode()
+    result = await db.portal_customers.update_one(
+        {'phone': clean_phone},
+        {'$set': {'password_hash': password_hash, 'updated_at': datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Clear OTP
+    del customer_otp_store[otp_key]
+    
+    return {"message": "Password reset successfully"}
+
+@api_router.get("/customer/profile", response_model=CustomerResponse)
+async def get_customer_profile(customer: dict = Depends(get_current_customer)):
+    """Get current customer profile"""
+    transport_name = None
+    if customer.get('transport_id'):
+        transport = await db.transports.find_one({'id': customer['transport_id']}, {'_id': 0, 'name': 1})
+        transport_name = transport.get('name') if transport else None
+    
+    created_at = customer.get('created_at')
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    
+    approved_at = customer.get('approved_at')
+    if approved_at and isinstance(approved_at, str):
+        approved_at = datetime.fromisoformat(approved_at.replace('Z', '+00:00'))
+    
+    return CustomerResponse(
+        id=customer['id'],
+        customer_code=customer['customer_code'],
+        name=customer['name'],
+        phone=customer['phone'],
+        email=customer.get('email'),
+        role=customer['role'],
+        status=customer['status'],
+        reg_no=customer.get('reg_no'),
+        proprietor_name=customer.get('proprietor_name'),
+        gst_number=customer.get('gst_number'),
+        drug_license=customer.get('drug_license'),
+        address_line_1=customer.get('address_line_1'),
+        address_line_2=customer.get('address_line_2'),
+        state=customer.get('state'),
+        district=customer.get('district'),
+        pincode=customer.get('pincode'),
+        delivery_station=customer.get('delivery_station'),
+        transport_id=customer.get('transport_id'),
+        transport_name=transport_name,
+        created_at=created_at,
+        approved_at=approved_at,
+        approved_by=customer.get('approved_by')
+    )
+
+@api_router.put("/customer/profile", response_model=CustomerResponse)
+async def update_customer_profile(update_data: CustomerProfileUpdate, customer: dict = Depends(get_current_customer)):
+    """Update customer profile"""
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    update_dict['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.portal_customers.update_one({'id': customer['id']}, {'$set': update_dict})
+    
+    # Get updated customer
+    updated_customer = await db.portal_customers.find_one({'id': customer['id']}, {'_id': 0})
+    return await get_customer_profile(updated_customer)
+
+@api_router.get("/customer/items")
+async def get_customer_items(
+    main_category: Optional[str] = None,
+    subcategory: Optional[str] = None,
+    customer: dict = Depends(get_current_customer)
+):
+    """Get items with role-based pricing for logged-in customer"""
+    query = {}
+    if main_category:
+        query['main_categories'] = main_category
+    if subcategory:
+        query['subcategories'] = subcategory
+    
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0, 'created_by': 0}).sort('item_name', 1).to_list(1000)
+    
+    role = customer['role']
+    result = []
+    
+    for item in items:
+        # Get role-specific pricing
+        if role == 'doctor':
+            rate = item.get('rate_doctors') or item.get('rate', 0)
+            offer = item.get('offer_doctors') or item.get('offer')
+            special_offer = item.get('special_offer_doctors') or item.get('special_offer')
+        elif role == 'medical':
+            rate = item.get('rate_medicals') or item.get('rate', 0)
+            offer = item.get('offer_medicals') or item.get('offer')
+            special_offer = item.get('special_offer_medicals') or item.get('special_offer')
+        else:  # agency
+            rate = item.get('rate_agencies') or item.get('rate', 0)
+            offer = item.get('offer_agencies') or item.get('offer')
+            special_offer = item.get('special_offer_agencies') or item.get('special_offer')
+        
+        result.append({
+            'id': item['id'],
+            'item_code': item['item_code'],
+            'item_name': item['item_name'],
+            'main_categories': item.get('main_categories', []),
+            'subcategories': item.get('subcategories', []),
+            'composition': item.get('composition'),
+            'mrp': item['mrp'],
+            'rate': rate,
+            'offer': offer,
+            'special_offer': special_offer,
+            'gst': item.get('gst', 0),
+            'image_url': f"/api/items/{item['id']}/image" if item.get('has_image') else None
+        })
+    
+    return result
+
+@api_router.get("/customer/orders")
+async def get_customer_orders(customer: dict = Depends(get_current_customer)):
+    """Get order history for logged-in customer"""
+    # Find orders linked to this customer's phone
+    orders = await db.orders.find(
+        {'doctor_phone': customer['phone']},
+        {'_id': 0}
+    ).sort('created_at', -1).to_list(100)
+    
+    result = []
+    for order in orders:
+        created_at = order.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append({
+            'id': order['id'],
+            'order_number': order['order_number'],
+            'items': order.get('items', []),
+            'status': order['status'],
+            'transport_name': order.get('transport_name'),
+            'tracking_number': order.get('tracking_number'),
+            'tracking_url': order.get('tracking_url'),
+            'delivery_station': order.get('delivery_station'),
+            'payment_mode': order.get('payment_mode'),
+            'created_at': created_at
+        })
+    
+    return result
+
+@api_router.get("/customer/tasks")
+async def get_customer_tasks(customer: dict = Depends(get_current_customer)):
+    """Get tasks assigned to customer (created by admin/staff for them)"""
+    # Find tasks linked to customer based on phone number match in doctors/medicals/agencies
+    tasks = []
+    
+    # First check if customer is linked to any doctor/medical/agency record
+    if customer['role'] == 'doctor':
+        linked = await db.doctors.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
+        if linked:
+            tasks = await db.tasks.find({'doctor_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
+    elif customer['role'] == 'medical':
+        linked = await db.medicals.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
+        if linked:
+            tasks = await db.tasks.find({'medical_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
+    elif customer['role'] == 'agency':
+        linked = await db.agencies.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
+        if linked:
+            tasks = await db.tasks.find({'agency_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
+    
+    result = []
+    for task in tasks:
+        created_at = task.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append({
+            'id': task['id'],
+            'title': task['title'],
+            'description': task.get('description'),
+            'due_date': task.get('due_date'),
+            'priority': task.get('priority', 'moderate'),
+            'status': task.get('status', 'pending'),
+            'created_at': created_at
+        })
+    
+    return result
+
+# Support Ticket Routes for Customers
+
+@api_router.post("/customer/tickets", response_model=TicketResponse)
+async def create_ticket(ticket_data: TicketCreate, customer: dict = Depends(get_current_customer)):
+    """Create support ticket"""
+    ticket_id = str(uuid.uuid4())
+    ticket_number = await generate_ticket_number()
+    now = datetime.now(timezone.utc)
+    
+    # Get order details if linked
+    order_number = None
+    if ticket_data.order_id:
+        order = await db.orders.find_one({'id': ticket_data.order_id}, {'_id': 0, 'order_number': 1})
+        order_number = order.get('order_number') if order else None
+    
+    ticket_doc = {
+        'id': ticket_id,
+        'ticket_number': ticket_number,
+        'customer_id': customer['id'],
+        'customer_name': customer['name'],
+        'customer_phone': customer['phone'],
+        'customer_role': customer['role'],
+        'subject': ticket_data.subject,
+        'description': ticket_data.description,
+        'order_id': ticket_data.order_id,
+        'order_number': order_number,
+        'priority': ticket_data.priority,
+        'status': 'open',
+        'replies': [],
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'resolved_at': None
+    }
+    
+    await db.support_tickets.insert_one(ticket_doc)
+    
+    return TicketResponse(
+        id=ticket_id,
+        ticket_number=ticket_number,
+        customer_id=customer['id'],
+        customer_name=customer['name'],
+        customer_phone=customer['phone'],
+        customer_role=customer['role'],
+        subject=ticket_data.subject,
+        description=ticket_data.description,
+        order_id=ticket_data.order_id,
+        order_number=order_number,
+        priority=ticket_data.priority,
+        status='open',
+        replies=[],
+        created_at=now,
+        updated_at=now
+    )
+
+@api_router.get("/customer/tickets")
+async def get_customer_tickets(customer: dict = Depends(get_current_customer)):
+    """Get customer's support tickets"""
+    tickets = await db.support_tickets.find(
+        {'customer_id': customer['id']},
+        {'_id': 0}
+    ).sort('created_at', -1).to_list(100)
+    
+    result = []
+    for ticket in tickets:
+        created_at = ticket.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        updated_at = ticket.get('updated_at')
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+        
+        result.append({
+            'id': ticket['id'],
+            'ticket_number': ticket['ticket_number'],
+            'subject': ticket['subject'],
+            'description': ticket['description'],
+            'order_id': ticket.get('order_id'),
+            'order_number': ticket.get('order_number'),
+            'priority': ticket['priority'],
+            'status': ticket['status'],
+            'replies': ticket.get('replies', []),
+            'created_at': created_at,
+            'updated_at': updated_at
+        })
+    
+    return result
+
+@api_router.post("/customer/tickets/{ticket_id}/reply")
+async def add_customer_ticket_reply(ticket_id: str, reply: TicketReply, customer: dict = Depends(get_current_customer)):
+    """Add reply to ticket from customer"""
+    ticket = await db.support_tickets.find_one({'id': ticket_id, 'customer_id': customer['id']}, {'_id': 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    now = datetime.now(timezone.utc)
+    reply_doc = {
+        'id': str(uuid.uuid4()),
+        'message': reply.message,
+        'sender_type': 'customer',
+        'sender_name': customer['name'],
+        'created_at': now.isoformat()
+    }
+    
+    await db.support_tickets.update_one(
+        {'id': ticket_id},
+        {
+            '$push': {'replies': reply_doc},
+            '$set': {'updated_at': now.isoformat()}
+        }
+    )
+    
+    return {"message": "Reply added successfully", "reply": reply_doc}
+
+# Admin routes for customer management
+
+@api_router.get("/customers")
+async def get_all_customers(
+    status: Optional[str] = None,
+    role: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all portal customers (admin only)"""
+    query = {}
+    if status:
+        query['status'] = status
+    if role:
+        query['role'] = role
+    if search:
+        query['$or'] = [
+            {'name': {'$regex': search, '$options': 'i'}},
+            {'phone': {'$regex': search, '$options': 'i'}},
+            {'customer_code': {'$regex': search, '$options': 'i'}},
+            {'email': {'$regex': search, '$options': 'i'}}
+        ]
+    
+    customers = await db.portal_customers.find(query, {'_id': 0, 'password_hash': 0}).sort('created_at', -1).to_list(500)
+    
+    # Get transport names
+    transport_ids = [c.get('transport_id') for c in customers if c.get('transport_id')]
+    transport_map = {}
+    if transport_ids:
+        transports = await db.transports.find({'id': {'$in': transport_ids}}, {'_id': 0, 'id': 1, 'name': 1}).to_list(100)
+        transport_map = {t['id']: t['name'] for t in transports}
+    
+    result = []
+    for c in customers:
+        created_at = c.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        result.append({
+            **c,
+            'transport_name': transport_map.get(c.get('transport_id')),
+            'created_at': created_at
+        })
+    
+    return result
+
+@api_router.put("/customers/{customer_id}/approve")
+async def approve_customer(customer_id: str, approval: CustomerApproval, current_user: dict = Depends(get_current_user)):
+    """Approve or reject customer registration"""
+    customer = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    now = datetime.now(timezone.utc)
+    update_data = {
+        'status': approval.status,
+        'updated_at': now.isoformat()
+    }
+    
+    if approval.status == 'approved':
+        update_data['approved_at'] = now.isoformat()
+        update_data['approved_by'] = current_user['name']
+    elif approval.status == 'rejected':
+        update_data['rejection_reason'] = approval.rejection_reason
+    
+    await db.portal_customers.update_one({'id': customer_id}, {'$set': update_data})
+    
+    # Send WhatsApp notification
+    config = await get_whatsapp_config()
+    if config.get('api_url') and config.get('api_key'):
+        try:
+            if approval.status == 'approved':
+                message = f"🎉 Great news, {customer['name']}!\n\nYour VMP CRM account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
+            else:
+                reason = approval.rejection_reason or "Please contact support for more details."
+                message = f"Hello {customer['name']},\n\nUnfortunately, your VMP CRM registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance."
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                await client.post(config['api_url'], params={
+                    'apikey': config['api_key'],
+                    'mobile': customer['phone'],
+                    'msg': message
+                })
+            
+            await log_whatsapp_message(customer['phone'], 'account_status', message, 'success', recipient_name=customer['name'])
+        except Exception as e:
+            logger.error(f"WhatsApp notification error: {str(e)}")
+    
+    return {"message": f"Customer {approval.status} successfully"}
+
+# Admin routes for support tickets
+
+@api_router.get("/support/tickets")
+async def get_all_tickets(
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all support tickets (admin/staff)"""
+    query = {}
+    if status:
+        query['status'] = status
+    if priority:
+        query['priority'] = priority
+    
+    tickets = await db.support_tickets.find(query, {'_id': 0}).sort('created_at', -1).to_list(500)
+    
+    result = []
+    for ticket in tickets:
+        created_at = ticket.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        
+        updated_at = ticket.get('updated_at')
+        if isinstance(updated_at, str):
+            updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+        
+        result.append({
+            **ticket,
+            'created_at': created_at,
+            'updated_at': updated_at
+        })
+    
+    return result
+
+@api_router.put("/support/tickets/{ticket_id}/status")
+async def update_ticket_status(ticket_id: str, status: str, current_user: dict = Depends(get_current_user)):
+    """Update ticket status"""
+    if status not in ['open', 'in_progress', 'resolved', 'closed']:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    now = datetime.now(timezone.utc)
+    update_data = {'status': status, 'updated_at': now.isoformat()}
+    
+    if status == 'resolved':
+        update_data['resolved_at'] = now.isoformat()
+        update_data['resolved_by'] = current_user['name']
+    
+    result = await db.support_tickets.update_one({'id': ticket_id}, {'$set': update_data})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    return {"message": "Ticket status updated"}
+
+@api_router.post("/support/tickets/{ticket_id}/reply")
+async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_user: dict = Depends(get_current_user)):
+    """Add reply to ticket from admin/staff"""
+    ticket = await db.support_tickets.find_one({'id': ticket_id}, {'_id': 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    now = datetime.now(timezone.utc)
+    reply_doc = {
+        'id': str(uuid.uuid4()),
+        'message': reply.message,
+        'sender_type': 'admin',
+        'sender_name': current_user['name'],
+        'created_at': now.isoformat()
+    }
+    
+    await db.support_tickets.update_one(
+        {'id': ticket_id},
+        {
+            '$push': {'replies': reply_doc},
+            '$set': {'updated_at': now.isoformat(), 'status': 'in_progress'}
+        }
+    )
+    
+    # Notify customer via WhatsApp
+    config = await get_whatsapp_config()
+    if config.get('api_url') and config.get('api_key'):
+        try:
+            message = f"📬 New reply on your support ticket #{ticket['ticket_number']}:\n\n{reply.message[:200]}{'...' if len(reply.message) > 200 else ''}\n\n- {current_user['name']}"
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                await client.post(config['api_url'], params={
+                    'apikey': config['api_key'],
+                    'mobile': ticket['customer_phone'],
+                    'msg': message
+                })
+        except Exception as e:
+            logger.error(f"WhatsApp notification error: {str(e)}")
+    
+    return {"message": "Reply added successfully", "reply": reply_doc}
+
 # ============== OTP & ORDER ROUTES ==============
 
 async def get_whatsapp_config():

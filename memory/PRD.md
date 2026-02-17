@@ -431,7 +431,7 @@ Build a simple CRM for managing doctor leads. Features include:
 - **Testing**: 14/14 backend tests passed, all status transitions verified (Pending→Confirmed, Pending→Ready to Despatch with To Pay/Paid modes, Ready to Despatch→Shipped, Shipped→Delivered, Cancellation)
 - **Test File**: `/app/backend/tests/test_order_status_update.py`
 
-## Customer Portal & Role-Based Pricing - IN PROGRESS Feb 17, 2026
+## Customer Portal & Role-Based Pricing - COMPLETED Feb 17, 2026
 
 ### Completed:
 - [x] **Backend Models**: Customer portal models (CustomerRegister, CustomerLogin, CustomerOTPRequest, CustomerResponse, etc.)
@@ -459,25 +459,33 @@ Build a simple CRM for managing doctor leads. Features include:
   - CustomerLogin.jsx
   - CustomerLayout.jsx (sidebar navigation)
   - CustomerDashboard.jsx
+  - CustomerItems.jsx (products with role-based pricing)
+  - CustomerOrders.jsx (order history)
+  - CustomerTasks.jsx (view assigned tasks)
+  - CustomerSupport.jsx (create/view tickets)
+  - CustomerProfile.jsx (edit profile)
+- [x] **Admin Pages Created**:
+  - Customers.jsx (approve/reject customer registrations)
+  - Support.jsx (manage support tickets)
+- [x] **Items.jsx Updated**: Role-based pricing fields (Doctor/Medical/Agency)
+- [x] **App.js Routes Added**: All customer portal and admin pages
+- [x] **Layout.jsx Sidebar Updated**: Portal Customers and Support Tickets links
 
-### Remaining:
-- [ ] CustomerItems.jsx (products with role-based pricing)
-- [ ] CustomerOrders.jsx (order history)
-- [ ] CustomerTasks.jsx (view tasks)
-- [ ] CustomerSupport.jsx (create/view tickets)
-- [ ] CustomerProfile.jsx (edit profile)
-- [ ] ForgotPassword.jsx
-- [ ] Admin Customers page (approve/reject registrations)
-- [ ] Admin Support page (manage tickets)
-- [ ] Update Items.jsx form with role-based pricing fields
+### Bug Fixes Applied:
+- Fixed GET /api/items/{item_id} to return role-based pricing fields
+- Fixed PUT /api/items/{item_id} to return role-based pricing fields
+
+### Test Report: `/app/test_reports/iteration_13.json`
+- Backend: 17/17 tests PASSED
+- Frontend: All UI pages verified working
 
 ## Prioritized Backlog
 
 ### P0 (Critical) 
-- [ ] **Refactor `server.py`**: Backend is >5000 lines monolithic file - needs to be split into routers/models/services
+- [ ] **Refactor `server.py`**: Backend is >8000 lines monolithic file - URGENT needs to be split into routers/models/services
 
 ### P1 (High Priority)
-- [ ] **Complete Customer Portal Frontend** (remaining pages listed above)
+- [ ] **ForgotPassword.jsx**: Customer password reset flow via WhatsApp OTP
 - [ ] **Customer Order History**: View all past orders when clicking a customer (Doctor/Medical/Agency)
 - [ ] **Stock/Inventory Management**: Track item quantities with low-stock alerts
 - [ ] **Payment Tracking**: Track payments received against orders
@@ -500,10 +508,9 @@ Build a simple CRM for managing doctor leads. Features include:
 - [ ] Custom lead status configuration
 
 ## Next Tasks
-1. Complete Customer Portal frontend pages
-2. Add Customers and Support pages to admin panel
-3. Update Items form with role-based pricing fields
-4. Test full customer registration and approval flow
+1. **P0**: Refactor server.py into modular structure (routers, models, services)
+2. Create ForgotPassword.jsx for customer password reset
+3. Stock/Inventory management feature
 
 ## Tech Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt

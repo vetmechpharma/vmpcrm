@@ -4084,6 +4084,12 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     if approval.status == 'approved':
         update_data['approved_at'] = now.isoformat()
         update_data['approved_by'] = current_user['name']
+        
+        # Create record in respective collection (doctors/medicals/agencies)
+        linked_record_id = await create_linked_customer_record(customer, current_user['name'])
+        if linked_record_id:
+            update_data['linked_record_id'] = linked_record_id
+            
     elif approval.status == 'rejected':
         update_data['rejection_reason'] = approval.rejection_reason
     
@@ -4111,6 +4117,71 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
             logger.error(f"WhatsApp notification error: {str(e)}")
     
     return {"message": f"Customer {approval.status} successfully"}
+
+
+async def create_linked_customer_record(customer: dict, approved_by: str) -> Optional[str]:
+    """Create a record in doctors/medicals/agencies when portal customer is approved"""
+    now = datetime.now(timezone.utc)
+    role = customer.get('role', '').lower()
+    
+    # Base record data
+    record_id = str(uuid.uuid4())
+    base_data = {
+        'id': record_id,
+        'customer_code': customer['customer_code'],
+        'name': customer['name'],
+        'phone': customer['phone'],
+        'email': customer.get('email') or '',
+        'address': customer.get('address') or '',
+        'address_line_1': customer.get('address_line_1') or '',
+        'address_line_2': customer.get('address_line_2') or '',
+        'district': customer.get('district') or '',
+        'state': customer.get('state') or '',
+        'pincode': customer.get('pincode') or '',
+        'delivery_station': customer.get('delivery_station') or '',
+        'transport_id': customer.get('transport_id'),
+        'lead_status': 'Customer',  # Mark as Customer (converted from portal)
+        'is_portal_customer': True,  # Flag to identify portal customers
+        'portal_customer_id': customer['id'],  # Link back to portal_customers
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'created_by': approved_by
+    }
+    
+    try:
+        if role == 'doctor':
+            # Add doctor-specific fields
+            base_data['reg_no'] = customer.get('reg_no') or ''
+            base_data['dob'] = customer.get('dob')
+            base_data['priority'] = 'moderate'
+            await db.doctors.insert_one(base_data)
+            logger.info(f"Created doctor record for portal customer: {customer['name']}")
+            
+        elif role == 'medical':
+            # Add medical-specific fields
+            base_data['proprietor_name'] = customer.get('proprietor_name') or ''
+            base_data['gst_number'] = customer.get('gst_number') or ''
+            base_data['drug_license'] = customer.get('drug_license') or ''
+            base_data['priority'] = 'moderate'
+            await db.medicals.insert_one(base_data)
+            logger.info(f"Created medical record for portal customer: {customer['name']}")
+            
+        elif role == 'agency':
+            # Add agency-specific fields
+            base_data['proprietor_name'] = customer.get('proprietor_name') or ''
+            base_data['gst_number'] = customer.get('gst_number') or ''
+            base_data['drug_license'] = customer.get('drug_license') or ''
+            base_data['priority'] = 'moderate'
+            await db.agencies.insert_one(base_data)
+            logger.info(f"Created agency record for portal customer: {customer['name']}")
+        else:
+            logger.warning(f"Unknown role '{role}' for portal customer: {customer['name']}")
+            return None
+            
+        return record_id
+    except Exception as e:
+        logger.error(f"Failed to create linked record for portal customer: {str(e)}")
+        return None
 
 # Admin routes for support tickets
 

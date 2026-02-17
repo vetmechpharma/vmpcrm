@@ -402,6 +402,21 @@ Build a simple CRM for managing doctor leads. Features include:
   - Email logs tracked in Email Logs page with status (sent/failed)
   - Only sends if customer has email address configured
 
+## Enhanced Address & Delivery Preferences - COMPLETED Feb 15, 2026
+- [x] **Complete Address Fields for Doctors/Medicals/Agencies**:
+  - Address Line 1 & 2
+  - State (dropdown with all 36 Indian states/UTs)
+  - District (cascading dropdown - populates based on selected state)
+  - Pincode
+  - Delivery Station (for shipping)
+  - Transport Preference (dropdown from transport list)
+- [x] **Location APIs**:
+  - GET /api/public/states - Returns all Indian states/UTs
+  - GET /api/public/districts/{state} - Returns districts for selected state
+- [x] **State/District Cascade**: Selecting state fetches and populates district dropdown
+- [x] **Order Auto-fill**: When opening order update modal, delivery station and transport auto-fill from customer's saved preferences
+- [x] **Backward Compatibility**: Existing customers can update their address details at any time
+
 ## Bug Fixes
 
 ### Order Status Update Bug - FIXED Feb 15, 2026

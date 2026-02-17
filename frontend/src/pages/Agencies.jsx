@@ -565,9 +565,16 @@ export const Agencies = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(agency.lead_status)}>
-                          {agency.lead_status}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge className={getStatusColor(agency.lead_status)}>
+                            {agency.lead_status}
+                          </Badge>
+                          {agency.is_portal_customer && (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">
+                              Portal
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getPriorityColor(agency.priority)}>

@@ -344,23 +344,38 @@ export const Medicals = () => {
     }
   };
 
-  const openEditModal = (medical) => {
+  const openEditModal = async (medical) => {
     setSelectedMedical(medical);
+    // If medical has a state, fetch districts first
+    if (medical.state) {
+      try {
+        const response = await locationAPI.getDistricts(medical.state);
+        setDistricts(response.data.districts || []);
+      } catch (error) {
+        console.error('Failed to fetch districts');
+      }
+    }
     setFormData({
       name: medical.name,
       proprietor_name: medical.proprietor_name || '',
       gst_number: medical.gst_number || '',
       drug_license: medical.drug_license || '',
       address: medical.address || '',
+      address_line_1: medical.address_line_1 || '',
+      address_line_2: medical.address_line_2 || '',
       state: medical.state || '',
       district: medical.district || '',
       pincode: medical.pincode || '',
+      delivery_station: medical.delivery_station || '',
+      transport_id: medical.transport_id || '',
       email: medical.email || '',
       phone: medical.phone,
       alternate_phone: medical.alternate_phone || '',
       lead_status: medical.lead_status,
       priority: medical.priority || 'moderate',
       follow_up_date: medical.follow_up_date || '',
+      birthday: medical.birthday || '',
+      anniversary: medical.anniversary || '',
     });
     setShowEditModal(true);
   };
@@ -382,16 +397,23 @@ export const Medicals = () => {
       gst_number: '',
       drug_license: '',
       address: '',
+      address_line_1: '',
+      address_line_2: '',
       state: '',
       district: '',
       pincode: '',
+      delivery_station: '',
+      transport_id: '',
       email: '',
       phone: '',
       alternate_phone: '',
       lead_status: 'Pipeline',
       priority: 'moderate',
       follow_up_date: '',
+      birthday: '',
+      anniversary: '',
     });
+    setDistricts([]);
   };
 
   const getPriorityLabel = (priority) => {

@@ -45,9 +45,10 @@ export const Settings = () => {
 
   const fetchConfigs = async () => {
     try {
-      const [smtpRes, whatsappRes] = await Promise.all([
+      const [smtpRes, whatsappRes, fallbackRes] = await Promise.all([
         smtpAPI.getConfig(),
-        whatsappAPI.getConfig()
+        whatsappAPI.getConfig(),
+        fallbackOTPAPI.getAll()
       ]);
       
       if (smtpRes.data) {
@@ -69,6 +70,10 @@ export const Settings = () => {
           auth_token: '',
           sender_id: whatsappRes.data.sender_id,
         });
+      }
+
+      if (fallbackRes.data) {
+        setFallbackOTPs(fallbackRes.data);
       }
     } catch (error) {
       console.error('Failed to fetch configs:', error);

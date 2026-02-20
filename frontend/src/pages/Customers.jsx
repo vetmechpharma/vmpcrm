@@ -452,115 +452,183 @@ const Customers = () => {
 
       {/* Detail Modal */}
       <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Customer Details</DialogTitle>
+            <DialogTitle>Customer Registration Details</DialogTitle>
           </DialogHeader>
           {selectedCustomer && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              {/* Header with badges and code */}
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   {getRoleBadge(selectedCustomer.role)}
                   {getStatusBadge(selectedCustomer.status)}
                 </div>
-                <span className="text-blue-600 font-medium">{selectedCustomer.customer_code}</span>
+                <span className="text-blue-600 font-bold text-lg">{selectedCustomer.customer_code}</span>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-slate-500">Name</p>
-                  <p className="font-medium">{selectedCustomer.name}</p>
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white border rounded-lg">
+                <div className="md:col-span-2">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide">Name</p>
+                  <p className="font-semibold text-lg text-slate-800">{selectedCustomer.name}</p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                    <Phone className="w-3 h-3" /> Primary Phone
+                  </p>
+                  <p className="font-medium">{selectedCustomer.phone}</p>
+                </div>
+                
+                {selectedCustomer.alternate_phone && (
                   <div>
-                    <p className="text-sm text-slate-500">Phone</p>
-                    <p className="font-medium">{selectedCustomer.phone}</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                      <Phone className="w-3 h-3" /> Alternate Phone
+                    </p>
+                    <p className="font-medium">{selectedCustomer.alternate_phone}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Email</p>
-                    <p className="font-medium">{selectedCustomer.email || '-'}</p>
+                )}
+                
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                    <Mail className="w-3 h-3" /> Email
+                  </p>
+                  <p className="font-medium">{selectedCustomer.email || '-'}</p>
+                </div>
+              </div>
+
+              {/* Doctor-specific fields */}
+              {selectedCustomer.role === 'doctor' && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <Stethoscope className="w-4 h-4" /> Doctor Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-blue-600 uppercase tracking-wide flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> Registration Number
+                      </p>
+                      <p className="font-medium text-slate-800">{selectedCustomer.reg_no || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-600 uppercase tracking-wide flex items-center gap-1">
+                        <Calendar className="w-3 h-3" /> Date of Birth
+                      </p>
+                      <p className="font-medium text-slate-800">
+                        {selectedCustomer.dob ? new Date(selectedCustomer.dob).toLocaleDateString() : '-'}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {selectedCustomer.role === 'doctor' && selectedCustomer.reg_no && (
-                  <div>
-                    <p className="text-sm text-slate-500">Registration Number</p>
-                    <p className="font-medium">{selectedCustomer.reg_no}</p>
-                  </div>
-                )}
-
-                {(selectedCustomer.role === 'medical' || selectedCustomer.role === 'agency') && (
-                  <>
+              {/* Medical/Agency-specific fields */}
+              {(selectedCustomer.role === 'medical' || selectedCustomer.role === 'agency') && (
+                <div className={`p-4 border rounded-lg ${selectedCustomer.role === 'medical' ? 'bg-emerald-50 border-emerald-100' : 'bg-purple-50 border-purple-100'}`}>
+                  <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${selectedCustomer.role === 'medical' ? 'text-emerald-800' : 'text-purple-800'}`}>
+                    {selectedCustomer.role === 'medical' ? <Store className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                    {selectedCustomer.role === 'medical' ? 'Medical Store' : 'Agency'} Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
                     {selectedCustomer.proprietor_name && (
-                      <div>
-                        <p className="text-sm text-slate-500">Proprietor</p>
-                        <p className="font-medium">{selectedCustomer.proprietor_name}</p>
+                      <div className="col-span-2">
+                        <p className={`text-xs uppercase tracking-wide ${selectedCustomer.role === 'medical' ? 'text-emerald-600' : 'text-purple-600'}`}>Proprietor Name</p>
+                        <p className="font-medium text-slate-800">{selectedCustomer.proprietor_name}</p>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedCustomer.gst_number && (
-                        <div>
-                          <p className="text-sm text-slate-500">GST Number</p>
-                          <p className="font-medium">{selectedCustomer.gst_number}</p>
-                        </div>
-                      )}
-                      {selectedCustomer.drug_license && (
-                        <div>
-                          <p className="text-sm text-slate-500">Drug License</p>
-                          <p className="font-medium">{selectedCustomer.drug_license}</p>
-                        </div>
-                      )}
+                    <div>
+                      <p className={`text-xs uppercase tracking-wide ${selectedCustomer.role === 'medical' ? 'text-emerald-600' : 'text-purple-600'}`}>GST Number</p>
+                      <p className="font-medium text-slate-800">{selectedCustomer.gst_number || '-'}</p>
                     </div>
-                  </>
-                )}
+                    <div>
+                      <p className={`text-xs uppercase tracking-wide ${selectedCustomer.role === 'medical' ? 'text-emerald-600' : 'text-purple-600'}`}>Drug License</p>
+                      <p className="font-medium text-slate-800">{selectedCustomer.drug_license || '-'}</p>
+                    </div>
+                    <div>
+                      <p className={`text-xs uppercase tracking-wide flex items-center gap-1 ${selectedCustomer.role === 'medical' ? 'text-emerald-600' : 'text-purple-600'}`}>
+                        <Gift className="w-3 h-3" /> Birthday
+                      </p>
+                      <p className="font-medium text-slate-800">
+                        {selectedCustomer.birthday ? new Date(selectedCustomer.birthday).toLocaleDateString() : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs uppercase tracking-wide flex items-center gap-1 ${selectedCustomer.role === 'medical' ? 'text-emerald-600' : 'text-purple-600'}`}>
+                        <Heart className="w-3 h-3" /> Anniversary
+                      </p>
+                      <p className="font-medium text-slate-800">
+                        {selectedCustomer.anniversary ? new Date(selectedCustomer.anniversary).toLocaleDateString() : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                {(selectedCustomer.address_line_1 || selectedCustomer.state) && (
-                  <div className="pt-3 border-t">
-                    <p className="text-sm text-slate-500 mb-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      Address
-                    </p>
-                    <p className="text-sm">
+              {/* Address Section */}
+              <div className="p-4 bg-slate-50 border rounded-lg">
+                <h4 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Address Details
+                </h4>
+                {(selectedCustomer.address_line_1 || selectedCustomer.state) ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-700">
                       {[
                         selectedCustomer.address_line_1,
-                        selectedCustomer.address_line_2,
+                        selectedCustomer.address_line_2
+                      ].filter(Boolean).join(', ')}
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      {[
                         selectedCustomer.district,
                         selectedCustomer.state,
                         selectedCustomer.pincode
                       ].filter(Boolean).join(', ')}
                     </p>
-                    {selectedCustomer.delivery_station && (
-                      <p className="text-sm text-slate-500 mt-1">
-                        Delivery Station: {selectedCustomer.delivery_station}
-                      </p>
-                    )}
-                    {selectedCustomer.transport_name && (
-                      <p className="text-sm text-slate-500">
-                        Preferred Transport: {selectedCustomer.transport_name}
-                      </p>
-                    )}
+                    <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200">
+                      <div>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Delivery Station</p>
+                        <p className="font-medium text-slate-700">{selectedCustomer.delivery_station || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 uppercase tracking-wide">Transport</p>
+                        <p className="font-medium text-slate-700">{selectedCustomer.transport_name || '-'}</p>
+                      </div>
+                    </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-slate-400 italic">No address provided</p>
                 )}
+              </div>
 
-                <div className="pt-3 border-t">
-                  <p className="text-sm text-slate-500 flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Registered: {new Date(selectedCustomer.created_at).toLocaleString()}
-                  </p>
-                  {selectedCustomer.approved_at && (
-                    <p className="text-sm text-green-600">
-                      Approved: {new Date(selectedCustomer.approved_at).toLocaleString()} by {selectedCustomer.approved_by}
+              {/* Registration Info */}
+              <div className="p-4 bg-slate-100 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide">Registered On</p>
+                    <p className="font-medium text-slate-700">
+                      {new Date(selectedCustomer.created_at).toLocaleString()}
                     </p>
+                  </div>
+                  {selectedCustomer.approved_at && (
+                    <div>
+                      <p className="text-xs text-green-600 uppercase tracking-wide">Approved On</p>
+                      <p className="font-medium text-green-700">
+                        {new Date(selectedCustomer.approved_at).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-green-600">by {selectedCustomer.approved_by}</p>
+                    </div>
                   )}
                   {selectedCustomer.rejection_reason && (
-                    <p className="text-sm text-red-600">
-                      Rejected: {selectedCustomer.rejection_reason}
-                    </p>
+                    <div className="col-span-2">
+                      <p className="text-xs text-red-600 uppercase tracking-wide">Rejection Reason</p>
+                      <p className="font-medium text-red-700">{selectedCustomer.rejection_reason}</p>
+                    </div>
                   )}
                 </div>
               </div>
 
+              {/* Action Buttons */}
               {(selectedCustomer.status === 'pending' || selectedCustomer.status === 'pending_approval') && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button 
@@ -578,6 +646,8 @@ const Customers = () => {
                     <XCircle className="w-4 h-4 mr-2" />
                     Reject
                   </Button>
+                </div>
+              )}
                 </div>
               )}
               {selectedCustomer.status === 'approved' && (

@@ -4499,7 +4499,14 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
     config = await get_whatsapp_config()
     if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
-            message = f"New reply on your support ticket #{ticket['ticket_number']}:\n\n{reply.message[:200]}{'...' if len(reply.message) > 200 else ''}\n\n- {current_user['name']}"
+            # Get company name
+            company = await db.company_settings.find_one({}, {'_id': 0})
+            company_name = company.get('company_name', 'VETMECH PHARMA') if company else 'VETMECH PHARMA'
+            
+            customer_name = ticket.get('customer_name', 'Customer')
+            ticket_num = ticket.get('ticket_number', ticket_id[:8])
+            
+            message = f"Dear {customer_name},\n\nYou have received a new reply on your support ticket #{ticket_num}:\n\n\"{reply.message[:300]}{'...' if len(reply.message) > 300 else ''}\"\n\n- {current_user['name']}\n\nRegards,\n{company_name}"
             
             # Ensure mobile has 91 prefix for India
             wa_mobile = ticket['customer_phone'] if ticket['customer_phone'].startswith('91') else f"91{ticket['customer_phone'][-10:]}"
@@ -4513,7 +4520,10 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
             }
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                await client.get(config['api_url'], params=params)
+                response = await client.get(config['api_url'], params=params)
+                if response.status_code == 200:
+                    await log_whatsapp_message(wa_mobile, 'ticket_reply', message, 'success', recipient_name=customer_name)
+                    logger.info(f"Ticket reply notification sent to {wa_mobile}")
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     

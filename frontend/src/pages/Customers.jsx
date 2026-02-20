@@ -45,6 +45,7 @@ const Customers = () => {
   const [approvalAction, setApprovalAction] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [sendingPassword, setSendingPassword] = useState(false);
 
   useEffect(() => {
     fetchCustomers();

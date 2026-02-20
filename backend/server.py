@@ -4843,6 +4843,8 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
         }
         await db.campaign_logs.insert_one(log_doc)
     
+    # Return without _id
+    del campaign_doc['_id']
     return campaign_doc
 
 @api_router.post("/marketing/campaigns/{campaign_id}/send")

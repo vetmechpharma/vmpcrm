@@ -145,6 +145,33 @@ const Customers = () => {
     }
   };
 
+  const handleSendNewPassword = async () => {
+    if (!selectedCustomer) return;
+    
+    setSendingPassword(true);
+    try {
+      const response = await api.post(`/customers/${selectedCustomer.id}/send-new-password`);
+      if (response.data.password_sent) {
+        toast.success(`New password sent to ${selectedCustomer.name} via WhatsApp!`);
+      } else if (response.data.password) {
+        // WhatsApp failed - show password for manual sharing
+        toast.info(
+          <div>
+            <p>{response.data.message}</p>
+            <p className="mt-2 font-mono bg-slate-100 p-2 rounded text-sm">
+              Password: <strong>{response.data.password}</strong>
+            </p>
+          </div>,
+          { duration: 15000 }
+        );
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send new password');
+    } finally {
+      setSendingPassword(false);
+    }
+  };
+
   const openApprovalModal = (customer, action) => {
     setSelectedCustomer(customer);
     setApprovalAction(action);

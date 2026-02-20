@@ -822,8 +822,15 @@ export const Marketing = () => {
                       campaigns.map(campaign => (
                         <tr key={campaign.id} className="border-b hover:bg-slate-50">
                           <td className="px-4 py-3">
-                            <p className="font-medium">{campaign.name}</p>
-                            <p className="text-xs text-slate-500 truncate max-w-[200px]">{campaign.message_preview}</p>
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <p className="font-medium">{campaign.name}</p>
+                                <p className="text-xs text-slate-500 truncate max-w-[200px]">{campaign.message_preview}</p>
+                              </div>
+                              {campaign.has_image && (
+                                <Image className="w-4 h-4 text-blue-500" title="Has Image" />
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant="outline">{campaign.campaign_type}</Badge>
@@ -847,7 +854,7 @@ export const Marketing = () => {
                             {getStatusBadge(campaign.status)}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-500">
-                            {new Date(campaign.created_at).toLocaleDateString()}
+                            {new Date(campaign.created_at).toLocaleDateString()}}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">

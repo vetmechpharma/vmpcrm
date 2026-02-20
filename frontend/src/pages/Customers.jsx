@@ -101,6 +101,44 @@ const Customers = () => {
     }
   };
 
+  const handleSuspend = async () => {
+    if (!selectedCustomer) return;
+    
+    setProcessing(true);
+    try {
+      await api.put(`/customers/${selectedCustomer.id}/approve`, {
+        status: 'suspended'
+      });
+      toast.success(`${selectedCustomer.name} has been suspended`);
+      setShowApprovalModal(false);
+      setShowDetailModal(false);
+      fetchCustomers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to suspend customer');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!selectedCustomer) return;
+    
+    setProcessing(true);
+    try {
+      await api.put(`/customers/${selectedCustomer.id}/approve`, {
+        status: 'approved'
+      });
+      toast.success(`${selectedCustomer.name} has been reactivated!`);
+      setShowApprovalModal(false);
+      setShowDetailModal(false);
+      fetchCustomers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to reactivate customer');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const openApprovalModal = (customer, action) => {
     setSelectedCustomer(customer);
     setApprovalAction(action);

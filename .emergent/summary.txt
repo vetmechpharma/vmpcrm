@@ -1,185 +1,153 @@
 <analysis>**original_problem_statement:**
-The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers (Doctors, Medicals, Agencies), products, and a complex ordering system. The application should include a customer-facing portal with separate registration/login, role-based product showcase, account management, and a support ticket system.
+The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers (Doctors, Medicals, Agencies), products, and a complex ordering system. It must include a customer-facing portal with role-based registration/login, a product showcase, account management, and a support ticket system.
 
-**Recent User Request:**
-1.  **Role-Based Registration:** During registration, after OTP verification, the user should be prompted to select their role (Doctor, Medical, or Agency). The registration form should then dynamically display fields relevant to that role, matching the fields available in the admin panel.
-2.  **Customer Conversion:** Once an admin approves a new portal customer, that customer should automatically be created and listed in their respective category (Doctors, Medicals, or Agencies) in the admin panel for follow-ups.
-3.  **OTP System:**
-    *   The WhatsApp OTP delivery for registration is not working and needs to be fixed.
-    *   A fallback OTP system should be implemented. Admins should be able to create a list of default, reusable OTPs (e.g., 0101, 3355). If the primary OTP system fails, users can be told one of these static OTPs to complete their registration. These fallback OTPs should not be visible to the user on the registration page.
-4.  **Mobile-First Design:** The customer portal should have a mobile-responsive, app-like feel, as users will primarily access it on their phones.
+A new request was to add a Marketing module to send promotional and informational messages (with images and scheduling) to customers via WhatsApp. The user also reported several bugs: the portal customer approval/disable function was not working, and the admin support ticket page was missing key features like add, edit, delete, and status updates.
 
 **PRODUCT REQUIREMENTS:**
--   **Core CRM:** Manage Doctors, Medicals, and Agencies with bulk operations.
--   **Product Management:** Manage items, including bulk import and role-based pricing.
--   **Order Management:** Public product showcase, admin order creation, scheme-based quantities, out-of-stock tracking, advanced shipping/payment tracking, print/WhatsApp functionality.
--   **Admin & User Management:** Customizable login, role-based user privileges.
--   **Customer Portal:** Separate registration/login for customers, role-based pricing, order history, profile management, and a support ticket system with a mobile-first design.
--   **Logging & Reporting:** Logs for outgoing messages and an expense tracking module.
--   **Reminder System:** For various events with WhatsApp notifications.
+- **Core CRM:** Manage Doctors, Medicals, Agencies.
+- **Product Management:** Manage items with role-based pricing.
+- **Order Management:** Public showcase, admin order creation, advanced tracking.
+- **Admin & User Management:** Role-based privileges.
+- **Customer Portal:** Separate registration/login, role-based pricing, order history, profile management, support tickets.
+- **Marketing Module:** Target customers by role/status, send promotional/greeting messages via WhatsApp, attach images, schedule campaigns, and track history.
+- **Logging & Reporting:** Message logs, expense tracking.
+- **Reminder System:** WhatsApp notifications for various events.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM with a FastAPI backend, React frontend, and MongoDB.
--   The core admin-facing modules for managing customers, products, and orders are implemented.
--   A complete, mobile-first customer portal has been built, allowing customers to register, log in, view role-specific product pricing, see their profile, and navigate through an app-like interface with bottom navigation.
--   Admin pages for approving portal customers and managing support tickets have been created.
--   The item management page in the admin panel has been updated to support role-based pricing.
--   A system is in place to automatically create a corresponding record (Doctor, Medical, or Agency) when a portal customer is approved by an admin. The UI in the admin panel displays a Portal badge for these customers.
--   The backend foundation for a fallback OTP system has been partially implemented.
+A full-stack CRM (FastAPI, React, MongoDB) with core features for managing customers, products, and orders.
+- A complete, mobile-first customer portal with a multi-step, role-based registration flow and a fallback OTP system.
+- An admin panel to manage portal customers, support tickets, and role-based item pricing.
+- A new, fully functional marketing module allowing admins to create, schedule, and send targeted WhatsApp campaigns with images and product details.
+- WhatsApp notifications are integrated for support ticket status updates and replies.
 
 **Last working item**:
-- **Last item agent was working**: Implementing the user's latest request to enhance the registration flow and add a fallback OTP system. The agent started by creating the backend models () and API endpoints (, ) and updated the main OTP verification logic to also check against these fallback OTPs. The  model was also updated to include more role-specific fields.
-- **Status**: IN PROGRESS
-- **Agent Testing Done**: N
-- **Which testing method agent to use?**: both (Frontend for the new registration UI and admin OTP management page; Backend for testing the OTP logic).
+- **Last item agent was working**: Implementing and enhancing WhatsApp notifications for the support ticket system. The agent added notifications for status changes and refined the message template for replies to make it more professional.
+- **Status**: USER VERIFICATION PENDING
+- **Agent Testing Done**: Y
+- **Which testing method agent to use?**: Backend testing agent to verify the content and delivery of WhatsApp messages for different ticket events (status change, new reply).
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1**: Complete the Enhanced Registration and Fallback OTP Feature (Priority: P0)
-
-  **Issues Detail:**
-  - **Issue 1**: Complete the Enhanced Registration and Fallback OTP Feature
-    - **Attempted fixes**: The agent created the initial backend models and API endpoints for the fallback OTP system. The  Pydantic model was updated with additional fields (, , , ).
-    - **Next debug checklist**:
-        1.  **Backend**:
-            -   Finish implementing the CRUD endpoints for admins to manage the  collection.
-            -   Thoroughly test the updated  endpoint to ensure it correctly checks both the dynamic OTP and the list of fallback OTPs.
-            -   Investigate and fix the issue with the BotMasterSender WhatsApp API integration not delivering OTPs during registration.
-        2.  **Frontend**:
-            -   Create a new admin page ( or similar) for managing the list of fallback OTPs.
-            -   Modify  to implement the new multi-step flow: 1. Phone number entry -> 2. OTP verification -> 3. Role selection (Doctor/Medical/Agency) -> 4. Role-specific registration form.
-            -   Create dynamic forms within  that show fields corresponding to the selected role.
-    - **Why fix this issue and what will be achieved with the fix?**: This will complete the user's requested registration flow, making it more robust with a fallback mechanism and capturing necessary user details upfront, which is critical for the customer approval process.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: N
-    - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on other issue**: None.
+None. All user-reported issues from the last session have been resolved.
 
 **In progress Task List**:
 None.
 
 **Upcoming and Future Tasks**
--   **Upcoming Tasks:**
-    -   (P0) **Refactor :** This monolithic file is now over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (routers, models, services) after the current task is complete.
-    -   (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
-    -   (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
--   **Future Tasks:**
-    -   (P2) Sales reports with charts and top performers.
-    -   (P2) Data import/export functionality for other modules.
-    -   (P2) Sales target management.
+- **Upcoming Tasks:**
+  - (P0) **Refactor :** This monolithic file is now over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (e.g., routers, models, services) to improve maintainability and stability.
+  - (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
+  - (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
+- **Future Tasks:**
+  - (P2) Sales reports with charts and top performers.
+  - (P2) Data import/export functionality for other modules.
+  - (P2) Sales target management.
 
 **Completed work in this session**
--   **Full Customer Portal Implementation**:
-    -   Created all necessary frontend pages (, , , , , ) and backend APIs for a complete customer portal.
-    -   Implemented role-based pricing display on the  page.
--   **Mobile-First Redesign**:
-    -   Redesigned the entire customer portal into a mobile-first, app-like experience with a bottom navigation bar (), custom fonts (Manrope, Inter), and an emerald theme, based on user feedback.
--   **Admin Panel Enhancements**:
-    -   Added an admin page () to manage portal customer approvals.
-    -   Added an admin page () to manage support tickets.
-    -   Updated the  form to allow admins to set role-specific pricing (for Doctors, Medicals, Agencies).
--   **Customer Approval Workflow**:
-    -   Implemented backend logic to automatically create a new record in the , , or  collection when an admin approves a portal customer.
-    -   Added a Portal badge on the , , and  admin pages to easily identify customers who registered through the portal.
--   **Testing and Bug Fixes**:
-    -   Successfully used the  twice.
-    -   The agent fixed backend bugs where role-based pricing fields were missing from API responses.
-    -   The agent fixed a bug where the customer profile page was making an admin-only API call.
-    -   A test customer (, ) was created and approved, and now exists in the system.
+- **Enhanced Registration & Fallback OTP System:** Fixed the WhatsApp OTP delivery bug, implemented an admin UI for fallback OTPs, and created the multi-step, role-based registration flow.
+- **New Marketing Module:** Built a complete marketing module from scratch, including backend APIs and a frontend UI. Admins can now create and send targeted WhatsApp campaigns with images, product details, and scheduling.
+- **Portal Customer Management Fix:** Resolved a bug preventing admins from approving, rejecting, or suspending portal customers. The UI in  is now fully functional.
+- **Admin Support Ticket Overhaul:** Rewrote the  page to include full CRUD (Create, Read, Update, Delete) functionality for tickets, including in-line status updates and filters.
+- **Support Ticket Notifications:** Implemented automatic WhatsApp notifications to customers when their ticket status is updated or a new reply is added.
+- **Marketing Image Attachment Fix:** Corrected the image handling for marketing campaigns. The system now defaults to using a product's image for promotions and correctly sends it via the WhatsApp API.
+- **Marketing Product Selection Fix:** Improved the UI for product promotions to properly display role-based pricing and handle item selection.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: **Monolithic  file**: This has been a known issue and is now critically important to address. The file's size makes it difficult to navigate, debug, and extend. It has grown significantly in this session.
+- **Issue 1: Monolithic  file**: This is a long-standing issue and has been escalated to the highest priority refactoring task (P0). The file's size and complexity pose a significant risk to future development.
 
 **Known issue recurrence from previous fork**
--   None.
+- None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
--   **Frontend:** React, TailwindCSS, Shadcn/UI, .
--   **Architecture:** Monolithic backend with a React SPA frontend. The session's work added a new customer portal area with a mobile-first design.
+- **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
+- **Frontend:** React, TailwindCSS, Shadcn/UI, .
+- **Architecture:** Monolithic backend with a React SPA frontend. The session heavily expanded functionality by adding a new marketing module and overhauling existing admin pages.
 
 **key DB schema**
--   **customers**:
-    -   Added  (date),  (str),  (date),  (date).
--   **doctors, medicals, agencies**:
-    -   Added  (bool).
-    -   Added  (ObjectId, refers to  collection).
--   **fallback_otps** (New Collection):
-    -    (string),  (boolean).
+- **New Collections:**
+  - : Stores campaign details, type, message, recipients, schedule, and image data ().
+  - : Stores reusable message templates.
+- **Modified Collections:**
+  - :  field updated to handle , , , and  states.
+  - : Schema enhanced with , , and fields for admin-side creation/editing.
 
 **changes in tech stack**
--   None.
+- None.
 
 **All files of reference**
--   **Heavily Modified**: , , , all files under .
--   **New Files**: , , .
--   **Modified for Portal Badge**: , , .
--   **Reports**: , .
+- **Heavily Modified/Rewritten:** , , .
+- **New Files:** .
+- **Modified:** , , , .
+- **Reports**: , .
 
 **Areas that need refactoring**:
--   ** (CRITICAL)**: The absolute top priority after the current registration flow task is complete. The file is unmaintainable.
--   **, , **: These files contain duplicated logic for the address form and now the portal badge, which could be extracted into reusable components.
+- ** (CRITICAL)**: The absolute top priority. This monolithic file must be broken down into a modern folder structure (e.g., , , ) to ensure the project remains maintainable.
+- **, , **: These files contain duplicated logic (address form, portal badge) that should be extracted into reusable components.
 
 **key api endpoints**
--   **New Endpoints:**
-    -   : Create a fallback OTP.
-    -   : Get all fallback OTPs.
-    -   : Update a fallback OTP.
-    -   : Delete a fallback OTP.
--   **Modified Endpoints:**
-    -   : Logic updated to check against  as a secondary option.
-    -   : Logic updated to create a linked record in //.
+- **New Marketing Endpoints:**
+  - 
+  - 
+  - 
+- **New/Modified Admin Support Ticket Endpoints:**
+  - 
+  - 
+  - 
+  - 
+- **Modified Portal Customer Endpoints:**
+  - 
+  - 
+  - 
+  - 
 
 **Critical Info for New Agent**
--   **Immediate Task (P0):** Your priority is to continue and complete the Enhanced Registration and Fallback OTP feature. The backend foundation is partially laid out, but the main work on the frontend registration flow and the admin OTP management UI is pending. You also need to investigate why the primary WhatsApp OTP is failing.
--   **Next Major Task**: After the registration flow is complete and verified, you MUST propose and begin the refactoring of . It is a serious risk to the project's stability.
+- The agent successfully completed all recent user feature requests and bug fixes. The application is in a stable, enhanced state.
+- **Your immediate priority is to propose and execute the refactoring of **. This is a critical technical debt that hinders development and increases risk. Do not start new feature work until this is addressed.
+- The  WhatsApp integration is now a core part of the application, used for OTP, marketing, and support notifications. All related logic resides in .
 
 **documents and test reports created in this job**
--    (updated)
--   
--   
+-  (updated)
+- 
+- 
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  - User instruction to continue. **Status: HANDLED**
-9.  - User requested that approved portal customers appear in the main admin lists (Doctors/Medicals/Agencies). **Status: COMPLETED**
-8.  - Agent asked for clarification on OTP and design. User confirmed mobile-first design and use of existing WhatsApp API. **Status: COMPLETED**
-7.  - Agent confirmed UI for role-based pricing is working and planned to call testing agent. **Status: HANDLED**
-6.  - Agent confirmed admin support page is working. **Status: HANDLED**
-5.  - Agent confirmed admin customers page is working. **Status: HANDLED**
-4.  - Agent confirmed customer login page is visible. **Status: HANDLED**
-3.  - Agent implemented routes for new admin pages. **Status: COMPLETED**
-2.  - Agent identified backend fields for role-based pricing. **Status: HANDLED**
-1.  - User requested multi-step registration with role selection, role-specific forms, a fix for WhatsApp OTPs, and a fallback admin-managed OTP system. **Status: IN PROGRESS**
+10.  - User requested WhatsApp notifications for support ticket status changes. **Status: COMPLETED**
+9.  - User reported missing CRUD features on the admin support ticket page. **Status: COMPLETED**
+8.  - User reported that the approve/reject/suspend buttons were not working for portal customers. **Status: COMPLETED**
+7.  - User reported two issues: general image attachment wasn't working, and product promotions should use the item's image by default. **Status: COMPLETED**
+6.  - User reported issues with the product selection UI in the marketing module. **Status: COMPLETED**
+5.  - User reported that images were not being attached to marketing campaigns. **Status: COMPLETED**
+4.  - User provided detailed requirements for the new Marketing Module. **Status: COMPLETED**
+3.  - Agent confirmed understanding and started building the marketing feature. **Status: HANDLED**
+2.  - User provided additional requirements for the marketing module to prevent WhatsApp account banning. **Status: COMPLETED**
+1.  - User instruction to continue. **Status: HANDLED**
 
 **Project Health Check:**
--   **Working**: Core CRM features, a fully functional mobile-first customer portal (login, product view, profile), admin management of portal users, and role-based pricing.
--   **Broken**: WhatsApp OTP delivery for registration is reportedly not working.
--   **In-progress**: The customer registration flow is being overhauled to support role selection and a fallback OTP system.
+- **Working**: All core CRM features, a fully functional mobile-first customer portal, a complete marketing module, and enhanced admin tools for managing portal users and support tickets.
+- **Broken**: No features are currently reported as broken.
+- **In-progress**: None.
 
 **3rd Party Integrations**
--   **Custom SMTP:** For emails.
--   **WhatsApp API (BotMasterSender):** Generic webhook API used for order updates and planned for OTP. (Currently requires debugging).
--   **openpyxl:** For reading  files on the backend.
+- **Custom SMTP:** For emails.
+- **WhatsApp API (BotMasterSender):** Used for OTP, marketing campaigns, and support ticket notifications.
+- **openpyxl:** For reading  files on the backend.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (twice in this session).
--   **Troubleshoot agent used after agent stuck in loop:** NO.
--   **Test files created:** A temporary Python script () was created and used to test the approval flow.
--   **Known regressions:** None.
+- **Testing agent used after significant changes:** YES
+- **Troubleshoot agent used after agent stuck in loop:** NO
+- **Test files created:** None.
+- **Known regressions:** None.
 
 **Credentials to test flow:**
--   **Admin Email:** 
--   **Admin Password:** 
--   **Test Customer Email/Phone:** 
--   **Test Customer Password:** 
+- **Admin Email:** 
+- **Admin Password:** 
+- **Test Customer Email/Phone:** 
+- **Test Customer Password:** 
 
 **What agent forgot to execute**
--   The agent started the backend work for the fallback OTPs and enhanced registration but has not built the corresponding frontend components:
-    -   The admin UI to manage the list of fallback OTPs.
-    -   The multi-step registration UI for customers to select a role and fill out a dynamic form.
--   The investigation into why the  WhatsApp OTPs are not being delivered has not yet been performed.</analysis>
+- The agent successfully addressed all user requests from the session. No tasks were forgotten.</analysis>

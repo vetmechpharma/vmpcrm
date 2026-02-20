@@ -966,6 +966,18 @@ export const Marketing = () => {
                 </div>
               </div>
 
+              {/* Campaign Image */}
+              {selectedCampaign.has_image && selectedCampaign.image_url && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-2">Attached Image</p>
+                  <img 
+                    src={`${process.env.REACT_APP_BACKEND_URL}${selectedCampaign.image_url}`}
+                    alt="Campaign"
+                    className="max-w-xs rounded-lg border shadow-sm"
+                  />
+                </div>
+              )}
+
               <div>
                 <p className="text-xs text-slate-500 mb-1">Message</p>
                 <div className="p-3 bg-slate-50 rounded-lg text-sm whitespace-pre-wrap">

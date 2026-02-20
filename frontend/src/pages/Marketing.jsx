@@ -666,7 +666,7 @@ export const Marketing = () => {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Image className="w-4 h-4" />
-                    Attach Image (Optional)
+                    Attach Image {campaignType === 'product_promo' ? '(Optional - Product image used if not provided)' : '(Optional)'}
                   </Label>
                   <div className="flex items-center gap-4">
                     <Input
@@ -688,6 +688,11 @@ export const Marketing = () => {
                       </div>
                     )}
                   </div>
+                  {campaignType === 'product_promo' && !imagePreview && (
+                    <p className="text-xs text-emerald-600">
+                      Product image from first selected item will be automatically used if no custom image is uploaded
+                    </p>
+                  )}
                 </div>
 
                 {/* Scheduling */}

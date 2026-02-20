@@ -4755,14 +4755,27 @@ async def get_marketing_campaigns(
 @api_router.get("/marketing/campaigns/{campaign_id}")
 async def get_marketing_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
     """Get campaign details with logs"""
-    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0, 'image_webp': 0})
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Add image_url if campaign has image
+    if campaign.get('has_image'):
+        campaign['image_url'] = f"/api/marketing/campaigns/{campaign_id}/image"
     
     # Get campaign logs
     logs = await db.campaign_logs.find({'campaign_id': campaign_id}, {'_id': 0}).sort('sent_at', -1).to_list(1000)
     
     return {"campaign": campaign, "logs": logs}
+
+@api_router.get("/marketing/campaigns/{campaign_id}/image")
+async def get_campaign_image(campaign_id: str):
+    """Get campaign image"""
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'image_webp': 1})
+    if not campaign or not campaign.get('image_webp'):
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    return Response(content=campaign['image_webp'], media_type="image/webp")
 
 @api_router.post("/marketing/campaigns")
 async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_user: dict = Depends(get_current_user)):

@@ -528,7 +528,7 @@ const Customers = () => {
                 </div>
               </div>
 
-              {selectedCustomer.status === 'pending' && (
+              {(selectedCustomer.status === 'pending' || selectedCustomer.status === 'pending_approval') && (
                 <div className="flex gap-3 pt-4 border-t">
                   <Button 
                     className="flex-1 bg-green-600 hover:bg-green-700"
@@ -544,6 +544,29 @@ const Customers = () => {
                   >
                     <XCircle className="w-4 h-4 mr-2" />
                     Reject
+                  </Button>
+                </div>
+              )}
+              {selectedCustomer.status === 'approved' && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button 
+                    variant="outline"
+                    className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50"
+                    onClick={() => openApprovalModal(selectedCustomer, 'suspend')}
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    Suspend Customer
+                  </Button>
+                </div>
+              )}
+              {selectedCustomer.status === 'suspended' && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => openApprovalModal(selectedCustomer, 'reactivate')}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Reactivate Customer
                   </Button>
                 </div>
               )}

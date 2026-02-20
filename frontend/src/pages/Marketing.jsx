@@ -569,9 +569,19 @@ export const Marketing = () => {
                             data-testid={`item-${item.id}`}
                           >
                             <Checkbox checked={selectedItems.includes(item.id)} />
+                            {item.image_url && (
+                              <img 
+                                src={`${process.env.REACT_APP_BACKEND_URL}${item.image_url}`} 
+                                alt="" 
+                                className="w-8 h-8 object-cover rounded"
+                              />
+                            )}
                             <div className="flex-1">
-                              <p className="font-medium text-sm">{item.name || item.item_code}</p>
-                              <p className="text-xs text-slate-500">Code: {item.item_code} | MRP: ₹{item.mrp}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm">{item.name || item.item_code}</p>
+                                {item.image_url && <Image className="w-3 h-3 text-blue-500" />}
+                              </div>
+                              <p className="text-xs text-slate-500">Code: {item.item_code} | MRP: Rs.{item.mrp}</p>
                             </div>
                           </div>
                         ))
@@ -585,24 +595,46 @@ export const Marketing = () => {
                           {selectedItems.length} product(s) selected - Role-based pricing will be applied:
                         </p>
                         <div className="space-y-2 max-h-[150px] overflow-y-auto">
-                          {selectedItems.map(itemId => {
+                          {selectedItems.map((itemId, index) => {
                             const item = items.find(i => i.id === itemId);
                             if (!item) return null;
+                            const isFirstWithImage = index === 0 && item.image_url && !imagePreview;
                             return (
-                              <div key={itemId} className="text-xs bg-white p-2 rounded border border-blue-200">
-                                <p className="font-medium">{item.name || item.item_code}</p>
-                                <div className="flex gap-4 mt-1 text-slate-600">
-                                  <span>MRP: ₹{item.mrp}</span>
-                                  <span>Doctors: ₹{item.rate_doctors || item.rate}</span>
-                                  <span>Medicals: ₹{item.rate_medicals || item.rate}</span>
-                                  <span>Agencies: ₹{item.rate_agencies || item.rate}</span>
+                              <div key={itemId} className={`text-xs bg-white p-2 rounded border ${isFirstWithImage ? 'border-emerald-400 ring-1 ring-emerald-200' : 'border-blue-200'}`}>
+                                <div className="flex items-center gap-2">
+                                  {item.image_url && (
+                                    <img 
+                                      src={`${process.env.REACT_APP_BACKEND_URL}${item.image_url}`} 
+                                      alt="" 
+                                      className="w-10 h-10 object-cover rounded"
+                                    />
+                                  )}
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-medium">{item.name || item.item_code}</p>
+                                      {isFirstWithImage && (
+                                        <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
+                                          Image will be sent
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-3 mt-1 text-slate-600">
+                                      <span>MRP: Rs.{item.mrp}</span>
+                                      <span>Dr: Rs.{item.rate_doctors || item.rate}</span>
+                                      <span>Med: Rs.{item.rate_medicals || item.rate}</span>
+                                      <span>Agn: Rs.{item.rate_agencies || item.rate}</span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                         <p className="text-xs text-blue-600 mt-2">
-                          Each recipient will see their role-specific rate in the message
+                          {!imagePreview && selectedItems.some(id => items.find(i => i.id === id)?.image_url) 
+                            ? "First product's image will be sent with the message"
+                            : "No product images available - text only message"
+                          }
                         </p>
                       </div>
                     )}

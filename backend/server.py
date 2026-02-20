@@ -3667,6 +3667,36 @@ async def customer_send_otp(request: CustomerOTPRequest):
         if not customer:
             raise HTTPException(status_code=404, detail="No account found with this phone number")
     
+    # Check for duplicate registration - prevent if phone already registered
+    if request.purpose == "register":
+        # Check portal_customers first
+        existing_portal = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+        if existing_portal:
+            status = existing_portal.get('status', '')
+            if status == 'pending_approval':
+                raise HTTPException(status_code=400, detail="This phone number has a pending registration. Please wait for approval or contact support.")
+            elif status == 'approved':
+                raise HTTPException(status_code=400, detail="This phone number is already registered. Please login instead.")
+            elif status == 'rejected':
+                raise HTTPException(status_code=400, detail="Registration was rejected. Please contact support for assistance.")
+            elif status == 'suspended':
+                raise HTTPException(status_code=400, detail="This account is suspended. Please contact support.")
+            else:
+                raise HTTPException(status_code=400, detail="This phone number is already registered.")
+        
+        # Check doctors, medicals, agencies collections (admin-created customers)
+        existing_doctor = await db.doctors.find_one({'phone': clean_phone}, {'_id': 0})
+        if existing_doctor:
+            raise HTTPException(status_code=400, detail="This phone number is already registered as a Doctor. Please contact admin for portal access.")
+        
+        existing_medical = await db.medicals.find_one({'phone': clean_phone}, {'_id': 0})
+        if existing_medical:
+            raise HTTPException(status_code=400, detail="This phone number is already registered as a Medical Store. Please contact admin for portal access.")
+        
+        existing_agency = await db.agencies.find_one({'phone': clean_phone}, {'_id': 0})
+        if existing_agency:
+            raise HTTPException(status_code=400, detail="This phone number is already registered as an Agency. Please contact admin for portal access.")
+    
     # Generate 4-digit OTP
     otp = str(random.randint(1000, 9999))
     

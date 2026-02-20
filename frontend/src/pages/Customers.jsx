@@ -24,7 +24,12 @@ import {
   Mail,
   MapPin,
   Calendar,
-  Ban
+  Ban,
+  Key,
+  FileText,
+  Gift,
+  Heart,
+  Send
 } from 'lucide-react';
 import api from '../lib/api';
 

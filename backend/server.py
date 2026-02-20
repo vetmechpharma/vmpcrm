@@ -706,7 +706,7 @@ class CustomerResponse(BaseModel):
     approved_by: Optional[str] = None
 
 class CustomerApproval(BaseModel):
-    status: str  # approved, rejected
+    status: str  # approved, rejected, suspended
     rejection_reason: Optional[str] = None
 
 # ============== FALLBACK OTP MODELS ==============

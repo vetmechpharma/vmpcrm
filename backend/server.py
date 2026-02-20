@@ -4660,6 +4660,8 @@ async def create_marketing_template(template: MarketingTemplateCreate, current_u
     }
     
     await db.marketing_templates.insert_one(template_doc)
+    # Return without _id
+    del template_doc['_id']
     return template_doc
 
 @api_router.put("/marketing/templates/{template_id}")

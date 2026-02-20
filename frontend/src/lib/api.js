@@ -240,6 +240,24 @@ export const supportAPI = {
   addReply: (id, data) => api.post(`/support/tickets/${id}/reply`, data),
 };
 
+// Marketing APIs
+export const marketingAPI = {
+  // Templates
+  getTemplates: () => api.get('/marketing/templates'),
+  createTemplate: (data) => api.post('/marketing/templates', data),
+  updateTemplate: (id, data) => api.put(`/marketing/templates/${id}`, data),
+  deleteTemplate: (id) => api.delete(`/marketing/templates/${id}`),
+  // Recipients
+  getRecipients: (params) => api.get('/marketing/recipients', { params }),
+  // Campaigns
+  getCampaigns: (params) => api.get('/marketing/campaigns', { params }),
+  getCampaign: (id) => api.get(`/marketing/campaigns/${id}`),
+  createCampaign: (data) => api.post('/marketing/campaigns', data),
+  sendCampaign: (id) => api.post(`/marketing/campaigns/${id}/send`),
+  cancelCampaign: (id) => api.post(`/marketing/campaigns/${id}/cancel`),
+  getStats: () => api.get('/marketing/stats'),
+};
+
 // Public APIs (no auth required)
 export const publicAPI = {
   getCompanySettings: () => axios.get(`${API_URL}/api/public/company-settings`),

@@ -580,16 +580,19 @@ const Customers = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {approvalAction === 'approve' ? 'Approve Customer' : 'Reject Customer'}
+              {approvalAction === 'approve' && 'Approve Customer'}
+              {approvalAction === 'reject' && 'Reject Customer'}
+              {approvalAction === 'suspend' && 'Suspend Customer'}
+              {approvalAction === 'reactivate' && 'Reactivate Customer'}
             </DialogTitle>
           </DialogHeader>
           {selectedCustomer && (
             <div className="py-4">
               <p className="text-slate-600 mb-4">
-                {approvalAction === 'approve' 
-                  ? `Are you sure you want to approve ${selectedCustomer.name}? They will be able to login and place orders.`
-                  : `Are you sure you want to reject ${selectedCustomer.name}'s registration?`
-                }
+                {approvalAction === 'approve' && `Are you sure you want to approve ${selectedCustomer.name}? They will be able to login and place orders.`}
+                {approvalAction === 'reject' && `Are you sure you want to reject ${selectedCustomer.name}'s registration?`}
+                {approvalAction === 'suspend' && `Are you sure you want to suspend ${selectedCustomer.name}? They will not be able to login until reactivated.`}
+                {approvalAction === 'reactivate' && `Are you sure you want to reactivate ${selectedCustomer.name}? They will be able to login and place orders again.`}
               </p>
               
               {approvalAction === 'reject' && (
@@ -611,14 +614,28 @@ const Customers = () => {
               Cancel
             </Button>
             <Button 
-              onClick={approvalAction === 'approve' ? handleApprove : handleReject}
+              onClick={() => {
+                if (approvalAction === 'approve') handleApprove();
+                else if (approvalAction === 'reject') handleReject();
+                else if (approvalAction === 'suspend') handleSuspend();
+                else if (approvalAction === 'reactivate') handleReactivate();
+              }}
               disabled={processing}
-              className={approvalAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
+              className={
+                approvalAction === 'approve' || approvalAction === 'reactivate' 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : approvalAction === 'suspend'
+                  ? 'bg-orange-600 hover:bg-orange-700'
+                  : ''
+              }
               variant={approvalAction === 'reject' ? 'destructive' : 'default'}
               data-testid="confirm-approval-btn"
             >
               {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              {approvalAction === 'approve' ? 'Approve' : 'Reject'}
+              {approvalAction === 'approve' && 'Approve'}
+              {approvalAction === 'reject' && 'Reject'}
+              {approvalAction === 'suspend' && 'Suspend'}
+              {approvalAction === 'reactivate' && 'Reactivate'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -648,13 +648,25 @@ const Customers = () => {
                   </Button>
                 </div>
               )}
-                </div>
-              )}
               {selectedCustomer.status === 'approved' && (
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex flex-col gap-3 pt-4 border-t">
                   <Button 
                     variant="outline"
-                    className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50"
+                    className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
+                    onClick={handleSendNewPassword}
+                    disabled={sendingPassword}
+                    data-testid="send-new-password-btn"
+                  >
+                    {sendingPassword ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Key className="w-4 h-4 mr-2" />
+                    )}
+                    Send New Password via WhatsApp
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full border-orange-300 text-orange-600 hover:bg-orange-50"
                     onClick={() => openApprovalModal(selectedCustomer, 'suspend')}
                   >
                     <Ban className="w-4 h-4 mr-2" />

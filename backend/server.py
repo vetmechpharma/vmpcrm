@@ -4799,7 +4799,14 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
     item_details = []
     
     if campaign.campaign_type == 'product_promo' and campaign.item_ids:
-        items = await db.items.find({'id': {'$in': campaign.item_ids}}, {'_id': 0}).to_list(len(campaign.item_ids))
+        # Fetch items without image_webp binary for storage, but check if they have images
+        items = await db.items.find({'id': {'$in': campaign.item_ids}}, {'_id': 0, 'image_webp': 0}).to_list(len(campaign.item_ids))
+        
+        # Add has_image flag to each item
+        for item in items:
+            has_img = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
+            item['has_image'] = has_img is not None
+        
         item_details = items
     
     # Handle image upload - store in MongoDB as webp

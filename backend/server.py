@@ -20,6 +20,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 import random
+import string
 import httpx
 import asyncio
 from contextlib import asynccontextmanager

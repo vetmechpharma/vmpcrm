@@ -17,6 +17,7 @@ import { Orders } from './pages/Orders';
 import { PendingItems } from './pages/PendingItems';
 import { Reminders } from './pages/Reminders';
 import { PublicShowcase } from './pages/PublicShowcase';
+import { Marketing } from './pages/Marketing';
 import Customers from './pages/Customers';
 import Support from './pages/Support';
 import CustomerRegister from './pages/CustomerRegister';

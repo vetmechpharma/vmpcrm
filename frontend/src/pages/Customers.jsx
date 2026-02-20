@@ -319,7 +319,7 @@ const Customers = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {customer.status === 'pending' && (
+                          {(customer.status === 'pending' || customer.status === 'pending_approval') && (
                             <>
                               <Button 
                                 variant="ghost" 
@@ -340,6 +340,30 @@ const Customers = () => {
                                 <XCircle className="w-4 h-4" />
                               </Button>
                             </>
+                          )}
+                          {customer.status === 'approved' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              onClick={() => openApprovalModal(customer, 'suspend')}
+                              data-testid={`suspend-customer-${customer.id}`}
+                              title="Suspend Customer"
+                            >
+                              <Ban className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {customer.status === 'suspended' && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => openApprovalModal(customer, 'reactivate')}
+                              data-testid={`reactivate-customer-${customer.id}`}
+                              title="Reactivate Customer"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </td>

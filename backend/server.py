@@ -4980,20 +4980,28 @@ async def process_marketing_campaign(campaign_id: str):
                     phone = recipient['phone']
                     wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
                     
-                    # Check if campaign has image
-                    has_image = campaign.get('has_image', False)
+                    # Determine image URL to use
+                    image_url_to_send = None
                     
-                    if has_image:
-                        # Send image with caption using sendMedia action
-                        # Construct full URL for the image API endpoint
-                        image_full_url = f"https://drug-order-system.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
-                        
+                    # Check if campaign has uploaded image
+                    if campaign.get('has_image', False):
+                        image_url_to_send = f"https://drug-order-system.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                    # For product promotions, use first item's image as default
+                    elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
+                        for item in campaign['item_details']:
+                            if item.get('has_image'):
+                                image_url_to_send = f"https://drug-order-system.preview.emergentagent.com/api/items/{item['id']}/image"
+                                break
+                    
+                    if image_url_to_send:
+                        # Send image with caption
+                        # BotMasterSender uses 'sendFile' action for media
                         params = {
-                            'action': 'sendMedia',
+                            'action': 'sendFile',
                             'senderId': config['sender_id'],
                             'authToken': config['auth_token'],
-                            'mediaUrl': image_full_url,
-                            'caption': message,
+                            'fileUrl': image_url_to_send,
+                            'fileCaption': message,
                             'receiverId': wa_mobile
                         }
                     else:

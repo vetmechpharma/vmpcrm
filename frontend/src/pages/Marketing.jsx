@@ -886,7 +886,7 @@ export const Marketing = () => {
                             {getStatusBadge(campaign.status)}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-500">
-                            {new Date(campaign.created_at).toLocaleDateString()}}
+                            {new Date(campaign.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">

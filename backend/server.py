@@ -4329,6 +4329,126 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     return {"message": f"Customer {approval.status} successfully"}
 
 
+@api_router.post("/customers/{customer_id}/send-new-password")
+async def send_new_password_to_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Generate and send new password to customer via WhatsApp (admin only)"""
+    # Check if it's a portal customer first
+    customer = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0})
+    customer_type = 'portal'
+    
+    # If not found in portal_customers, check doctors/medicals/agencies
+    if not customer:
+        customer = await db.doctors.find_one({'id': customer_id}, {'_id': 0})
+        customer_type = 'doctor'
+    if not customer:
+        customer = await db.medicals.find_one({'id': customer_id}, {'_id': 0})
+        customer_type = 'medical'
+    if not customer:
+        customer = await db.agencies.find_one({'id': customer_id}, {'_id': 0})
+        customer_type = 'agency'
+    
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Generate new random password (8 chars alphanumeric)
+    new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    
+    phone = customer.get('phone', '')
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    
+    if len(clean_phone) < 10:
+        raise HTTPException(status_code=400, detail="Customer has no valid phone number")
+    
+    # Update password based on customer type
+    if customer_type == 'portal':
+        await db.portal_customers.update_one(
+            {'id': customer_id},
+            {'$set': {'password_hash': password_hash, 'password_sent_at': datetime.now(timezone.utc).isoformat()}}
+        )
+    else:
+        # For admin-created customers, we need to create or update portal access
+        existing_portal = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+        if existing_portal:
+            # Update existing portal account
+            await db.portal_customers.update_one(
+                {'phone': clean_phone},
+                {'$set': {'password_hash': password_hash, 'password_sent_at': datetime.now(timezone.utc).isoformat()}}
+            )
+        else:
+            # Create new portal account for admin-created customer
+            now = datetime.now(timezone.utc)
+            role_map = {'doctor': 'doctor', 'medical': 'medical', 'agency': 'agency'}
+            portal_customer = {
+                'id': str(uuid.uuid4()),
+                'customer_code': customer.get('customer_code', await generate_customer_code(role_map.get(customer_type, 'doctor'))),
+                'name': customer.get('name', ''),
+                'phone': clean_phone,
+                'email': customer.get('email'),
+                'password_hash': password_hash,
+                'role': role_map.get(customer_type, 'doctor'),
+                'status': 'approved',  # Auto-approved since created by admin
+                'reg_no': customer.get('reg_no'),
+                'dob': customer.get('dob'),
+                'proprietor_name': customer.get('proprietor_name'),
+                'gst_number': customer.get('gst_number'),
+                'drug_license': customer.get('drug_license'),
+                'alternate_phone': customer.get('alternate_phone'),
+                'birthday': customer.get('birthday'),
+                'anniversary': customer.get('anniversary'),
+                'address_line_1': customer.get('address_line_1'),
+                'address_line_2': customer.get('address_line_2'),
+                'state': customer.get('state'),
+                'district': customer.get('district'),
+                'pincode': customer.get('pincode'),
+                'delivery_station': customer.get('delivery_station'),
+                'transport_id': customer.get('transport_id'),
+                'created_at': now.isoformat(),
+                'approved_at': now.isoformat(),
+                'approved_by': current_user.get('name', 'Admin'),
+                'linked_record_id': customer_id,
+                'password_sent_at': now.isoformat()
+            }
+            await db.portal_customers.insert_one(portal_customer)
+            logger.info(f"Created portal account for admin customer: {customer.get('name')}")
+    
+    # Send new password via WhatsApp
+    config = await get_whatsapp_config()
+    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+        try:
+            message = f"Hello {customer.get('name', 'Customer')}!\n\n" \
+                      f"Your VMP CRM portal login credentials:\n\n" \
+                      f"*Phone:* {clean_phone}\n" \
+                      f"*Password:* {new_password}\n\n" \
+                      f"Login at the customer portal to view products and place orders.\n\n" \
+                      f"Please change your password after first login for security."
+            
+            wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
+            
+            params = {
+                'action': 'send',
+                'senderId': config['sender_id'],
+                'authToken': config['auth_token'],
+                'messageText': message,
+                'receiverId': wa_mobile
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(config['api_url'], params=params)
+                if response.status_code == 200:
+                    await log_whatsapp_message(wa_mobile, 'password_reset', message, 'success', recipient_name=customer.get('name'))
+                    return {"message": "New password sent via WhatsApp successfully", "password_sent": True}
+                else:
+                    logger.error(f"WhatsApp password send failed: {response.status_code}")
+                    return {"message": "Password updated but WhatsApp delivery failed. Please share password manually.", "password": new_password, "password_sent": False}
+        except Exception as e:
+            logger.error(f"WhatsApp password send error: {str(e)}")
+            return {"message": "Password updated but WhatsApp delivery failed. Please share password manually.", "password": new_password, "password_sent": False}
+    else:
+        # No WhatsApp configured - return password for manual sharing
+        return {"message": "Password updated. WhatsApp not configured - please share password manually.", "password": new_password, "password_sent": False}
+
+
 async def create_linked_customer_record(customer: dict, approved_by: str) -> Optional[str]:
     """Create a record in doctors/medicals/agencies when portal customer is approved"""
     now = datetime.now(timezone.utc)

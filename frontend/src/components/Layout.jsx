@@ -35,7 +35,7 @@ const navItems = [
   { path: '/agencies', icon: Building, label: 'Agencies' },
   { path: '/items', icon: Package, label: 'Items' },
   { path: '/orders', icon: ShoppingCart, label: 'Orders' },
-  { path: '/marketing', icon: MessageSquare, label: 'Marketing' },
+  { path: '/marketing', icon: Megaphone, label: 'Marketing' },
   { path: '/expenses', icon: Receipt, label: 'Expenses' },
   { path: '/reminders', icon: Bell, label: 'Reminders' },
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },

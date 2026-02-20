@@ -550,29 +550,61 @@ export const Marketing = () => {
                         value={itemSearch}
                         onChange={(e) => setItemSearch(e.target.value)}
                         className="pl-9"
+                        data-testid="item-search"
                       />
                     </div>
                     <div className="border rounded-lg max-h-[200px] overflow-y-auto">
-                      {filteredItems.slice(0, 20).map(item => (
-                        <div 
-                          key={item.id}
-                          className={`flex items-center gap-3 px-3 py-2 border-b last:border-b-0 hover:bg-slate-50 cursor-pointer ${
-                            selectedItems.includes(item.id) ? 'bg-blue-50' : ''
-                          }`}
-                          onClick={() => setSelectedItems(prev => 
-                            prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]
-                          )}
-                        >
-                          <Checkbox checked={selectedItems.includes(item.id)} />
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{item.name}</p>
-                            <p className="text-xs text-slate-500">MRP: {item.mrp} | Rate: {item.rate}</p>
+                      {filteredItems.length === 0 ? (
+                        <div className="text-center py-4 text-slate-500 text-sm">No products found</div>
+                      ) : (
+                        filteredItems.slice(0, 30).map(item => (
+                          <div 
+                            key={item.id}
+                            className={`flex items-center gap-3 px-3 py-2 border-b last:border-b-0 hover:bg-slate-50 cursor-pointer ${
+                              selectedItems.includes(item.id) ? 'bg-blue-50' : ''
+                            }`}
+                            onClick={() => setSelectedItems(prev => 
+                              prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]
+                            )}
+                            data-testid={`item-${item.id}`}
+                          >
+                            <Checkbox checked={selectedItems.includes(item.id)} />
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{item.name || item.item_code}</p>
+                              <p className="text-xs text-slate-500">Code: {item.item_code} | MRP: ₹{item.mrp}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
+                    
+                    {/* Selected Products with Role-Based Pricing */}
                     {selectedItems.length > 0 && (
-                      <p className="text-sm text-emerald-600">{selectedItems.length} products selected</p>
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800 mb-2">
+                          {selectedItems.length} product(s) selected - Role-based pricing will be applied:
+                        </p>
+                        <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                          {selectedItems.map(itemId => {
+                            const item = items.find(i => i.id === itemId);
+                            if (!item) return null;
+                            return (
+                              <div key={itemId} className="text-xs bg-white p-2 rounded border border-blue-200">
+                                <p className="font-medium">{item.name || item.item_code}</p>
+                                <div className="flex gap-4 mt-1 text-slate-600">
+                                  <span>MRP: ₹{item.mrp}</span>
+                                  <span>Doctors: ₹{item.rate_doctors || item.rate}</span>
+                                  <span>Medicals: ₹{item.rate_medicals || item.rate}</span>
+                                  <span>Agencies: ₹{item.rate_agencies || item.rate}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-blue-600 mt-2">
+                          Each recipient will see their role-specific rate in the message
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}

@@ -4631,6 +4631,455 @@ async def seed_default_otps(current_user: dict = Depends(get_current_user)):
     return {"message": f"Added {added} new fallback OTPs", "total_default": len(default_otps)}
 
 
+# ============== MARKETING MODULE ==============
+
+def generate_reference_number():
+    """Generate random 7-digit reference number for anti-ban"""
+    return str(random.randint(1000000, 9999999))
+
+@api_router.get("/marketing/templates")
+async def get_marketing_templates(current_user: dict = Depends(get_current_user)):
+    """Get all marketing templates"""
+    templates = await db.marketing_templates.find({}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    return templates
+
+@api_router.post("/marketing/templates")
+async def create_marketing_template(template: MarketingTemplateCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new marketing template"""
+    template_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    template_doc = {
+        'id': template_id,
+        'name': template.name,
+        'category': template.category,
+        'message': template.message,
+        'is_active': template.is_active,
+        'created_at': now.isoformat(),
+        'created_by': current_user['name']
+    }
+    
+    await db.marketing_templates.insert_one(template_doc)
+    return template_doc
+
+@api_router.put("/marketing/templates/{template_id}")
+async def update_marketing_template(template_id: str, template: MarketingTemplateCreate, current_user: dict = Depends(get_current_user)):
+    """Update a marketing template"""
+    result = await db.marketing_templates.update_one(
+        {'id': template_id},
+        {'$set': {
+            'name': template.name,
+            'category': template.category,
+            'message': template.message,
+            'is_active': template.is_active,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"message": "Template updated successfully"}
+
+@api_router.delete("/marketing/templates/{template_id}")
+async def delete_marketing_template(template_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a marketing template"""
+    result = await db.marketing_templates.delete_one({'id': template_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {"message": "Template deleted successfully"}
+
+@api_router.get("/marketing/recipients")
+async def get_marketing_recipients(
+    entity_type: str = "all",
+    status: str = "all",
+    current_user: dict = Depends(get_current_user)
+):
+    """Get potential recipients for marketing based on filters"""
+    recipients = []
+    
+    # Build status filter
+    status_filter = {}
+    if status != "all":
+        status_map = {
+            "pipeline": "Pipeline",
+            "customer": "Customer",
+            "contacted": "Contacted",
+            "not_interested": "Not Interested",
+            "closed": "Closed"
+        }
+        if status in status_map:
+            status_filter['lead_status'] = status_map[status]
+    
+    async def fetch_from_collection(collection_name, recipient_type):
+        query = {**status_filter}
+        docs = await db[collection_name].find(query, {'_id': 0}).to_list(1000)
+        for doc in docs:
+            if doc.get('phone'):
+                recipients.append({
+                    'id': doc.get('id'),
+                    'name': doc.get('name'),
+                    'phone': doc.get('phone'),
+                    'email': doc.get('email'),
+                    'type': recipient_type,
+                    'lead_status': doc.get('lead_status', 'Pipeline'),
+                    'customer_code': doc.get('customer_code', '')
+                })
+    
+    if entity_type in ['all', 'doctors']:
+        await fetch_from_collection('doctors', 'doctor')
+    if entity_type in ['all', 'medicals']:
+        await fetch_from_collection('medicals', 'medical')
+    if entity_type in ['all', 'agencies']:
+        await fetch_from_collection('agencies', 'agency')
+    
+    return recipients
+
+@api_router.get("/marketing/campaigns")
+async def get_marketing_campaigns(
+    status: str = None,
+    skip: int = 0,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all marketing campaigns"""
+    query = {}
+    if status:
+        query['status'] = status
+    
+    campaigns = await db.marketing_campaigns.find(query, {'_id': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+    total = await db.marketing_campaigns.count_documents(query)
+    
+    return {"campaigns": campaigns, "total": total}
+
+@api_router.get("/marketing/campaigns/{campaign_id}")
+async def get_marketing_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
+    """Get campaign details with logs"""
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Get campaign logs
+    logs = await db.campaign_logs.find({'campaign_id': campaign_id}, {'_id': 0}).sort('sent_at', -1).to_list(1000)
+    
+    return {"campaign": campaign, "logs": logs}
+
+@api_router.post("/marketing/campaigns")
+async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new marketing campaign"""
+    campaign_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    # Get company settings for message footer
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VETMECH PHARMA') if company else 'VETMECH PHARMA'
+    
+    # Build message with item details if product promo
+    final_message = campaign.message
+    item_details = []
+    
+    if campaign.campaign_type == 'product_promo' and campaign.item_ids:
+        items = await db.items.find({'id': {'$in': campaign.item_ids}}, {'_id': 0}).to_list(len(campaign.item_ids))
+        item_details = items
+    
+    # Handle image upload
+    image_url = None
+    if campaign.image_base64:
+        try:
+            # Save base64 image
+            image_data = campaign.image_base64.split(',')[1] if ',' in campaign.image_base64 else campaign.image_base64
+            image_bytes = base64.b64decode(image_data)
+            image_filename = f"marketing_{campaign_id}.jpg"
+            image_path = os.path.join(UPLOAD_DIR, image_filename)
+            with open(image_path, 'wb') as f:
+                f.write(image_bytes)
+            image_url = f"/uploads/{image_filename}"
+        except Exception as e:
+            logger.error(f"Failed to save campaign image: {e}")
+    
+    # Determine initial status
+    status = 'scheduled' if campaign.scheduled_at else 'draft'
+    
+    campaign_doc = {
+        'id': campaign_id,
+        'name': campaign.name,
+        'campaign_type': campaign.campaign_type,
+        'target_entity': campaign.target_entity,
+        'target_status': campaign.target_status,
+        'recipient_ids': campaign.recipient_ids,
+        'total_recipients': len(campaign.recipient_ids),
+        'sent_count': 0,
+        'failed_count': 0,
+        'pending_count': len(campaign.recipient_ids),
+        'message': campaign.message,
+        'message_preview': campaign.message[:100] + '...' if len(campaign.message) > 100 else campaign.message,
+        'item_ids': campaign.item_ids or [],
+        'item_details': item_details,
+        'image_url': image_url,
+        'has_image': image_url is not None,
+        'batch_size': campaign.batch_size,
+        'batch_delay_seconds': campaign.batch_delay_seconds,
+        'status': status,
+        'scheduled_at': campaign.scheduled_at,
+        'started_at': None,
+        'completed_at': None,
+        'created_at': now.isoformat(),
+        'created_by': current_user['name'],
+        'company_name': company_name
+    }
+    
+    await db.marketing_campaigns.insert_one(campaign_doc)
+    
+    # Create pending logs for each recipient
+    for recipient_id in campaign.recipient_ids:
+        log_doc = {
+            'id': str(uuid.uuid4()),
+            'campaign_id': campaign_id,
+            'recipient_id': recipient_id,
+            'reference_number': generate_reference_number(),
+            'status': 'pending',
+            'error_message': None,
+            'sent_at': None
+        }
+        await db.campaign_logs.insert_one(log_doc)
+    
+    return campaign_doc
+
+@api_router.post("/marketing/campaigns/{campaign_id}/send")
+async def send_marketing_campaign(campaign_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Start sending a marketing campaign"""
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign['status'] in ['sending', 'completed']:
+        raise HTTPException(status_code=400, detail=f"Campaign is already {campaign['status']}")
+    
+    # Update status to sending
+    await db.marketing_campaigns.update_one(
+        {'id': campaign_id},
+        {'$set': {
+            'status': 'sending',
+            'started_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Start background task to send messages
+    background_tasks.add_task(process_marketing_campaign, campaign_id)
+    
+    return {"message": "Campaign sending started", "status": "sending"}
+
+async def process_marketing_campaign(campaign_id: str):
+    """Background task to process and send marketing messages in batches"""
+    try:
+        campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+        if not campaign:
+            return
+        
+        config = await get_whatsapp_config()
+        if not config.get('api_url') or not config.get('auth_token'):
+            logger.error("WhatsApp not configured for marketing campaign")
+            await db.marketing_campaigns.update_one(
+                {'id': campaign_id},
+                {'$set': {'status': 'failed', 'error': 'WhatsApp not configured'}}
+            )
+            return
+        
+        batch_size = campaign.get('batch_size', 10)
+        batch_delay = campaign.get('batch_delay_seconds', 60)
+        company_name = campaign.get('company_name', 'VETMECH PHARMA')
+        
+        # Get pending logs
+        pending_logs = await db.campaign_logs.find({
+            'campaign_id': campaign_id,
+            'status': 'pending'
+        }, {'_id': 0}).to_list(1000)
+        
+        # Process in batches
+        for i in range(0, len(pending_logs), batch_size):
+            batch = pending_logs[i:i + batch_size]
+            
+            for log in batch:
+                try:
+                    # Get recipient details
+                    recipient = None
+                    for collection in ['doctors', 'medicals', 'agencies']:
+                        recipient = await db[collection].find_one({'id': log['recipient_id']}, {'_id': 0})
+                        if recipient:
+                            recipient['type'] = collection[:-1] if collection != 'agencies' else 'agency'
+                            break
+                    
+                    if not recipient or not recipient.get('phone'):
+                        await db.campaign_logs.update_one(
+                            {'id': log['id']},
+                            {'$set': {'status': 'failed', 'error_message': 'Recipient not found or no phone'}}
+                        )
+                        await db.marketing_campaigns.update_one(
+                            {'id': campaign_id},
+                            {'$inc': {'failed_count': 1, 'pending_count': -1}}
+                        )
+                        continue
+                    
+                    # Build personalized message
+                    message = campaign['message']
+                    
+                    # Replace placeholders
+                    message = message.replace('{name}', recipient.get('name', 'Customer'))
+                    message = message.replace('{customer_code}', recipient.get('customer_code', ''))
+                    
+                    # Add item details for product promos
+                    if campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
+                        items_text = "\n\n📦 *Product Details:*\n"
+                        for item in campaign['item_details']:
+                            # Get role-specific pricing
+                            recipient_type = recipient.get('type', 'doctor')
+                            rate_field = f"rate_{recipient_type}s" if recipient_type != 'agency' else 'rate_agencies'
+                            offer_field = f"offer_{recipient_type}s" if recipient_type != 'agency' else 'offer_agencies'
+                            special_offer_field = f"special_offer_{recipient_type}s" if recipient_type != 'agency' else 'special_offer_agencies'
+                            
+                            rate = item.get(rate_field) or item.get('rate', 0)
+                            offer = item.get(offer_field) or item.get('offer', '')
+                            special_offer = item.get(special_offer_field) or item.get('special_offer', '')
+                            mrp = item.get('mrp', 0)
+                            
+                            items_text += f"\n• *{item.get('name')}*"
+                            items_text += f"\n  MRP: ₹{mrp}"
+                            items_text += f"\n  Your Rate: ₹{rate}"
+                            if offer:
+                                items_text += f"\n  Offer: {offer}"
+                            if special_offer:
+                                items_text += f"\n  Special: {special_offer}"
+                        
+                        message += items_text
+                    
+                    # Add footer with reference number
+                    ref_number = log['reference_number']
+                    message += f"\n\nRegards,\n*{company_name}*\n(#Server Ref: {ref_number})"
+                    
+                    # Send WhatsApp message
+                    phone = recipient['phone']
+                    wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
+                    
+                    params = {
+                        'action': 'send',
+                        'senderId': config['sender_id'],
+                        'authToken': config['auth_token'],
+                        'messageText': message,
+                        'receiverId': wa_mobile
+                    }
+                    
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        response = await client.get(config['api_url'], params=params)
+                        
+                        if response.status_code == 200:
+                            await db.campaign_logs.update_one(
+                                {'id': log['id']},
+                                {'$set': {
+                                    'status': 'sent',
+                                    'sent_at': datetime.now(timezone.utc).isoformat(),
+                                    'recipient_name': recipient.get('name'),
+                                    'recipient_phone': wa_mobile,
+                                    'recipient_type': recipient.get('type')
+                                }}
+                            )
+                            await db.marketing_campaigns.update_one(
+                                {'id': campaign_id},
+                                {'$inc': {'sent_count': 1, 'pending_count': -1}}
+                            )
+                            
+                            # Log to WhatsApp logs
+                            await log_whatsapp_message(
+                                wa_mobile, 'marketing', message[:200], 'success',
+                                recipient_name=recipient.get('name')
+                            )
+                        else:
+                            error_msg = f"Status {response.status_code}"
+                            await db.campaign_logs.update_one(
+                                {'id': log['id']},
+                                {'$set': {
+                                    'status': 'failed',
+                                    'error_message': error_msg,
+                                    'recipient_name': recipient.get('name'),
+                                    'recipient_phone': wa_mobile,
+                                    'recipient_type': recipient.get('type')
+                                }}
+                            )
+                            await db.marketing_campaigns.update_one(
+                                {'id': campaign_id},
+                                {'$inc': {'failed_count': 1, 'pending_count': -1}}
+                            )
+                    
+                    # Small delay between messages in same batch
+                    await asyncio.sleep(2)
+                    
+                except Exception as e:
+                    logger.error(f"Error sending to recipient {log['recipient_id']}: {e}")
+                    await db.campaign_logs.update_one(
+                        {'id': log['id']},
+                        {'$set': {'status': 'failed', 'error_message': str(e)}}
+                    )
+                    await db.marketing_campaigns.update_one(
+                        {'id': campaign_id},
+                        {'$inc': {'failed_count': 1, 'pending_count': -1}}
+                    )
+            
+            # Delay between batches to avoid ban
+            if i + batch_size < len(pending_logs):
+                logger.info(f"Campaign {campaign_id}: Batch complete, waiting {batch_delay}s before next batch")
+                await asyncio.sleep(batch_delay)
+        
+        # Mark campaign as completed
+        await db.marketing_campaigns.update_one(
+            {'id': campaign_id},
+            {'$set': {
+                'status': 'completed',
+                'completed_at': datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        logger.info(f"Marketing campaign {campaign_id} completed")
+        
+    except Exception as e:
+        logger.error(f"Marketing campaign {campaign_id} failed: {e}")
+        await db.marketing_campaigns.update_one(
+            {'id': campaign_id},
+            {'$set': {'status': 'failed', 'error': str(e)}}
+        )
+
+@api_router.post("/marketing/campaigns/{campaign_id}/cancel")
+async def cancel_marketing_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
+    """Cancel a marketing campaign"""
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign['status'] == 'completed':
+        raise HTTPException(status_code=400, detail="Cannot cancel completed campaign")
+    
+    await db.marketing_campaigns.update_one(
+        {'id': campaign_id},
+        {'$set': {'status': 'cancelled'}}
+    )
+    
+    return {"message": "Campaign cancelled"}
+
+@api_router.get("/marketing/stats")
+async def get_marketing_stats(current_user: dict = Depends(get_current_user)):
+    """Get marketing statistics"""
+    total_campaigns = await db.marketing_campaigns.count_documents({})
+    completed_campaigns = await db.marketing_campaigns.count_documents({'status': 'completed'})
+    
+    # Get total messages sent this month
+    start_of_month = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    sent_this_month = await db.campaign_logs.count_documents({
+        'status': 'sent',
+        'sent_at': {'$gte': start_of_month.isoformat()}
+    })
+    
+    return {
+        'total_campaigns': total_campaigns,
+        'completed_campaigns': completed_campaigns,
+        'messages_sent_this_month': sent_this_month
+    }
+
+
 async def send_whatsapp_order(mobile: str, items: List[OrderItem], order_number: str, doctor_name: str = None, ip_address: str = None, location: str = None):
     """Send order confirmation via WhatsApp with full details"""
     config = await get_whatsapp_config()

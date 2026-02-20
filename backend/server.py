@@ -4400,9 +4400,16 @@ async def get_all_tickets(
 
 @api_router.put("/support/tickets/{ticket_id}/status")
 async def update_ticket_status(ticket_id: str, status: str, current_user: dict = Depends(get_current_user)):
-    """Update ticket status"""
+    """Update ticket status and notify customer via WhatsApp"""
     if status not in ['open', 'in_progress', 'resolved', 'closed']:
         raise HTTPException(status_code=400, detail="Invalid status")
+    
+    # Get ticket details first
+    ticket = await db.support_tickets.find_one({'id': ticket_id}, {'_id': 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    old_status = ticket.get('status')
     
     now = datetime.now(timezone.utc)
     update_data = {'status': status, 'updated_at': now.isoformat()}
@@ -4414,6 +4421,53 @@ async def update_ticket_status(ticket_id: str, status: str, current_user: dict =
     result = await db.support_tickets.update_one({'id': ticket_id}, {'$set': update_data})
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    # Send WhatsApp notification if status actually changed
+    if old_status != status and ticket.get('customer_phone'):
+        config = await get_whatsapp_config()
+        if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+            try:
+                # Get company name
+                company = await db.company_settings.find_one({}, {'_id': 0})
+                company_name = company.get('company_name', 'VETMECH PHARMA') if company else 'VETMECH PHARMA'
+                
+                # Status-specific messages
+                ticket_num = ticket.get('ticket_number', ticket_id[:8])
+                customer_name = ticket.get('customer_name', 'Customer')
+                
+                status_messages = {
+                    'open': f"Dear {customer_name},\n\nYour support ticket #{ticket_num} has been *REOPENED*.\n\nSubject: {ticket.get('subject')}\n\nOur team will look into your issue shortly.\n\nRegards,\n{company_name}",
+                    
+                    'in_progress': f"Dear {customer_name},\n\nGood news! Your support ticket #{ticket_num} is now *IN PROGRESS*.\n\nSubject: {ticket.get('subject')}\n\nOur team is actively working on resolving your issue. We'll update you soon.\n\nRegards,\n{company_name}",
+                    
+                    'resolved': f"Dear {customer_name},\n\nGreat news! Your support ticket #{ticket_num} has been *RESOLVED*.\n\nSubject: {ticket.get('subject')}\n\nWe hope this resolves your concern. If you have any further questions, please don't hesitate to reach out.\n\nThank you for your patience!\n\nRegards,\n{company_name}",
+                    
+                    'closed': f"Dear {customer_name},\n\nYour support ticket #{ticket_num} has been *CLOSED*.\n\nSubject: {ticket.get('subject')}\n\nIf you need any further assistance, please create a new ticket or contact us directly.\n\nThank you for choosing {company_name}!\n\nRegards,\n{company_name}"
+                }
+                
+                message = status_messages.get(status, f"Your ticket #{ticket_num} status has been updated to: {status.upper()}")
+                
+                # Send WhatsApp
+                wa_mobile = ticket['customer_phone'] if ticket['customer_phone'].startswith('91') else f"91{ticket['customer_phone'][-10:]}"
+                
+                params = {
+                    'action': 'send',
+                    'senderId': config['sender_id'],
+                    'authToken': config['auth_token'],
+                    'messageText': message,
+                    'receiverId': wa_mobile
+                }
+                
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(config['api_url'], params=params)
+                    if response.status_code == 200:
+                        await log_whatsapp_message(wa_mobile, 'ticket_status', message, 'success', recipient_name=customer_name)
+                        logger.info(f"Ticket status notification sent to {wa_mobile}")
+                    else:
+                        logger.error(f"WhatsApp notification failed: {response.status_code}")
+                        
+            except Exception as e:
+                logger.error(f"WhatsApp notification error: {str(e)}")
     
     return {"message": "Ticket status updated"}
 

@@ -85,18 +85,24 @@ const CustomerRegister = () => {
   const fetchStates = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/public/states`);
-      setStates(response.data || []);
+      // API returns {states: [...]} or direct array
+      const data = response.data;
+      setStates(Array.isArray(data) ? data : (data?.states || []));
     } catch (error) {
       console.error('Failed to fetch states');
+      setStates([]);
     }
   };
 
   const fetchDistricts = async (state) => {
     try {
       const response = await axios.get(`${API_URL}/api/public/districts/${encodeURIComponent(state)}`);
-      setDistricts(response.data || []);
+      // API returns {districts: [...]} or direct array
+      const data = response.data;
+      setDistricts(Array.isArray(data) ? data : (data?.districts || []));
     } catch (error) {
       console.error('Failed to fetch districts');
+      setDistricts([]);
     }
   };
 

@@ -4465,6 +4465,87 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
     
     return {"message": "Reply added successfully", "reply": reply_doc}
 
+# Admin ticket creation model
+class AdminTicketCreate(BaseModel):
+    subject: str
+    description: str
+    category: str = "general"
+    priority: str = "medium"
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+
+class TicketUpdate(BaseModel):
+    subject: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[str] = None
+
+@api_router.post("/support/tickets/admin")
+async def create_admin_ticket(ticket_data: AdminTicketCreate, current_user: dict = Depends(get_current_user)):
+    """Create a support ticket from admin panel (for walk-in/phone customers)"""
+    now = datetime.now(timezone.utc)
+    
+    # Generate ticket number
+    count = await db.support_tickets.count_documents({})
+    ticket_number = f"TKT-{count + 1:05d}"
+    
+    ticket_doc = {
+        'id': str(uuid.uuid4()),
+        'ticket_number': ticket_number,
+        'subject': ticket_data.subject,
+        'description': ticket_data.description,
+        'category': ticket_data.category,
+        'priority': ticket_data.priority,
+        'status': 'open',
+        'customer_id': None,  # No portal customer linked
+        'customer_name': ticket_data.customer_name,
+        'customer_phone': ticket_data.customer_phone,
+        'customer_email': ticket_data.customer_email,
+        'replies': [],
+        'created_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+        'created_by': current_user['name']
+    }
+    
+    await db.support_tickets.insert_one(ticket_doc)
+    del ticket_doc['_id']
+    return ticket_doc
+
+@api_router.put("/support/tickets/{ticket_id}")
+async def update_ticket(ticket_id: str, ticket_data: TicketUpdate, current_user: dict = Depends(get_current_user)):
+    """Update ticket details"""
+    update_fields = {'updated_at': datetime.now(timezone.utc).isoformat()}
+    
+    if ticket_data.subject:
+        update_fields['subject'] = ticket_data.subject
+    if ticket_data.description:
+        update_fields['description'] = ticket_data.description
+    if ticket_data.category:
+        update_fields['category'] = ticket_data.category
+    if ticket_data.priority:
+        update_fields['priority'] = ticket_data.priority
+    
+    result = await db.support_tickets.update_one(
+        {'id': ticket_id},
+        {'$set': update_fields}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    return {"message": "Ticket updated successfully"}
+
+@api_router.delete("/support/tickets/{ticket_id}")
+async def delete_ticket(ticket_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a support ticket"""
+    result = await db.support_tickets.delete_one({'id': ticket_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    return {"message": "Ticket deleted successfully"}
+
 # ============== OTP & ORDER ROUTES ==============
 
 async def get_whatsapp_config():

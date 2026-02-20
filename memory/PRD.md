@@ -506,15 +506,46 @@ Build a simple CRM for managing doctor leads. Features include:
 - `/app/test_reports/iteration_13.json` - Backend tests (17/17 PASSED)
 - `/app/test_reports/iteration_14.json` - Frontend mobile UI tests (100% PASSED)
 - `/app/test_reports/iteration_15.json` - OTP & Fallback OTP tests (15/15 PASSED)
+- `/app/test_reports/iteration_16.json` - Marketing module tests (32/32 PASSED)
 
 ### Test Credentials:
 - **Admin**: admin@vmpcrm.com / admin123
 - **Customer**: 9999777766 / test123
 
+## Marketing Module - COMPLETED Feb 20, 2026
+- [x] **Marketing Page** (`/marketing`) with 3 tabs: Create, Templates, History
+- [x] **Recipient Selection**:
+  - Filter by entity type: All, Doctors, Medicals, Agencies
+  - Filter by status: All, Pipeline, Customers, Contacted, Not Interested, Closed
+  - Search by name, phone, customer code
+  - Checkbox selection with Select All option
+- [x] **Campaign Types**:
+  - Product Promotion (with role-based pricing)
+  - Greetings (festival wishes)
+  - Announcements (product launches)
+  - Circulars (government notices)
+- [x] **Message Composer**:
+  - Personalization with {name} placeholder
+  - Image attachment support
+  - Product selection for promos with role-based pricing display
+- [x] **Anti-Ban Protection**:
+  - Batch sending (configurable batch size)
+  - Configurable delay between batches (default 60s)
+  - Unique 7-digit reference number per message (#Server Ref: XXXXXXX)
+- [x] **Scheduling**: Optional schedule for later sending
+- [x] **Message Templates**:
+  - Quick templates (Diwali, New Year, Product Launch, Price Update)
+  - Custom templates with CRUD operations
+- [x] **Campaign History**:
+  - List of all campaigns with status
+  - Progress tracking (sent/failed/pending counts)
+  - Detailed logs with reference numbers
+  - Send/Cancel actions for draft/scheduled campaigns
+
 ## Prioritized Backlog
 
 ### P0 (Critical) 
-- [ ] **Refactor `server.py`**: Backend is >8000 lines monolithic file - URGENT needs to be split into routers/models/services
+- [ ] **Refactor `server.py`**: Backend is >9000 lines monolithic file - URGENT needs to be split into routers/models/services
 
 ### P1 (High Priority)
 - [ ] **ForgotPassword.jsx**: Customer password reset flow via WhatsApp OTP

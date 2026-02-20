@@ -4782,20 +4782,15 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
         items = await db.items.find({'id': {'$in': campaign.item_ids}}, {'_id': 0}).to_list(len(campaign.item_ids))
         item_details = items
     
-    # Handle image upload
-    image_url = None
+    # Handle image upload - store in MongoDB as webp
+    processed_image = None
     if campaign.image_base64:
         try:
-            # Save base64 image
             image_data = campaign.image_base64.split(',')[1] if ',' in campaign.image_base64 else campaign.image_base64
             image_bytes = base64.b64decode(image_data)
-            image_filename = f"marketing_{campaign_id}.jpg"
-            image_path = os.path.join(UPLOAD_DIR, image_filename)
-            with open(image_path, 'wb') as f:
-                f.write(image_bytes)
-            image_url = f"/uploads/{image_filename}"
+            processed_image = process_image_to_webp(image_bytes, max_size_kb=200, target_size=(800, 800))
         except Exception as e:
-            logger.error(f"Failed to save campaign image: {e}")
+            logger.error(f"Failed to process campaign image: {e}")
     
     # Determine initial status
     status = 'scheduled' if campaign.scheduled_at else 'draft'
@@ -4815,8 +4810,8 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
         'message_preview': campaign.message[:100] + '...' if len(campaign.message) > 100 else campaign.message,
         'item_ids': campaign.item_ids or [],
         'item_details': item_details,
-        'image_url': image_url,
-        'has_image': image_url is not None,
+        'image_webp': processed_image,
+        'has_image': processed_image is not None,
         'batch_size': campaign.batch_size,
         'batch_delay_seconds': campaign.batch_delay_seconds,
         'status': status,

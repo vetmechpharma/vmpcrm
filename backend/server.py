@@ -4978,12 +4978,12 @@ async def process_marketing_campaign(campaign_id: str):
                     wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
                     
                     # Check if campaign has image
-                    image_url = campaign.get('image_url')
+                    has_image = campaign.get('has_image', False)
                     
-                    if image_url:
+                    if has_image:
                         # Send image with caption using sendMedia action
-                        # Construct full URL for the image
-                        image_full_url = f"https://drug-order-system.preview.emergentagent.com{image_url}"
+                        # Construct full URL for the image API endpoint
+                        image_full_url = f"https://drug-order-system.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
                         
                         params = {
                             'action': 'sendMedia',

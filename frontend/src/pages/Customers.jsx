@@ -116,8 +116,10 @@ const Customers = () => {
   const getStatusBadge = (status) => {
     const styles = {
       pending: { bg: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Clock },
+      pending_approval: { bg: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Clock },
       approved: { bg: 'bg-green-100 text-green-800 border-green-300', icon: CheckCircle },
-      rejected: { bg: 'bg-red-100 text-red-800 border-red-300', icon: XCircle }
+      rejected: { bg: 'bg-red-100 text-red-800 border-red-300', icon: XCircle },
+      suspended: { bg: 'bg-orange-100 text-orange-800 border-orange-300', icon: Ban }
     };
     const style = styles[status] || styles.pending;
     const Icon = style.icon;

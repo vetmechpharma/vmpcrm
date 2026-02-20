@@ -23,7 +23,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Calendar
+  Calendar,
+  Ban
 } from 'lucide-react';
 import api from '../lib/api';
 

@@ -474,15 +474,38 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **UI Badge**: Green "Portal" badge shown next to lead status in admin list
 - [x] **WhatsApp Notification**: Approval/rejection notification sent to customer
 
+### Phase 4: Enhanced Registration & Fallback OTP - COMPLETED Feb 17, 2026
+- [x] **Multi-Step Registration Flow** (5 steps):
+  - Step 1: Phone number entry
+  - Step 2: OTP verification (WhatsApp or fallback)
+  - Step 3: Role selection (Doctor/Medical/Agency)
+  - Step 4: Role-specific details form
+  - Step 5: Success confirmation
+- [x] **Role-Specific Fields**:
+  - Doctor: Registration Number*, Date of Birth
+  - Medical/Agency: Proprietor Name, GST Number, Drug License, Alternate Phone, Birthday, Anniversary
+  - All roles: Name*, Email, Address (Line1, Line2, State, District, Pincode, Delivery Station), Password*
+- [x] **Fallback OTP System**:
+  - Admin UI in Settings page to manage static OTPs
+  - Add/Toggle/Delete fallback OTPs
+  - Usage tracking (used_count)
+  - Active/Inactive status toggle
+  - Fallback OTPs work when WhatsApp delivery fails
+- [x] **WhatsApp OTP Fix**: Corrected BotMasterSender API format (GET with senderId, authToken, messageText, receiverId params)
+- [x] **State/District Cascade**: Dynamic district loading based on selected state in registration
+
 ### Bug Fixes Applied:
 - GET/PUT /api/items/{item_id} returns role-based pricing fields
 - GET /api/public/transports endpoint for customer profile
 - Dashboard stats fallback for missing updated_at field
 - MedicalResponse missing transport_map initialization
+- WhatsApp OTP API format fixed (was using wrong params)
+- States API response handling (array vs object)
 
 ### Test Reports: 
 - `/app/test_reports/iteration_13.json` - Backend tests (17/17 PASSED)
 - `/app/test_reports/iteration_14.json` - Frontend mobile UI tests (100% PASSED)
+- `/app/test_reports/iteration_15.json` - OTP & Fallback OTP tests (15/15 PASSED)
 
 ### Test Credentials:
 - **Admin**: admin@vmpcrm.com / admin123

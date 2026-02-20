@@ -722,6 +722,67 @@ class FallbackOTPResponse(BaseModel):
     created_at: datetime
     created_by: str
 
+# ============== MARKETING MODELS ==============
+
+class MarketingTemplateCreate(BaseModel):
+    name: str
+    category: str  # greeting, product_promo, announcement, circular
+    message: str
+    is_active: bool = True
+
+class MarketingTemplateResponse(BaseModel):
+    id: str
+    name: str
+    category: str
+    message: str
+    is_active: bool
+    created_at: datetime
+    created_by: str
+
+class MarketingCampaignCreate(BaseModel):
+    name: str
+    campaign_type: str  # product_promo, greeting, announcement, circular
+    target_entity: str  # doctors, medicals, agencies, all
+    target_status: str  # all, pipeline, customer, contacted, not_interested, closed
+    recipient_ids: List[str]  # Selected recipient IDs
+    message: str
+    item_ids: Optional[List[str]] = None  # For product promotions
+    image_base64: Optional[str] = None  # Optional image attachment
+    scheduled_at: Optional[str] = None  # ISO datetime for scheduling
+    batch_size: int = 10  # Messages per batch
+    batch_delay_seconds: int = 60  # Delay between batches (to avoid ban)
+
+class MarketingCampaignResponse(BaseModel):
+    id: str
+    name: str
+    campaign_type: str
+    target_entity: str
+    target_status: str
+    total_recipients: int
+    sent_count: int
+    failed_count: int
+    pending_count: int
+    status: str  # draft, scheduled, sending, completed, cancelled
+    message_preview: str
+    has_image: bool
+    scheduled_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    created_by: str
+
+class CampaignLogResponse(BaseModel):
+    id: str
+    campaign_id: str
+    recipient_id: str
+    recipient_name: str
+    recipient_phone: str
+    recipient_type: str  # doctor, medical, agency
+    reference_number: str  # Random ref for anti-ban
+    status: str  # pending, sent, failed
+    error_message: Optional[str] = None
+    sent_at: Optional[datetime] = None
+
 # ============== SUPPORT TICKET MODELS ==============
 
 class TicketCreate(BaseModel):

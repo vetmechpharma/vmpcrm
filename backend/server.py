@@ -4962,13 +4962,31 @@ async def process_marketing_campaign(campaign_id: str):
                     phone = recipient['phone']
                     wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
                     
-                    params = {
-                        'action': 'send',
-                        'senderId': config['sender_id'],
-                        'authToken': config['auth_token'],
-                        'messageText': message,
-                        'receiverId': wa_mobile
-                    }
+                    # Check if campaign has image
+                    image_url = campaign.get('image_url')
+                    
+                    if image_url:
+                        # Send image with caption using sendMedia action
+                        # Construct full URL for the image
+                        image_full_url = f"https://drug-order-system.preview.emergentagent.com{image_url}"
+                        
+                        params = {
+                            'action': 'sendMedia',
+                            'senderId': config['sender_id'],
+                            'authToken': config['auth_token'],
+                            'mediaUrl': image_full_url,
+                            'caption': message,
+                            'receiverId': wa_mobile
+                        }
+                    else:
+                        # Send text-only message
+                        params = {
+                            'action': 'send',
+                            'senderId': config['sender_id'],
+                            'authToken': config['auth_token'],
+                            'messageText': message,
+                            'receiverId': wa_mobile
+                        }
                     
                     async with httpx.AsyncClient(timeout=30.0) as client:
                         response = await client.get(config['api_url'], params=params)

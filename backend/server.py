@@ -4946,7 +4946,7 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Add item details for product promos
                     if campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
-                        items_text = "\n\n📦 *Product Details:*\n"
+                        items_text = "\n\n*Product Details:*\n"
                         for item in campaign['item_details']:
                             # Get role-specific pricing
                             recipient_type = recipient.get('type', 'doctor')
@@ -4954,18 +4954,21 @@ async def process_marketing_campaign(campaign_id: str):
                             offer_field = f"offer_{recipient_type}s" if recipient_type != 'agency' else 'offer_agencies'
                             special_offer_field = f"special_offer_{recipient_type}s" if recipient_type != 'agency' else 'special_offer_agencies'
                             
+                            # Use role-specific rate, fallback to default rate
                             rate = item.get(rate_field) or item.get('rate', 0)
                             offer = item.get(offer_field) or item.get('offer', '')
                             special_offer = item.get(special_offer_field) or item.get('special_offer', '')
                             mrp = item.get('mrp', 0)
+                            item_name = item.get('name') or item.get('item_code', 'Product')
                             
-                            items_text += f"\n• *{item.get('name')}*"
-                            items_text += f"\n  MRP: ₹{mrp}"
-                            items_text += f"\n  Your Rate: ₹{rate}"
+                            items_text += f"\n*{item_name}*"
+                            items_text += f"\nMRP: Rs.{mrp}"
+                            items_text += f"\nYour Rate: Rs.{rate}"
                             if offer:
-                                items_text += f"\n  Offer: {offer}"
+                                items_text += f"\nOffer: {offer}"
                             if special_offer:
-                                items_text += f"\n  Special: {special_offer}"
+                                items_text += f"\nSpecial: {special_offer}"
+                            items_text += "\n"
                         
                         message += items_text
                     

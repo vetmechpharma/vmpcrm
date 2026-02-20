@@ -4747,7 +4747,14 @@ async def get_marketing_campaigns(
     if status:
         query['status'] = status
     
-    campaigns = await db.marketing_campaigns.find(query, {'_id': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+    # Exclude image_webp binary data from list
+    campaigns = await db.marketing_campaigns.find(query, {'_id': 0, 'image_webp': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+    
+    # Add image_url for campaigns with images
+    for campaign in campaigns:
+        if campaign.get('has_image'):
+            campaign['image_url'] = f"/api/marketing/campaigns/{campaign['id']}/image"
+    
     total = await db.marketing_campaigns.count_documents(query)
     
     return {"campaigns": campaigns, "total": total}

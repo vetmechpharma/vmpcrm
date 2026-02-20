@@ -146,6 +146,14 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/marketing" 
+        element={
+          <ProtectedRoute>
+            <Marketing />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/expenses" 
         element={
           <ProtectedRoute>

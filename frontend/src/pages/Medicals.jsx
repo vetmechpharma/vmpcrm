@@ -641,6 +641,16 @@ export const Medicals = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEmailModal(medical)} title="Send Email">
                             <Mail className="w-4 h-4" />
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" 
+                            onClick={() => handleSendPortalAccess(medical)} 
+                            title="Send Portal Access"
+                            data-testid={`send-portal-access-${medical.id}`}
+                          >
+                            <Key className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => openDeleteModal(medical)} title="Delete">
                             <Trash2 className="w-4 h-4" />
                           </Button>

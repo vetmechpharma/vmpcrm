@@ -120,6 +120,7 @@ export const emailAPI = {
 // Dashboard APIs
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
+  getComprehensiveStats: () => api.get('/dashboard/comprehensive-stats'),
 };
 
 // Items APIs

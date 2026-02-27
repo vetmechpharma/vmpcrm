@@ -346,6 +346,32 @@ export const Agencies = () => {
     }
   };
 
+  const handleSendPortalAccess = async (agency) => {
+    try {
+      toast.loading('Sending portal access credentials...', { id: 'portal-access' });
+      const response = await api.post(`/customers/${agency.id}/send-new-password`);
+      toast.dismiss('portal-access');
+      
+      if (response.data.password_sent) {
+        toast.success(`Portal access credentials sent to ${agency.name} via WhatsApp!`);
+        fetchAgencies(); // Refresh to show portal customer badge
+      } else if (response.data.password) {
+        toast.info(
+          <div>
+            <p>{response.data.message}</p>
+            <p className="mt-2 font-mono bg-slate-100 p-2 rounded text-sm">
+              Password: <strong>{response.data.password}</strong>
+            </p>
+          </div>,
+          { duration: 15000 }
+        );
+      }
+    } catch (error) {
+      toast.dismiss('portal-access');
+      toast.error(error.response?.data?.detail || 'Failed to send portal access');
+    }
+  };
+
   const openEditModal = async (agency) => {
     setSelectedAgency(agency);
     // If agency has a state, fetch districts first

@@ -645,6 +645,28 @@ Build a simple CRM for managing doctor leads. Features include:
   - Responsive grid layout for all screen sizes
   - Quick actions navigation panel
 
+## Sidebar & Admin Features - COMPLETED Feb 27, 2026
+- [x] **Sidebar Reorganization**:
+  - Email Logs, WhatsApp Logs, Users, SMTP Settings, Database Backup moved under collapsible "Company" section
+  - Company section auto-expands when navigating to sub-routes
+  - Clean visual hierarchy with indented sub-items
+- [x] **Admin Profile Page** (`/admin-profile`):
+  - Profile Information: Edit name and email
+  - Email uniqueness validation
+  - Change Password: Current password verification, new password update
+  - Password visibility toggles
+  - Role display (non-editable)
+- [x] **Database Backup Feature** (`/database-backup`):
+  - **Manual Download**: Export all data as JSON file
+  - **Scheduled Backups**: Auto-backup at 9:00 AM and 5:00 PM IST
+  - **Notification Recipients**:
+    - WhatsApp: 9486544884
+    - Email: vetmech2server@gmail.com
+  - **Backup Settings**: Toggle auto-backup, configure times and recipients
+  - **Trigger Backup Now**: Manually send backup to WhatsApp & Email
+  - **Backup History**: View recent backups with status and delivery indicators
+  - Collections exported: doctors, medicals, agencies, items, orders, expenses, reminders, pending_items, portal_customers, support_tickets, users, company_settings, item_categories, transports, email_logs, whatsapp_logs, marketing_campaigns
+
 ## Tech Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
 - **Frontend**: React 19, React Router, Axios, Tailwind CSS, Shadcn/UI, Recharts

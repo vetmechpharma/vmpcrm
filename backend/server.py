@@ -2814,6 +2814,234 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         recent_doctors=recent_doctors
     )
 
+
+@api_router.get("/dashboard/comprehensive-stats")
+async def get_comprehensive_dashboard_stats(current_user: dict = Depends(get_current_user)):
+    """Get comprehensive dashboard statistics for all entities"""
+    
+    # ============== CUSTOMERS STATS (Doctors, Medicals, Agencies) ==============
+    # Lead statuses for all entities
+    lead_statuses = ['Customer', 'Contacted', 'Pipeline', 'Not Interested', 'Closed']
+    
+    # Doctors stats
+    total_doctors = await db.doctors.count_documents({})
+    doctor_status_pipeline = [{'$group': {'_id': '$lead_status', 'count': {'$sum': 1}}}]
+    doctor_status_counts = await db.doctors.aggregate(doctor_status_pipeline).to_list(100)
+    doctors_by_status = {item['_id']: item['count'] for item in doctor_status_counts if item['_id']}
+    for status in lead_statuses:
+        if status not in doctors_by_status:
+            doctors_by_status[status] = 0
+    
+    # Medicals stats
+    total_medicals = await db.medicals.count_documents({})
+    medical_status_pipeline = [{'$group': {'_id': '$lead_status', 'count': {'$sum': 1}}}]
+    medical_status_counts = await db.medicals.aggregate(medical_status_pipeline).to_list(100)
+    medicals_by_status = {item['_id']: item['count'] for item in medical_status_counts if item['_id']}
+    for status in lead_statuses:
+        if status not in medicals_by_status:
+            medicals_by_status[status] = 0
+    
+    # Agencies stats
+    total_agencies = await db.agencies.count_documents({})
+    agency_status_pipeline = [{'$group': {'_id': '$lead_status', 'count': {'$sum': 1}}}]
+    agency_status_counts = await db.agencies.aggregate(agency_status_pipeline).to_list(100)
+    agencies_by_status = {item['_id']: item['count'] for item in agency_status_counts if item['_id']}
+    for status in lead_statuses:
+        if status not in agencies_by_status:
+            agencies_by_status[status] = 0
+    
+    # Combined lead status stats
+    combined_by_status = {}
+    for status in lead_statuses:
+        combined_by_status[status] = doctors_by_status.get(status, 0) + medicals_by_status.get(status, 0) + agencies_by_status.get(status, 0)
+    
+    # ============== ORDERS STATS ==============
+    order_statuses = ['pending', 'confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'cancelled']
+    order_status_pipeline = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
+    order_status_counts = await db.orders.aggregate(order_status_pipeline).to_list(100)
+    orders_by_status = {item['_id']: item['count'] for item in order_status_counts if item['_id']}
+    for status in order_statuses:
+        if status not in orders_by_status:
+            orders_by_status[status] = 0
+    total_orders = sum(orders_by_status.values())
+    
+    # Recent orders count (last 7 days)
+    seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent_orders = await db.orders.count_documents({'created_at': {'$gte': seven_days_ago}})
+    
+    # ============== PENDING ITEMS STATS ==============
+    pending_items = await db.pending_items.find({}, {'_id': 0}).to_list(1000)
+    total_pending_qty = sum(int(item.get('quantity', 1)) for item in pending_items)
+    
+    # Group pending items by item name
+    pending_by_item = {}
+    for item in pending_items:
+        item_name = item.get('item_name', 'Unknown')
+        qty = int(item.get('quantity', 1))
+        if item_name in pending_by_item:
+            pending_by_item[item_name] += qty
+        else:
+            pending_by_item[item_name] = qty
+    
+    # Sort by quantity descending
+    pending_by_item_sorted = dict(sorted(pending_by_item.items(), key=lambda x: x[1], reverse=True)[:10])
+    
+    # ============== EXPENSES STATS ==============
+    now = datetime.now(timezone.utc)
+    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    previous_month_start = (current_month_start - timedelta(days=1)).replace(day=1)
+    
+    # Current month expenses
+    current_month_expenses = await db.expenses.find({
+        'date': {'$gte': current_month_start.isoformat()[:10]}
+    }, {'_id': 0}).to_list(1000)
+    current_month_total = sum(float(e.get('amount', 0)) for e in current_month_expenses)
+    
+    # Previous month expenses
+    previous_month_expenses = await db.expenses.find({
+        'date': {'$gte': previous_month_start.isoformat()[:10], '$lt': current_month_start.isoformat()[:10]}
+    }, {'_id': 0}).to_list(1000)
+    previous_month_total = sum(float(e.get('amount', 0)) for e in previous_month_expenses)
+    
+    # By category
+    category_pipeline = [
+        {'$group': {'_id': '$category', 'total': {'$sum': '$amount'}}}
+    ]
+    expense_by_category = await db.expenses.aggregate(category_pipeline).to_list(100)
+    expenses_by_category = {item['_id']: round(item['total'], 2) for item in expense_by_category if item['_id']}
+    
+    # By payment type
+    payment_pipeline = [
+        {'$group': {'_id': '$payment_type', 'total': {'$sum': '$amount'}}}
+    ]
+    expense_by_payment = await db.expenses.aggregate(payment_pipeline).to_list(100)
+    expenses_by_payment = {item['_id']: round(item['total'], 2) for item in expense_by_payment if item['_id']}
+    
+    # ============== ITEMS STATS ==============
+    total_items = await db.items.count_documents({})
+    
+    # Items by subcategory
+    subcategory_pipeline = [
+        {'$unwind': {'path': '$subcategories', 'preserveNullAndEmptyArrays': True}},
+        {'$group': {'_id': '$subcategories', 'count': {'$sum': 1}}},
+        {'$sort': {'count': -1}}
+    ]
+    items_by_subcategory = await db.items.aggregate(subcategory_pipeline).to_list(100)
+    subcategory_stats = {item['_id'] or 'Uncategorized': item['count'] for item in items_by_subcategory}
+    
+    # Items by main category
+    main_category_pipeline = [
+        {'$unwind': {'path': '$main_categories', 'preserveNullAndEmptyArrays': True}},
+        {'$group': {'_id': '$main_categories', 'count': {'$sum': 1}}},
+        {'$sort': {'count': -1}}
+    ]
+    items_by_main_category = await db.items.aggregate(main_category_pipeline).to_list(100)
+    main_category_stats = {item['_id'] or 'Uncategorized': item['count'] for item in items_by_main_category}
+    
+    # Most ordered items (from order items)
+    order_items_pipeline = [
+        {'$unwind': '$items'},
+        {'$group': {'_id': '$items.item_name', 'total_ordered': {'$sum': 1}}},
+        {'$sort': {'total_ordered': -1}},
+        {'$limit': 10}
+    ]
+    most_ordered = await db.orders.aggregate(order_items_pipeline).to_list(10)
+    most_ordered_items = [{'item_name': item['_id'], 'order_count': item['total_ordered']} for item in most_ordered if item['_id']]
+    
+    # Least ordered items (items that exist but have fewer orders)
+    all_items = await db.items.find({}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1}).to_list(1000)
+    item_order_counts = {item['_id']: item['total_ordered'] for item in most_ordered if item['_id']}
+    
+    # Get all item names and find least ordered
+    all_item_names = [item.get('item_name') for item in all_items]
+    least_ordered_items = []
+    for item in all_items:
+        item_name = item.get('item_name')
+        order_count = item_order_counts.get(item_name, 0)
+        least_ordered_items.append({'item_name': item_name, 'item_code': item.get('item_code', ''), 'order_count': order_count})
+    
+    least_ordered_items.sort(key=lambda x: x['order_count'])
+    least_ordered_items = least_ordered_items[:10]
+    
+    # Items with no orders in 30+ days
+    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    recent_order_items = await db.orders.aggregate([
+        {'$match': {'created_at': {'$gte': thirty_days_ago}}},
+        {'$unwind': '$items'},
+        {'$group': {'_id': '$items.item_name'}}
+    ]).to_list(1000)
+    recently_ordered_names = {item['_id'] for item in recent_order_items if item['_id']}
+    
+    stale_items = []
+    for item in all_items:
+        item_name = item.get('item_name')
+        if item_name and item_name not in recently_ordered_names:
+            stale_items.append({'item_name': item_name, 'item_code': item.get('item_code', '')})
+    
+    # ============== SUPPORT TICKETS STATS ==============
+    ticket_statuses = ['open', 'in_progress', 'resolved', 'closed']
+    ticket_status_pipeline = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
+    ticket_status_counts = await db.support_tickets.aggregate(ticket_status_pipeline).to_list(100)
+    tickets_by_status = {item['_id']: item['count'] for item in ticket_status_counts if item['_id']}
+    for status in ticket_statuses:
+        if status not in tickets_by_status:
+            tickets_by_status[status] = 0
+    total_tickets = sum(tickets_by_status.values())
+    
+    # Recent tickets (last 7 days)
+    recent_tickets = await db.support_tickets.count_documents({'created_at': {'$gte': seven_days_ago}})
+    
+    return {
+        'customers': {
+            'doctors': {
+                'total': total_doctors,
+                'by_status': doctors_by_status
+            },
+            'medicals': {
+                'total': total_medicals,
+                'by_status': medicals_by_status
+            },
+            'agencies': {
+                'total': total_agencies,
+                'by_status': agencies_by_status
+            },
+            'combined_by_status': combined_by_status,
+            'total_all': total_doctors + total_medicals + total_agencies
+        },
+        'orders': {
+            'total': total_orders,
+            'by_status': orders_by_status,
+            'recent_7_days': recent_orders
+        },
+        'pending_items': {
+            'total_items': len(pending_items),
+            'total_quantity': total_pending_qty,
+            'by_item': pending_by_item_sorted
+        },
+        'expenses': {
+            'current_month_total': round(current_month_total, 2),
+            'previous_month_total': round(previous_month_total, 2),
+            'change_percent': round(((current_month_total - previous_month_total) / previous_month_total * 100) if previous_month_total > 0 else 0, 1),
+            'by_category': expenses_by_category,
+            'by_payment_type': expenses_by_payment
+        },
+        'items': {
+            'total': total_items,
+            'by_main_category': main_category_stats,
+            'by_subcategory': subcategory_stats,
+            'most_ordered': most_ordered_items,
+            'least_ordered': least_ordered_items,
+            'no_orders_30_days': stale_items[:20],
+            'stale_count': len(stale_items)
+        },
+        'support_tickets': {
+            'total': total_tickets,
+            'by_status': tickets_by_status,
+            'recent_7_days': recent_tickets
+        }
+    }
+
+
 # ============== ITEM ROUTES ==============
 
 @api_router.get("/item-categories", response_model=List[CategoryResponse])

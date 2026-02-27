@@ -606,6 +606,45 @@ Build a simple CRM for managing doctor leads. Features include:
 2. Create ForgotPassword.jsx for customer password reset
 3. Stock/Inventory management feature
 
+## Dashboard Enhancements - COMPLETED Feb 27, 2026
+- [x] **Comprehensive Dashboard Stats API**: New endpoint `/api/dashboard/comprehensive-stats` providing real-time statistics
+- [x] **Customers Overview**:
+  - Total counts for Doctors, Medicals, Agencies
+  - Lead status breakdown for each (Customer, Contacted, Pipeline, Not Interested, Closed)
+  - Combined lead status view
+  - Clickable cards navigating to respective pages
+- [x] **Orders Status**:
+  - All order status counts: Pending, Confirmed, Ready to Dispatch, Shipped, Delivered, Cancelled
+  - Recent orders count (last 7 days)
+  - Visual icons and color-coded status cards
+- [x] **Pending Items (Qty-wise)**:
+  - Total pending items count and total quantity
+  - Top 10 items by quantity with item-wise breakdown
+  - Direct link to pending items page
+  - Handles complex quantity expressions (e.g., '10+5')
+- [x] **Expenses Overview**:
+  - Current month total expenses
+  - Previous month comparison with percentage change
+  - Breakdown by expense category
+  - Visual trend indicator (up/down)
+- [x] **Items Statistics**:
+  - Total items count
+  - Items by main category (Large Animals, Poultry, Pets)
+  - Items by subcategory (Injection, Liquids, Bolus, Powder)
+  - Most ordered items (top 10 with order count)
+  - Least ordered items
+  - Stale items: No orders in 30+ days with count and list
+- [x] **Support Tickets**:
+  - Status breakdown: Open, In Progress, Resolved, Closed
+  - Recent tickets count (last 7 days)
+  - Clickable cards navigating to support page
+- [x] **Modern UI Design**:
+  - Gradient hero header with quick action buttons
+  - Alert banners for pending items and today's reminders
+  - Color-coded sections by entity type
+  - Responsive grid layout for all screen sizes
+  - Quick actions navigation panel
+
 ## Tech Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt
 - **Frontend**: React 19, React Router, Axios, Tailwind CSS, Shadcn/UI, Recharts

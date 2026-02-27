@@ -34,8 +34,8 @@ import CustomerProfile from './pages/CustomerProfile';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
-// Protected Route wrapper
-const ProtectedRoute = ({ children }) => {
+// Admin Protected Route wrapper
+const AdminProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
@@ -47,14 +47,14 @@ const ProtectedRoute = ({ children }) => {
   }
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
   
   return <Layout>{children}</Layout>;
 };
 
-// Public Route wrapper (redirects to dashboard if already logged in)
-const PublicRoute = ({ children }) => {
+// Admin Public Route wrapper (redirects to admin dashboard if already logged in)
+const AdminPublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
@@ -66,7 +66,7 @@ const PublicRoute = ({ children }) => {
   }
   
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/admin" replace />;
   }
   
   return children;
@@ -75,182 +75,220 @@ const PublicRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/showcase" element={<PublicShowcase />} />
+      {/* ============== DEFAULT: CUSTOMER PORTAL ============== */}
+      {/* Default landing page is Customer Login */}
+      <Route path="/" element={<CustomerLogin />} />
+      <Route path="/register" element={<CustomerRegister />} />
+      <Route path="/login" element={<CustomerLogin />} />
       
-      {/* Customer Portal Routes */}
-      <Route path="/customer/register" element={<CustomerRegister />} />
-      <Route path="/customer/login" element={<CustomerLogin />} />
-      <Route path="/customer" element={<CustomerLayout />}>
+      {/* Customer Portal - Authenticated Routes */}
+      <Route path="/portal" element={<CustomerLayout />}>
         <Route path="dashboard" element={<CustomerDashboard />} />
         <Route path="items" element={<CustomerItems />} />
         <Route path="orders" element={<CustomerOrders />} />
         <Route path="tasks" element={<CustomerTasks />} />
         <Route path="support" element={<CustomerSupport />} />
         <Route path="profile" element={<CustomerProfile />} />
-        <Route index element={<Navigate to="/customer/dashboard" replace />} />
+        <Route index element={<Navigate to="/portal/dashboard" replace />} />
       </Route>
       
+      {/* Legacy customer routes - redirect to new paths */}
+      <Route path="/customer/register" element={<Navigate to="/register" replace />} />
+      <Route path="/customer/login" element={<Navigate to="/login" replace />} />
+      <Route path="/customer/*" element={<Navigate to="/portal" replace />} />
+      
+      {/* Public showcase */}
+      <Route path="/showcase" element={<PublicShowcase />} />
+      
+      {/* ============== ADMIN PANEL ============== */}
+      {/* Admin Login */}
       <Route 
-        path="/login" 
+        path="/admin/login" 
         element={
-          <PublicRoute>
+          <AdminPublicRoute>
             <Login />
-          </PublicRoute>
+          </AdminPublicRoute>
         } 
       />
+      
+      {/* Admin Dashboard */}
       <Route 
-        path="/" 
+        path="/admin" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Dashboard />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
+      
+      {/* Admin Routes */}
       <Route 
-        path="/doctors" 
+        path="/admin/doctors" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Doctors />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/medicals" 
+        path="/admin/medicals" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Medicals />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/agencies" 
+        path="/admin/agencies" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Agencies />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/items" 
+        path="/admin/items" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Items />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/orders" 
+        path="/admin/orders" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Orders />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/marketing" 
+        path="/admin/marketing" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Marketing />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/expenses" 
+        path="/admin/expenses" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Expenses />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/pending-items" 
+        path="/admin/pending-items" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <PendingItems />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/reminders" 
+        path="/admin/reminders" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Reminders />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/email-logs" 
+        path="/admin/customers" 
         element={
-          <ProtectedRoute>
-            <EmailLogs />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/whatsapp-logs" 
-        element={
-          <ProtectedRoute>
-            <WhatsAppLogs />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/users" 
-        element={
-          <ProtectedRoute>
-            <Users />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/customers" 
-        element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Customers />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/support" 
+        path="/admin/support" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <Support />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/company-settings" 
+        path="/admin/company-settings" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
             <CompanySettings />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/admin-profile" 
+        path="/admin/users" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
+            <Users />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/profile" 
+        element={
+          <AdminProtectedRoute>
             <AdminProfile />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/database-backup" 
+        path="/admin/email-logs" 
         element={
-          <ProtectedRoute>
-            <DatabaseBackup />
-          </ProtectedRoute>
+          <AdminProtectedRoute>
+            <EmailLogs />
+          </AdminProtectedRoute>
         } 
       />
       <Route 
-        path="/settings" 
+        path="/admin/whatsapp-logs" 
         element={
-          <ProtectedRoute>
+          <AdminProtectedRoute>
+            <WhatsAppLogs />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/smtp-settings" 
+        element={
+          <AdminProtectedRoute>
             <Settings />
-          </ProtectedRoute>
+          </AdminProtectedRoute>
         } 
       />
+      <Route 
+        path="/admin/database-backup" 
+        element={
+          <AdminProtectedRoute>
+            <DatabaseBackup />
+          </AdminProtectedRoute>
+        } 
+      />
+      
+      {/* Legacy admin routes - redirect to new paths */}
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/doctors" element={<Navigate to="/admin/doctors" replace />} />
+      <Route path="/medicals" element={<Navigate to="/admin/medicals" replace />} />
+      <Route path="/agencies" element={<Navigate to="/admin/agencies" replace />} />
+      <Route path="/items" element={<Navigate to="/admin/items" replace />} />
+      <Route path="/orders" element={<Navigate to="/admin/orders" replace />} />
+      <Route path="/marketing" element={<Navigate to="/admin/marketing" replace />} />
+      <Route path="/expenses" element={<Navigate to="/admin/expenses" replace />} />
+      <Route path="/pending-items" element={<Navigate to="/admin/pending-items" replace />} />
+      <Route path="/reminders" element={<Navigate to="/admin/reminders" replace />} />
+      <Route path="/customers" element={<Navigate to="/admin/customers" replace />} />
+      <Route path="/support" element={<Navigate to="/admin/support" replace />} />
+      <Route path="/company-settings" element={<Navigate to="/admin/company-settings" replace />} />
+      <Route path="/users" element={<Navigate to="/admin/users" replace />} />
+      <Route path="/admin-profile" element={<Navigate to="/admin/profile" replace />} />
+      <Route path="/email-logs" element={<Navigate to="/admin/email-logs" replace />} />
+      <Route path="/whatsapp-logs" element={<Navigate to="/admin/whatsapp-logs" replace />} />
+      <Route path="/settings" element={<Navigate to="/admin/smtp-settings" replace />} />
+      <Route path="/database-backup" element={<Navigate to="/admin/database-backup" replace />} />
+      
+      {/* Catch-all - redirect to customer login */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

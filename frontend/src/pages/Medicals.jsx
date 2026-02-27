@@ -38,7 +38,8 @@ import {
   Store,
   FileText,
   RefreshCw,
-  Truck
+  Truck,
+  Key
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate } from '../lib/utils';
 

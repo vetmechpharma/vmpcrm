@@ -117,13 +117,13 @@ export const Dashboard = () => {
               <p className="text-emerald-100 text-sm">Complete overview of your operations</p>
             </div>
             <div className="flex gap-3">
-              <Link to="/orders">
+              <Link to="/admin/orders">
                 <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm">
                   <ShoppingCart className="w-4 h-4 mr-2" />
                   Orders
                 </Button>
               </Link>
-              <Link to="/doctors">
+              <Link to="/admin/doctors">
                 <Button className="bg-white text-emerald-600 hover:bg-emerald-50">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Doctor
@@ -189,7 +189,7 @@ export const Dashboard = () => {
         <div className="space-y-4 mb-6">
           {/* Pending Items Alert */}
           {pending_items?.total_items > 0 && (
-            <Link to="/pending-items" className="block">
+            <Link to="/admin/pending-items" className="block">
               <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl p-4 shadow-lg hover:shadow-xl transition-all group">
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -211,7 +211,7 @@ export const Dashboard = () => {
 
           {/* Today's Reminders Alert */}
           {todayReminders.total_count > 0 && (
-            <Link to="/reminders" className="block">
+            <Link to="/admin/reminders" className="block">
               <div className="relative overflow-hidden bg-gradient-to-r from-amber-500 to-yellow-500 rounded-xl p-4 shadow-lg hover:shadow-xl transition-all group">
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -242,7 +242,7 @@ export const Dashboard = () => {
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             {/* Doctors Card */}
-            <Link to="/doctors">
+            <Link to="/admin/doctors">
               <Card className="hover:shadow-md transition-shadow cursor-pointer border-blue-100 bg-blue-50/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -270,7 +270,7 @@ export const Dashboard = () => {
             </Link>
 
             {/* Medicals Card */}
-            <Link to="/medicals">
+            <Link to="/admin/medicals">
               <Card className="hover:shadow-md transition-shadow cursor-pointer border-emerald-100 bg-emerald-50/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -298,7 +298,7 @@ export const Dashboard = () => {
             </Link>
 
             {/* Agencies Card */}
-            <Link to="/agencies">
+            <Link to="/admin/agencies">
               <Card className="hover:shadow-md transition-shadow cursor-pointer border-purple-100 bg-purple-50/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -363,7 +363,7 @@ export const Dashboard = () => {
                   const Icon = config.icon;
                   const count = orders?.by_status?.[status] || 0;
                   return (
-                    <Link to="/orders" key={status} className="text-center p-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    <Link to="/admin/orders" key={status} className="text-center p-4 rounded-xl hover:bg-slate-50 transition-colors">
                       <div className="w-12 h-12 mx-auto mb-2 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${config.color}15` }}>
                         <Icon className="w-6 h-6" style={{ color: config.color }} />
                       </div>
@@ -408,7 +408,7 @@ export const Dashboard = () => {
                 ) : (
                   <p className="text-sm text-slate-400 text-center py-4">No pending items</p>
                 )}
-                <Link to="/pending-items">
+                <Link to="/admin/pending-items">
                   <Button variant="outline" className="w-full mt-4 text-orange-600 border-orange-200 hover:bg-orange-50">
                     View All Pending Items <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -454,7 +454,7 @@ export const Dashboard = () => {
                     </div>
                   </div>
                 )}
-                <Link to="/expenses">
+                <Link to="/admin/expenses">
                   <Button variant="outline" className="w-full mt-4 text-violet-600 border-violet-200 hover:bg-violet-50">
                     View All Expenses <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
@@ -582,7 +582,7 @@ export const Dashboard = () => {
                   const Icon = config.icon;
                   const count = support_tickets?.by_status?.[status] || 0;
                   return (
-                    <Link to="/support" key={status} className="text-center p-4 rounded-xl hover:bg-slate-50 transition-colors border">
+                    <Link to="/admin/support" key={status} className="text-center p-4 rounded-xl hover:bg-slate-50 transition-colors border">
                       <div className="w-12 h-12 mx-auto mb-2 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${config.color}15` }}>
                         <Icon className="w-6 h-6" style={{ color: config.color }} />
                       </div>

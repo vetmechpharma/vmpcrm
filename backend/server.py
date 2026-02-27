@@ -2871,13 +2871,26 @@ async def get_comprehensive_dashboard_stats(current_user: dict = Depends(get_cur
     
     # ============== PENDING ITEMS STATS ==============
     pending_items = await db.pending_items.find({}, {'_id': 0}).to_list(1000)
-    total_pending_qty = sum(int(item.get('quantity', 1)) for item in pending_items)
+    
+    # Helper to safely parse quantity (handles expressions like '10+5')
+    def safe_parse_qty(qty_str):
+        try:
+            if isinstance(qty_str, (int, float)):
+                return int(qty_str)
+            qty_str = str(qty_str).strip()
+            if '+' in qty_str:
+                return sum(int(x.strip()) for x in qty_str.split('+') if x.strip().isdigit())
+            return int(qty_str) if qty_str.isdigit() else 1
+        except:
+            return 1
+    
+    total_pending_qty = sum(safe_parse_qty(item.get('quantity', 1)) for item in pending_items)
     
     # Group pending items by item name
     pending_by_item = {}
     for item in pending_items:
         item_name = item.get('item_name', 'Unknown')
-        qty = int(item.get('quantity', 1))
+        qty = safe_parse_qty(item.get('quantity', 1))
         if item_name in pending_by_item:
             pending_by_item[item_name] += qty
         else:

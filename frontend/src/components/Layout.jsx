@@ -11,6 +11,7 @@ import {
   Menu, 
   X,
   ChevronRight,
+  ChevronDown,
   Package,
   ShoppingCart,
   Building2,
@@ -23,12 +24,14 @@ import {
   UserCog,
   UserCheck,
   LifeBuoy,
-  Megaphone
+  Megaphone,
+  Database,
+  Key
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 
-const navItems = [
+const mainNavItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/doctors', icon: Users, label: 'Doctors' },
   { path: '/medicals', icon: Store, label: 'Medicals' },
@@ -41,11 +44,16 @@ const navItems = [
   { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
   { path: '/customers', icon: UserCheck, label: 'Portal Customers' },
   { path: '/support', icon: LifeBuoy, label: 'Support Tickets' },
+];
+
+const companySubItems = [
+  { path: '/company-settings', icon: Building2, label: 'Company Details' },
+  { path: '/users', icon: UserCog, label: 'Users', adminOnly: true },
+  { path: '/admin-profile', icon: Key, label: 'Admin Profile', adminOnly: true },
   { path: '/email-logs', icon: Mail, label: 'Email Logs' },
   { path: '/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
-  { path: '/users', icon: UserCog, label: 'Users', adminOnly: true },
-  { path: '/company-settings', icon: Building2, label: 'Company' },
   { path: '/settings', icon: Settings, label: 'SMTP Settings' },
+  { path: '/database-backup', icon: Database, label: 'Database Backup', adminOnly: true },
 ];
 
 export const Layout = ({ children }) => {
@@ -53,7 +61,16 @@ export const Layout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [companyExpanded, setCompanyExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+
+  // Auto-expand company section if current path is a sub-item
+  useEffect(() => {
+    const isCompanySubPath = companySubItems.some(item => location.pathname === item.path);
+    if (isCompanySubPath) {
+      setCompanyExpanded(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const fetchPendingCount = async () => {
@@ -73,6 +90,34 @@ export const Layout = ({ children }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const renderNavItem = (item, isSubItem = false) => {
+    const isActive = location.pathname === item.path;
+    if (item.adminOnly && user?.role !== 'admin') return null;
+    
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+        className={cn(
+          "sidebar-item",
+          isActive && "active",
+          isSubItem && "pl-10 text-sm"
+        )}
+        onClick={() => setSidebarOpen(false)}
+      >
+        <item.icon className={cn("w-5 h-5", isSubItem && "w-4 h-4")} />
+        <span className="font-medium">{item.label}</span>
+        {item.showBadge && pendingCount > 0 && (
+          <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            {pendingCount}
+          </span>
+        )}
+        {isActive && !item.showBadge && <ChevronRight className="w-4 h-4 ml-auto" />}
+      </Link>
+    );
   };
 
   return (
@@ -108,33 +153,38 @@ export const Layout = ({ children }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navItems
-              .filter((item) => !item.adminOnly || user?.role === 'admin')
-              .map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  data-testid={`nav-${item.label.toLowerCase().replace(' ', '-')}`}
-                  className={cn(
-                    "sidebar-item",
-                    isActive && "active"
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                  {item.showBadge && pendingCount > 0 && (
-                    <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                      {pendingCount}
-                    </span>
-                  )}
-                  {isActive && !item.showBadge && <ChevronRight className="w-4 h-4 ml-auto" />}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {/* Main nav items */}
+            {mainNavItems.map((item) => renderNavItem(item))}
+            
+            {/* Company Section - Collapsible */}
+            <div className="pt-2">
+              <button
+                onClick={() => setCompanyExpanded(!companyExpanded)}
+                className={cn(
+                  "sidebar-item w-full justify-between",
+                  companySubItems.some(item => location.pathname === item.path) && "text-emerald-600"
+                )}
+                data-testid="nav-company-toggle"
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 className="w-5 h-5" />
+                  <span className="font-medium">Company</span>
+                </div>
+                {companyExpanded ? (
+                  <ChevronDown className="w-4 h-4" />
+                ) : (
+                  <ChevronRight className="w-4 h-4" />
+                )}
+              </button>
+              
+              {/* Sub-items */}
+              {companyExpanded && (
+                <div className="mt-1 space-y-1 ml-2 border-l-2 border-slate-100">
+                  {companySubItems.map((item) => renderNavItem(item, true))}
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* User info */}

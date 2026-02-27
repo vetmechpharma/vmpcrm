@@ -228,6 +228,22 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/admin-profile" 
+        element={
+          <ProtectedRoute>
+            <AdminProfile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/database-backup" 
+        element={
+          <ProtectedRoute>
+            <DatabaseBackup />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/settings" 
         element={
           <ProtectedRoute>

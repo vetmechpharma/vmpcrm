@@ -8721,13 +8721,15 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on app startup"""
-    global daily_reminder_task
+    global daily_reminder_task, backup_scheduler_task
     daily_reminder_task = asyncio.create_task(send_daily_reminder_summary())
     logger.info("Daily reminder background task started")
+    backup_scheduler_task = asyncio.create_task(run_scheduled_backups())
+    logger.info("Backup scheduler task started")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global daily_reminder_task
+    global daily_reminder_task, backup_scheduler_task
     if daily_reminder_task:
         daily_reminder_task.cancel()
         try:
@@ -8735,4 +8737,11 @@ async def shutdown_db_client():
         except asyncio.CancelledError:
             pass
         logger.info("Daily reminder background task stopped")
+    if backup_scheduler_task:
+        backup_scheduler_task.cancel()
+        try:
+            await backup_scheduler_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Backup scheduler task stopped")
     client.close()

@@ -8217,6 +8217,348 @@ async def clear_whatsapp_logs(current_user: dict = Depends(get_current_user)):
     result = await db.whatsapp_logs.delete_many({})
     return {"message": f"Deleted {result.deleted_count} logs"}
 
+
+# ============== ADMIN PROFILE ROUTES ==============
+
+class AdminProfileUpdate(BaseModel):
+    name: str
+    email: str
+
+class AdminPasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+@api_router.put("/admin/profile")
+async def update_admin_profile(profile_data: AdminProfileUpdate, current_user: dict = Depends(get_current_user)):
+    """Update admin profile (name and email)"""
+    # Check if email is already taken by another user
+    existing = await db.users.find_one({
+        'email': profile_data.email.lower(),
+        'id': {'$ne': current_user['id']}
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already in use by another user")
+    
+    await db.users.update_one(
+        {'id': current_user['id']},
+        {'$set': {
+            'name': profile_data.name.strip(),
+            'email': profile_data.email.lower().strip(),
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Profile updated successfully"}
+
+@api_router.put("/admin/change-password")
+async def change_admin_password(password_data: AdminPasswordChange, current_user: dict = Depends(get_current_user)):
+    """Change admin password"""
+    # Get current user with password
+    user = await db.users.find_one({'id': current_user['id']})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify current password
+    if not bcrypt.checkpw(password_data.current_password.encode(), user['password'].encode()):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Hash new password
+    new_password_hash = bcrypt.hashpw(password_data.new_password.encode(), bcrypt.gensalt()).decode()
+    
+    await db.users.update_one(
+        {'id': current_user['id']},
+        {'$set': {
+            'password': new_password_hash,
+            'password_changed_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+
+# ============== DATABASE BACKUP ROUTES ==============
+
+# Global variable for backup scheduler
+backup_scheduler_task = None
+
+@api_router.get("/database/backup-settings")
+async def get_backup_settings(current_user: dict = Depends(get_current_user)):
+    """Get database backup settings"""
+    settings = await db.system_settings.find_one({'type': 'backup_settings'}, {'_id': 0})
+    if not settings:
+        # Default settings
+        settings = {
+            'auto_backup_enabled': True,
+            'backup_times': ['09:00', '17:00'],
+            'whatsapp_number': '9486544884',
+            'email_address': 'vetmech2server@gmail.com'
+        }
+    return settings
+
+@api_router.put("/database/backup-settings")
+async def update_backup_settings(settings: dict, current_user: dict = Depends(get_current_user)):
+    """Update database backup settings"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can modify backup settings")
+    
+    settings['type'] = 'backup_settings'
+    settings['updated_at'] = datetime.now(timezone.utc).isoformat()
+    settings['updated_by'] = current_user['name']
+    
+    await db.system_settings.update_one(
+        {'type': 'backup_settings'},
+        {'$set': settings},
+        upsert=True
+    )
+    
+    return {"message": "Backup settings updated successfully"}
+
+@api_router.get("/database/backup-history")
+async def get_backup_history(current_user: dict = Depends(get_current_user)):
+    """Get database backup history"""
+    backups = await db.backup_history.find({}, {'_id': 0}).sort('created_at', -1).limit(20).to_list(20)
+    return {"backups": backups}
+
+@api_router.get("/database/export")
+async def export_database(current_user: dict = Depends(get_current_user)):
+    """Export entire database as JSON"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can export database")
+    
+    # Get all collections
+    collections_to_export = [
+        'doctors', 'medicals', 'agencies', 'items', 'orders', 'expenses',
+        'reminders', 'pending_items', 'portal_customers', 'support_tickets',
+        'users', 'company_settings', 'item_categories', 'transports',
+        'email_logs', 'whatsapp_logs', 'marketing_campaigns'
+    ]
+    
+    export_data = {
+        'export_date': datetime.now(timezone.utc).isoformat(),
+        'exported_by': current_user['name'],
+        'collections': {}
+    }
+    
+    for collection_name in collections_to_export:
+        collection = db[collection_name]
+        documents = await collection.find({}, {'_id': 0}).to_list(100000)
+        export_data['collections'][collection_name] = documents
+    
+    # Create JSON response
+    json_str = json.dumps(export_data, default=str, indent=2)
+    
+    # Log the backup
+    await db.backup_history.insert_one({
+        'id': str(uuid.uuid4()),
+        'filename': f"vmp_crm_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json",
+        'status': 'success',
+        'type': 'manual_download',
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'created_by': current_user['name'],
+        'size_bytes': len(json_str)
+    })
+    
+    return Response(
+        content=json_str,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f"attachment; filename=vmp_crm_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+        }
+    )
+
+@api_router.post("/database/trigger-backup")
+async def trigger_backup(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Manually trigger a backup and send via WhatsApp and Email"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can trigger backups")
+    
+    background_tasks.add_task(perform_scheduled_backup, current_user['name'])
+    return {"message": "Backup triggered. You will receive it shortly via WhatsApp and Email."}
+
+async def perform_scheduled_backup(triggered_by: str = "System"):
+    """Perform database backup and send via WhatsApp and Email"""
+    try:
+        # Get backup settings
+        settings = await db.system_settings.find_one({'type': 'backup_settings'}, {'_id': 0})
+        if not settings:
+            settings = {
+                'whatsapp_number': '9486544884',
+                'email_address': 'vetmech2server@gmail.com'
+            }
+        
+        # Export database
+        collections_to_export = [
+            'doctors', 'medicals', 'agencies', 'items', 'orders', 'expenses',
+            'reminders', 'pending_items', 'portal_customers', 'support_tickets',
+            'users', 'company_settings', 'item_categories', 'transports'
+        ]
+        
+        export_data = {
+            'export_date': datetime.now(timezone.utc).isoformat(),
+            'exported_by': triggered_by,
+            'collections': {}
+        }
+        
+        total_records = 0
+        for collection_name in collections_to_export:
+            collection = db[collection_name]
+            documents = await collection.find({}, {'_id': 0}).to_list(100000)
+            export_data['collections'][collection_name] = documents
+            total_records += len(documents)
+        
+        json_str = json.dumps(export_data, default=str)
+        file_size = len(json_str)
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        filename = f"vmp_crm_backup_{timestamp}.json"
+        
+        sent_whatsapp = False
+        sent_email = False
+        
+        # Send WhatsApp notification
+        wa_number = settings.get('whatsapp_number', '9486544884')
+        if wa_number:
+            config = await get_whatsapp_config()
+            if config.get('api_url') and config.get('auth_token'):
+                try:
+                    message = f"*VMP CRM Database Backup*\n\n" \
+                              f"Backup completed successfully!\n\n" \
+                              f"*Timestamp:* {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n" \
+                              f"*Triggered by:* {triggered_by}\n" \
+                              f"*Total Records:* {total_records}\n" \
+                              f"*File Size:* {file_size / 1024:.1f} KB\n\n" \
+                              f"The backup has been sent to your email.\n\n" \
+                              f"Filename: {filename}"
+                    
+                    wa_mobile = wa_number if wa_number.startswith('91') else f"91{wa_number[-10:]}"
+                    params = {
+                        'action': 'send',
+                        'senderId': config['sender_id'],
+                        'authToken': config['auth_token'],
+                        'messageText': message,
+                        'receiverId': wa_mobile
+                    }
+                    
+                    async with httpx.AsyncClient(timeout=30.0) as http_client:
+                        response = await http_client.get(config['api_url'], params=params)
+                        if response.status_code == 200:
+                            sent_whatsapp = True
+                            logger.info(f"Backup notification sent via WhatsApp to {wa_mobile}")
+                except Exception as e:
+                    logger.error(f"Failed to send WhatsApp backup notification: {str(e)}")
+        
+        # Send Email with backup attachment
+        email_address = settings.get('email_address', 'vetmech2server@gmail.com')
+        if email_address:
+            smtp_settings = await db.smtp_settings.find_one({}, {'_id': 0})
+            if smtp_settings and smtp_settings.get('host'):
+                try:
+                    import smtplib
+                    from email.mime.multipart import MIMEMultipart
+                    from email.mime.text import MIMEText
+                    from email.mime.application import MIMEApplication
+                    
+                    msg = MIMEMultipart()
+                    msg['From'] = smtp_settings.get('from_email', smtp_settings['username'])
+                    msg['To'] = email_address
+                    msg['Subject'] = f"VMP CRM Database Backup - {timestamp}"
+                    
+                    body = f"""
+VMP CRM Database Backup
+
+Backup Details:
+- Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC
+- Triggered by: {triggered_by}
+- Total Records: {total_records}
+- File Size: {file_size / 1024:.1f} KB
+
+The backup file is attached to this email.
+
+This is an automated backup from VMP CRM system.
+                    """
+                    
+                    msg.attach(MIMEText(body, 'plain'))
+                    
+                    # Attach backup file
+                    attachment = MIMEApplication(json_str.encode(), _subtype='json')
+                    attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+                    msg.attach(attachment)
+                    
+                    # Send email
+                    server = smtplib.SMTP(smtp_settings['host'], smtp_settings.get('port', 587))
+                    server.starttls()
+                    server.login(smtp_settings['username'], smtp_settings['password'])
+                    server.send_message(msg)
+                    server.quit()
+                    
+                    sent_email = True
+                    logger.info(f"Backup email sent to {email_address}")
+                except Exception as e:
+                    logger.error(f"Failed to send backup email: {str(e)}")
+        
+        # Log the backup
+        await db.backup_history.insert_one({
+            'id': str(uuid.uuid4()),
+            'filename': filename,
+            'status': 'success',
+            'type': 'scheduled' if triggered_by == 'System' else 'manual',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'created_by': triggered_by,
+            'size_bytes': file_size,
+            'total_records': total_records,
+            'sent_whatsapp': sent_whatsapp,
+            'sent_email': sent_email
+        })
+        
+        logger.info(f"Database backup completed: {filename}")
+        
+    except Exception as e:
+        logger.error(f"Database backup failed: {str(e)}")
+        # Log failure
+        await db.backup_history.insert_one({
+            'id': str(uuid.uuid4()),
+            'filename': f"backup_failed_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
+            'status': 'failed',
+            'error': str(e),
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'created_by': triggered_by
+        })
+
+async def run_scheduled_backups():
+    """Background task to run scheduled backups at 9 AM and 5 PM"""
+    while True:
+        try:
+            # Get settings
+            settings = await db.system_settings.find_one({'type': 'backup_settings'}, {'_id': 0})
+            if not settings or not settings.get('auto_backup_enabled', True):
+                await asyncio.sleep(300)  # Check again in 5 minutes
+                continue
+            
+            backup_times = settings.get('backup_times', ['09:00', '17:00'])
+            
+            # Get current time in IST (UTC+5:30)
+            now_utc = datetime.now(timezone.utc)
+            ist_offset = timedelta(hours=5, minutes=30)
+            now_ist = now_utc + ist_offset
+            current_time = now_ist.strftime('%H:%M')
+            
+            # Check if current time matches any backup time (within 1 minute window)
+            for backup_time in backup_times:
+                if current_time == backup_time:
+                    logger.info(f"Running scheduled backup at {current_time} IST")
+                    await perform_scheduled_backup("System (Scheduled)")
+                    await asyncio.sleep(120)  # Wait 2 minutes to avoid duplicate runs
+                    break
+            
+            await asyncio.sleep(60)  # Check every minute
+            
+        except asyncio.CancelledError:
+            logger.info("Backup scheduler task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Error in backup scheduler: {str(e)}")
+            await asyncio.sleep(300)
+
+
 # ============== USER MANAGEMENT ROUTES ==============
 
 @api_router.get("/users")

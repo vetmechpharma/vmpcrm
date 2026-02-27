@@ -32,28 +32,28 @@ import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 
 const mainNavItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/doctors', icon: Users, label: 'Doctors' },
-  { path: '/medicals', icon: Store, label: 'Medicals' },
-  { path: '/agencies', icon: Building, label: 'Agencies' },
-  { path: '/items', icon: Package, label: 'Items' },
-  { path: '/orders', icon: ShoppingCart, label: 'Orders' },
-  { path: '/marketing', icon: Megaphone, label: 'Marketing' },
-  { path: '/expenses', icon: Receipt, label: 'Expenses' },
-  { path: '/reminders', icon: Bell, label: 'Reminders' },
-  { path: '/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
-  { path: '/customers', icon: UserCheck, label: 'Portal Customers' },
-  { path: '/support', icon: LifeBuoy, label: 'Support Tickets' },
+  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/admin/doctors', icon: Users, label: 'Doctors' },
+  { path: '/admin/medicals', icon: Store, label: 'Medicals' },
+  { path: '/admin/agencies', icon: Building, label: 'Agencies' },
+  { path: '/admin/items', icon: Package, label: 'Items' },
+  { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
+  { path: '/admin/marketing', icon: Megaphone, label: 'Marketing' },
+  { path: '/admin/expenses', icon: Receipt, label: 'Expenses' },
+  { path: '/admin/reminders', icon: Bell, label: 'Reminders' },
+  { path: '/admin/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
+  { path: '/admin/customers', icon: UserCheck, label: 'Portal Customers' },
+  { path: '/admin/support', icon: LifeBuoy, label: 'Support Tickets' },
 ];
 
 const companySubItems = [
-  { path: '/company-settings', icon: Building2, label: 'Company Details' },
-  { path: '/users', icon: UserCog, label: 'Users', adminOnly: true },
-  { path: '/admin-profile', icon: Key, label: 'Admin Profile', adminOnly: true },
-  { path: '/email-logs', icon: Mail, label: 'Email Logs' },
-  { path: '/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
-  { path: '/settings', icon: Settings, label: 'SMTP Settings' },
-  { path: '/database-backup', icon: Database, label: 'Database Backup', adminOnly: true },
+  { path: '/admin/company-settings', icon: Building2, label: 'Company Details' },
+  { path: '/admin/users', icon: UserCog, label: 'Users', adminOnly: true },
+  { path: '/admin/profile', icon: Key, label: 'Admin Profile', adminOnly: true },
+  { path: '/admin/email-logs', icon: Mail, label: 'Email Logs' },
+  { path: '/admin/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
+  { path: '/admin/smtp-settings', icon: Settings, label: 'SMTP Settings' },
+  { path: '/admin/database-backup', icon: Database, label: 'Database Backup', adminOnly: true },
 ];
 
 export const Layout = ({ children }) => {
@@ -89,7 +89,7 @@ export const Layout = ({ children }) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/admin/login');
   };
 
   const renderNavItem = (item, isSubItem = false) => {
@@ -138,7 +138,7 @@ export const Layout = ({ children }) => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/admin" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">V</span>
               </div>

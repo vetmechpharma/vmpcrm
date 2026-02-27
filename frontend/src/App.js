@@ -20,6 +20,8 @@ import { PublicShowcase } from './pages/PublicShowcase';
 import { Marketing } from './pages/Marketing';
 import Customers from './pages/Customers';
 import Support from './pages/Support';
+import AdminProfile from './pages/AdminProfile';
+import DatabaseBackup from './pages/DatabaseBackup';
 import CustomerRegister from './pages/CustomerRegister';
 import CustomerLogin from './pages/CustomerLogin';
 import CustomerLayout from './pages/CustomerLayout';

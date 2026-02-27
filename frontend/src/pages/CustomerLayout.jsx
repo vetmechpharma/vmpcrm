@@ -23,7 +23,7 @@ const CustomerLayout = () => {
     const customerData = localStorage.getItem('customerData');
     
     if (!token || !customerData) {
-      navigate('/customer/login');
+      navigate('/login');
       return;
     }
     
@@ -49,7 +49,7 @@ const CustomerLayout = () => {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('customerData');
     toast.success('Logged out successfully');
-    navigate('/customer/login');
+    navigate('/login');
   };
 
   const roleIcons = {

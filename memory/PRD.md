@@ -570,6 +570,37 @@ Build a simple CRM for managing doctor leads. Features include:
 - [ ] Advanced reporting and analytics
 - [ ] Custom lead status configuration
 
+## Portal Customer Enhancements - COMPLETED Feb 27, 2026
+- [x] **Enhanced Customer Approval Modal**:
+  - Displays ALL registration data in organized sections:
+    - Basic Info: Name, Customer Code, Phone, Alternate Phone, Email
+    - Doctor Details (for doctor role): Registration Number, Date of Birth
+    - Medical/Agency Details: Proprietor Name, GST Number, Drug License, Birthday, Anniversary
+    - Address section with delivery station and transport preferences
+    - Registration timestamps (registered on, approved on with approver name)
+  - Color-coded sections by role (blue for doctor, emerald for medical, purple for agency)
+- [x] **Duplicate Mobile Number Check**:
+  - Checks `portal_customers` collection with status-specific messages:
+    - Pending: "has a pending registration. Please wait for approval"
+    - Approved: "already registered. Please login instead"
+    - Rejected: "was rejected. Please contact support"
+    - Suspended: "account is suspended. Please contact support"
+  - Checks `doctors`, `medicals`, `agencies` collections:
+    - Shows: "registered as Doctor/Medical Store/Agency. Please contact admin for portal access"
+  - Prevents duplicate registrations across all customer databases
+- [x] **Send New Password Feature**:
+  - "Send New Password via WhatsApp" button in approved customer modal
+  - Generates random 8-character alphanumeric password
+  - Sends professional WhatsApp message with login credentials
+  - Shows password manually if WhatsApp fails
+- [x] **Send Portal Access for Admin-Created Customers**:
+  - Key icon button (🔑) added to Doctors, Medicals, Agencies action columns
+  - Creates new `portal_customers` record for admin-created customers
+  - Copies all customer data to portal account
+  - Sets status to 'approved' automatically
+  - Sends WhatsApp with login credentials (phone + new password)
+  - Enables admin-created customers to use customer portal
+
 ## Next Tasks
 1. **P0**: Refactor server.py into modular structure (routers, models, services)
 2. Create ForgotPassword.jsx for customer password reset

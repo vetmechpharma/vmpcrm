@@ -641,6 +641,16 @@ export const Agencies = () => {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEmailModal(agency)} title="Send Email">
                             <Mail className="w-4 h-4" />
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" 
+                            onClick={() => handleSendPortalAccess(agency)} 
+                            title="Send Portal Access"
+                            data-testid={`send-portal-access-${agency.id}`}
+                          >
+                            <Key className="w-4 h-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => openDeleteModal(agency)} title="Delete">
                             <Trash2 className="w-4 h-4" />
                           </Button>

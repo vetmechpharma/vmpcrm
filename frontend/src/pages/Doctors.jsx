@@ -727,6 +727,16 @@ export const Doctors = () => {
                           <Button 
                             variant="ghost" 
                             size="icon" 
+                            onClick={() => handleSendPortalAccess(doctor)} 
+                            title="Send Portal Access"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            data-testid={`send-portal-access-${doctor.id}`}
+                          >
+                            <Key className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
                             onClick={() => openDeleteModal(doctor)} 
                             title="Delete"
                             className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"

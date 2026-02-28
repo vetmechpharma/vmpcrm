@@ -356,6 +356,18 @@ export const Orders = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to delete this order? This action cannot be undone.')) return;
+    try {
+      await ordersAPI.delete(orderId);
+      toast.success('Order deleted successfully');
+      fetchOrders();
+      setShowDetailModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete order');
+    }
+  };
+
   const viewOrderDetails = async (order) => {
     setSelectedOrder(order);
     try {

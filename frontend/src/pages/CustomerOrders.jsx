@@ -207,11 +207,6 @@ const CustomerOrders = () => {
     return true;
   });
 
-  const cartTotal = cart?.reduce((sum, item) => {
-    const qty = typeof item.quantity === 'number' ? item.quantity : 1;
-    return sum + (qty * (item.rate || 0));
-  }, 0) || 0;
-
   const tabs = [
     { id: 'cart', label: `Cart (${cart?.length || 0})`, icon: ShoppingCart },
     { id: 'active', label: 'Active', icon: Clock },

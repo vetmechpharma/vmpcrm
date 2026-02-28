@@ -65,6 +65,18 @@ const CustomerTasks = () => {
   return (
     <div className="px-4 py-6 md:px-6 space-y-4">
       {/* Stats */}
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-lg font-bold text-slate-800">Tasks</h2>
+        <button
+          onClick={() => fetchTasks(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          data-testid="refresh-tasks-btn"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Card className="rounded-2xl border-0 shadow-sm">
           <CardContent className="p-4">

@@ -603,8 +603,25 @@ Build a simple CRM for managing doctor leads. Features include:
 
 ## Next Tasks
 1. **P0**: Refactor server.py into modular structure (routers, models, services)
-2. Create ForgotPassword.jsx for customer password reset
-3. Stock/Inventory management feature
+2. Stock/Inventory management feature
+3. Payment Tracking against orders
+
+## Customer Portal Cart & Order Submission - COMPLETED Feb 28, 2026
+- [x] **POST /api/customer/orders endpoint**: Backend endpoint to create orders from customer portal cart
+  - Validates cart items, generates order number (ORD-YYYYMMDD-XXXX)
+  - Links to customer's entity record (doctor/medical/agency) via phone match
+  - Sends WhatsApp confirmation and email notification in background
+  - Order source tracked as 'customer_portal'
+- [x] **Cart UI (CustomerOrders.jsx)**: 
+  - Cart tab shows items with name, code, rate, and editable quantity
+  - Order notes (optional) text area
+  - Place Order button with loading state
+  - Clear Cart button
+  - Continue Shopping link
+- [x] **Order History UI**: Active/Completed tabs with order cards
+- [x] **Order Detail Modal**: Shows only product details (name, code, quantity) - NO prices or totals per user request
+- [x] **Product Grid Responsiveness**: 2 cols mobile, 3 cols tablet, 4 cols desktop (grid-cols-2 md:grid-cols-3 lg:grid-cols-4)
+- [x] **Test Report**: /app/test_reports/iteration_20.json - 100% pass (11/11 backend, all frontend flows)
 
 ## Dashboard Enhancements - COMPLETED Feb 27, 2026
 - [x] **Comprehensive Dashboard Stats API**: New endpoint `/api/dashboard/comprehensive-stats` providing real-time statistics

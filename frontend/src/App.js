@@ -31,6 +31,7 @@ import CustomerOrders from './pages/CustomerOrders';
 import CustomerTasks from './pages/CustomerTasks';
 import CustomerSupport from './pages/CustomerSupport';
 import CustomerProfile from './pages/CustomerProfile';
+import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 

@@ -7068,12 +7068,8 @@ async def update_order_transport(order_id: str, transport_data: OrderStatusUpdat
 @api_router.delete("/orders/{order_id}")
 async def delete_order(order_id: str, current_user: dict = Depends(get_current_user)):
     """Delete an order (admin only or with delete_orders permission)"""
-    user = await db.users.find_one({'id': current_user['user_id']}, {'_id': 0})
-    if not user:
-        raise HTTPException(status_code=403, detail="User not found")
-    
-    if user.get('role') != 'admin':
-        perms = user.get('permissions', {})
+    if current_user.get('role') != 'admin':
+        perms = current_user.get('permissions', {})
         if not perms.get('delete_orders', False):
             raise HTTPException(status_code=403, detail="You don't have permission to delete orders")
     

@@ -105,7 +105,7 @@ const CustomerLogin = () => {
           </div>
 
           <div className="text-right">
-            <Link to="/customer/forgot-password" className="text-sm text-emerald-600 font-medium hover:underline">
+            <Link to="/forgot-password" className="text-sm text-emerald-600 font-medium hover:underline">
               Forgot Password?
             </Link>
           </div>

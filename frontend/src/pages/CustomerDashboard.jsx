@@ -33,8 +33,8 @@ const CustomerDashboard = () => {
       const headers = { Authorization: `Bearer ${token}` };
       
       const [ordersRes, tasksRes, ticketsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/customer/orders`, { headers }),
-        axios.get(`${API_URL}/api/customer/tasks`, { headers }),
+        axios.get(`${API_URL}/api/portal/orders`, { headers }),
+        axios.get(`${API_URL}/api/portal/tasks`, { headers }),
         axios.get(`${API_URL}/api/customer/tickets`, { headers })
       ]);
 
@@ -95,7 +95,7 @@ const CustomerDashboard = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/customer/items" className="active:scale-95 transition-transform">
+        <Link to="/portal/items" className="active:scale-95 transition-transform">
           <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -108,7 +108,7 @@ const CustomerDashboard = () => {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/customer/orders" className="active:scale-95 transition-transform">
+        <Link to="/portal/orders" className="active:scale-95 transition-transform">
           <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -175,7 +175,7 @@ const CustomerDashboard = () => {
           <h2 className="text-lg font-bold text-slate-800" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Recent Orders
           </h2>
-          <Link to="/customer/orders" className="text-sm text-emerald-600 font-medium flex items-center gap-1">
+          <Link to="/portal/orders" className="text-sm text-emerald-600 font-medium flex items-center gap-1">
             View All <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -186,7 +186,7 @@ const CustomerDashboard = () => {
               <ShoppingBag className="w-12 h-12 mx-auto text-slate-300 mb-3" />
               <p className="text-slate-500 text-sm">No orders yet</p>
               <Link 
-                to="/customer/items" 
+                to="/portal/items" 
                 className="inline-block mt-3 text-sm text-emerald-600 font-medium"
               >
                 Browse Products
@@ -198,7 +198,7 @@ const CustomerDashboard = () => {
             {recentOrders.map((order) => (
               <Link 
                 key={order.id} 
-                to="/customer/orders"
+                to="/portal/orders"
                 className="block active:scale-[0.98] transition-transform"
               >
                 <Card className="rounded-2xl border-0 shadow-sm hover:shadow-md transition-shadow">
@@ -239,7 +239,7 @@ const CustomerDashboard = () => {
               <p className="text-xs text-slate-500">Create a support ticket</p>
             </div>
             <Link 
-              to="/customer/support"
+              to="/portal/support"
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-full active:scale-95 transition-transform"
             >
               Get Help

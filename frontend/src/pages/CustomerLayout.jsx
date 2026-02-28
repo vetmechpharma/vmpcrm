@@ -33,7 +33,7 @@ const CustomerLayout = () => {
 
   const fetchProfile = async (token) => {
     try {
-      const response = await axios.get(`${API_URL}/api/customer/profile`, {
+      const response = await axios.get(`${API_URL}/api/portal/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCustomer(response.data);
@@ -113,12 +113,12 @@ const CustomerLayout = () => {
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
           {[
-            { path: '/customer/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
-            { path: '/customer/items', icon: 'Package', label: 'Products' },
-            { path: '/customer/orders', icon: 'ShoppingBag', label: 'My Orders' },
-            { path: '/customer/tasks', icon: 'ListTodo', label: 'Tasks' },
-            { path: '/customer/support', icon: 'LifeBuoy', label: 'Support' },
-            { path: '/customer/profile', icon: 'User', label: 'Profile' },
+            { path: '/portal/dashboard', icon: 'LayoutDashboard', label: 'Dashboard' },
+            { path: '/portal/items', icon: 'Package', label: 'Products' },
+            { path: '/portal/orders', icon: 'ShoppingBag', label: 'My Orders' },
+            { path: '/portal/tasks', icon: 'ListTodo', label: 'Tasks' },
+            { path: '/portal/support', icon: 'LifeBuoy', label: 'Support' },
+            { path: '/portal/profile', icon: 'User', label: 'Profile' },
           ].map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = require('lucide-react')[item.icon];

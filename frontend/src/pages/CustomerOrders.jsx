@@ -284,7 +284,7 @@ const CustomerOrders = () => {
                           </h4>
                           <p className="text-xs text-slate-400">{item.item_code}</p>
                           <div className="flex items-center justify-between mt-1.5">
-                            <p className="font-semibold text-emerald-600">₹{item.rate}</p>
+                            <p className="text-xs text-slate-500">Rate: ₹{item.rate}</p>
                             <input
                               type="text"
                               value={item.quantity_text || String(item.quantity)}

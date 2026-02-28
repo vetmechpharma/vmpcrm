@@ -157,6 +157,7 @@ export const ordersAPI = {
   updateTransport: (id, data) => api.put(`/orders/${id}/transport`, data),
   updateItems: (id, data) => api.put(`/orders/${id}/items`, data),
   updateCustomer: (id, data) => api.put(`/orders/${id}/customer`, data),
+  delete: (id) => api.delete(`/orders/${id}`),
   lookupDoctor: (id) => api.get(`/orders/${id}/lookup-doctor`),
   searchCustomers: (q) => api.get('/customers/search', { params: { q } }),
 };

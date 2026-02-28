@@ -26,9 +26,9 @@ import {
   LifeBuoy,
   Megaphone,
   Database,
-  Key
+  Key,
+  Search
 } from 'lucide-react';
-import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 
 const mainNavItems = [
@@ -64,12 +64,9 @@ export const Layout = ({ children }) => {
   const [companyExpanded, setCompanyExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Auto-expand company section if current path is a sub-item
   useEffect(() => {
     const isCompanySubPath = companySubItems.some(item => location.pathname === item.path);
-    if (isCompanySubPath) {
-      setCompanyExpanded(true);
-    }
+    if (isCompanySubPath) setCompanyExpanded(true);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -82,7 +79,6 @@ export const Layout = ({ children }) => {
       }
     };
     fetchPendingCount();
-    // Refresh every 30 seconds
     const interval = setInterval(fetchPendingCount, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -102,50 +98,49 @@ export const Layout = ({ children }) => {
         to={item.path}
         data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
         className={cn(
-          "sidebar-item",
+          "sidebar-nav-item",
           isActive && "active",
-          isSubItem && "pl-10 text-sm"
+          isSubItem && "pl-12 text-sm"
         )}
         onClick={() => setSidebarOpen(false)}
       >
-        <item.icon className={cn("w-5 h-5", isSubItem && "w-4 h-4")} />
-        <span className="font-medium">{item.label}</span>
+        <item.icon className={cn("w-[22px] h-[22px] shrink-0", isSubItem && "w-[18px] h-[18px]")} />
+        <span className="font-medium truncate">{item.label}</span>
         {item.showBadge && pendingCount > 0 && (
-          <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+          <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
             {pendingCount}
           </span>
         )}
-        {isActive && !item.showBadge && <ChevronRight className="w-4 h-4 ml-auto" />}
       </Link>
     );
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Mobile sidebar overlay */}
+    <div className="min-h-screen" style={{ background: '#F8F7FA' }}>
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+        "fixed top-0 left-0 z-50 h-full w-[260px] transform transition-transform duration-200 ease-in-out lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      )} style={{ background: 'var(--sidebar-bg)' }}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
-            <Link to="/admin" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
+          <div className="flex items-center justify-between h-16 px-6">
+            <Link to="/admin" className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#7367F0' }}>
                 <span className="text-white font-bold text-sm">V</span>
               </div>
-              <span className="font-bold text-lg text-slate-900">VMP CRM</span>
+              <span className="font-bold text-lg text-white tracking-tight">VMP CRM</span>
             </Link>
             <button 
-              className="lg:hidden p-1 text-slate-500 hover:text-slate-700"
+              className="lg:hidden p-1 text-slate-400 hover:text-white"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-5 h-5" />
@@ -153,34 +148,33 @@ export const Layout = ({ children }) => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {/* Main nav items */}
+          <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-auto scrollbar-hide">
             {mainNavItems.map((item) => renderNavItem(item))}
             
-            {/* Company Section - Collapsible */}
-            <div className="pt-2">
+            {/* Company Section */}
+            <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#616272' }}>Company</p>
               <button
                 onClick={() => setCompanyExpanded(!companyExpanded)}
                 className={cn(
-                  "sidebar-item w-full justify-between",
-                  companySubItems.some(item => location.pathname === item.path) && "text-emerald-600"
+                  "sidebar-nav-item w-full justify-between",
+                  companySubItems.some(item => location.pathname === item.path) && "text-white"
                 )}
                 data-testid="nav-company-toggle"
               >
                 <div className="flex items-center gap-3">
-                  <Building2 className="w-5 h-5" />
-                  <span className="font-medium">Company</span>
+                  <Building2 className="w-[22px] h-[22px] shrink-0" />
+                  <span className="font-medium">Settings</span>
                 </div>
                 {companyExpanded ? (
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4 shrink-0" />
                 ) : (
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 shrink-0" />
                 )}
               </button>
               
-              {/* Sub-items */}
               {companyExpanded && (
-                <div className="mt-1 space-y-1 ml-2 border-l-2 border-slate-100">
+                <div className="mt-0.5 space-y-0.5">
                   {companySubItems.map((item) => renderNavItem(item, true))}
                 </div>
               )}
@@ -188,50 +182,62 @@ export const Layout = ({ children }) => {
           </nav>
 
           {/* User info */}
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
-                <span className="text-sm font-semibold text-slate-600">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#7367F0' }}>
+                <span className="text-sm font-semibold text-white">
                   {user?.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{user?.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+                <p className="text-xs capitalize" style={{ color: '#616272' }}>{user?.role}</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start gap-2 text-slate-600"
+            <button 
+              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors"
+              style={{ background: 'rgba(234,84,85,0.15)', color: '#EA5455' }}
               onClick={handleLogout}
               data-testid="logout-btn"
             >
               <LogOut className="w-4 h-4" />
               Sign out
-            </Button>
+            </button>
           </div>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Header */}
-        <header className="glass-header sticky top-0 z-30 h-16 flex items-center px-4 lg:px-8">
+      <div className="lg:pl-[260px]">
+        {/* Floating Header */}
+        <header className="floating-header sticky top-0 z-30 mx-4 lg:mx-6 mt-4 mb-4 h-14 flex items-center px-5">
           <button 
-            className="lg:hidden p-2 text-slate-600 hover:text-slate-900"
+            className="lg:hidden p-2 mr-2 rounded-md hover:bg-slate-100"
             onClick={() => setSidebarOpen(true)}
             data-testid="mobile-menu-btn"
+            style={{ color: '#5D596C' }}
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5" />
           </button>
-          <div className="flex-1" />
-          <div className="text-sm text-slate-500">
-            Welcome, <span className="font-medium text-slate-700">{user?.name}</span>
+          <div className="flex items-center gap-2 flex-1">
+            <Search className="w-4 h-4" style={{ color: '#B4B2B7' }} />
+            <span className="text-sm" style={{ color: '#B4B2B7' }}>Search...</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(115,103,240,0.15)' }}>
+              <span className="text-sm font-semibold" style={{ color: '#7367F0' }}>
+                {user?.name?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="hidden md:block">
+              <p className="text-sm font-medium" style={{ color: '#434050' }}>{user?.name}</p>
+              <p className="text-xs capitalize" style={{ color: '#8D8A94' }}>{user?.role}</p>
+            </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-8">
+        <main className="px-4 lg:px-6 pb-8">
           {children}
         </main>
       </div>

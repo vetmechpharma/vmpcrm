@@ -152,7 +152,8 @@ export const Layout = ({ children }) => {
           <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-auto scrollbar-hide">
             {mainNavItems.map((item) => renderNavItem(item))}
             
-            {/* Company Section */}
+            {/* Company Section - only show if user has any company permissions */}
+            {companySubItems.some(item => item.adminOnly ? user?.role === 'admin' : (!item.perm || hasPermission(item.perm))) && (
             <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#616272' }}>Company</p>
               <button

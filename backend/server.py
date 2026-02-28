@@ -4164,6 +4164,85 @@ async def customer_login(request: CustomerLogin):
         }
     }
 
+@api_router.post("/customer/login-otp-send")
+async def customer_login_otp_send(request: CustomerOTPRequest):
+    """Send OTP for customer login (passwordless)"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    if len(clean_phone) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="No account found with this phone number. Please register first.")
+    
+    if customer['status'] == 'pending_approval':
+        raise HTTPException(status_code=403, detail="Your account is pending approval.")
+    if customer['status'] in ('rejected', 'suspended'):
+        raise HTTPException(status_code=403, detail="Your account is not active. Please contact support.")
+    
+    otp = str(random.randint(1000, 9999))
+    customer_otp_store[f"{clean_phone}_login"] = {
+        'otp': otp,
+        'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
+    }
+    
+    config = await get_whatsapp_config()
+    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+        try:
+            message = f"Your VMP CRM login OTP is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
+            await send_whatsapp_message(config, clean_phone, message)
+        except Exception as e:
+            logger.error(f"Failed to send login OTP via WhatsApp: {e}")
+    
+    return {"message": "OTP sent to your WhatsApp", "phone": clean_phone}
+
+@api_router.post("/customer/login-otp-verify")
+async def customer_login_otp_verify(request: CustomerOTPVerify):
+    """Verify OTP and login customer (passwordless)"""
+    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    otp_key = f"{clean_phone}_login"
+    
+    stored = customer_otp_store.get(otp_key)
+    
+    # Check fallback OTP
+    if not stored:
+        fallback_otp = await db.fallback_otps.find_one({'otp': request.otp, 'is_active': True}, {'_id': 0})
+        if fallback_otp:
+            customer_otp_store[otp_key] = {'otp': request.otp, 'expires': datetime.now(timezone.utc) + timedelta(minutes=5)}
+            stored = customer_otp_store[otp_key]
+    
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new one.")
+    
+    if datetime.now(timezone.utc) > stored['expires']:
+        del customer_otp_store[otp_key]
+        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
+    
+    if stored['otp'] != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    del customer_otp_store[otp_key]
+    
+    customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    if customer['status'] != 'approved':
+        raise HTTPException(status_code=403, detail="Your account is not active.")
+    
+    token = create_customer_token(customer['id'], customer['role'])
+    
+    return {
+        "access_token": token,
+        "customer": {
+            "id": customer['id'],
+            "name": customer['name'],
+            "phone": customer['phone'],
+            "role": customer['role'],
+            "customer_code": customer['customer_code']
+        }
+    }
+
 @api_router.post("/customer/reset-password")
 async def customer_reset_password(request: CustomerResetPassword):
     """Reset customer password"""

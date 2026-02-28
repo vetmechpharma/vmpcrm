@@ -4399,6 +4399,13 @@ async def get_customer_orders(customer: dict = Depends(get_current_customer)):
             'tracking_url': order.get('tracking_url'),
             'delivery_station': order.get('delivery_station'),
             'payment_mode': order.get('payment_mode'),
+            'boxes_count': order.get('boxes_count'),
+            'cans_count': order.get('cans_count'),
+            'bags_count': order.get('bags_count'),
+            'invoice_number': order.get('invoice_number'),
+            'invoice_date': order.get('invoice_date'),
+            'invoice_value': order.get('invoice_value'),
+            'notes': order.get('notes'),
             'created_at': created_at
         })
     

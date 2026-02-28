@@ -623,6 +623,11 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Product Grid Responsiveness**: 2 cols mobile, 3 cols tablet, 4 cols desktop (grid-cols-2 md:grid-cols-3 lg:grid-cols-4)
 - [x] **Test Report**: /app/test_reports/iteration_20.json - 100% pass (11/11 backend, all frontend flows)
 
+## Order Status Tabs Fix - COMPLETED Feb 28, 2026
+- [x] **Fixed order filtering**: Pre-computed arrays for each tab (activeOrders, completedOrders, cancelledOrders)
+- [x] **Added Cancelled tab**: Cancelled orders now have dedicated tab
+- [x] **Dynamic tab counts**: Each tab label shows order count (e.g., "Active (10)", "Completed (1)")
+
 ## Dashboard Enhancements - COMPLETED Feb 27, 2026
 - [x] **Comprehensive Dashboard Stats API**: New endpoint `/api/dashboard/comprehensive-stats` providing real-time statistics
 - [x] **Customers Overview**:

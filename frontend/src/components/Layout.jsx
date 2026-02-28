@@ -91,6 +91,7 @@ export const Layout = ({ children }) => {
   const renderNavItem = (item, isSubItem = false) => {
     const isActive = location.pathname === item.path;
     if (item.adminOnly && user?.role !== 'admin') return null;
+    if (item.perm && !hasPermission(item.perm)) return null;
     
     return (
       <Link

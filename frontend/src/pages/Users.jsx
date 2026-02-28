@@ -50,15 +50,20 @@ const PERMISSION_MODULES = [
   { key: 'agencies', label: 'Agencies', description: 'Manage agencies' },
   { key: 'items', label: 'Items', description: 'Manage products/items' },
   { key: 'orders', label: 'Orders', description: 'View and manage orders' },
+  { key: 'delete_orders', label: 'Delete Orders', description: 'Allow deleting orders' },
   { key: 'expenses', label: 'Expenses', description: 'Track expenses' },
   { key: 'reminders', label: 'Reminders', description: 'Manage reminders' },
   { key: 'pending_items', label: 'Pending Items', description: 'View pending stock items' },
+  { key: 'marketing', label: 'Marketing', description: 'Manage campaigns' },
+  { key: 'support', label: 'Support Tickets', description: 'Handle support tickets' },
+  { key: 'portal_customers', label: 'Portal Customers', description: 'Manage portal customers' },
   { key: 'email_logs', label: 'Email Logs', description: 'View email history' },
   { key: 'whatsapp_logs', label: 'WhatsApp Logs', description: 'View WhatsApp history' },
   { key: 'users', label: 'User Management', description: 'Create and manage users' },
   { key: 'smtp_settings', label: 'SMTP Settings', description: 'Configure email settings' },
   { key: 'company_settings', label: 'Company Settings', description: 'Update company info' },
   { key: 'whatsapp_settings', label: 'WhatsApp Settings', description: 'Configure WhatsApp API' },
+  { key: 'backup', label: 'Database Backup', description: 'Manage database backups' },
 ];
 
 const DEFAULT_PERMISSIONS = {
@@ -67,15 +72,20 @@ const DEFAULT_PERMISSIONS = {
   agencies: true,
   items: true,
   orders: true,
+  delete_orders: false,
   expenses: true,
   reminders: true,
   pending_items: true,
+  marketing: true,
+  support: true,
+  portal_customers: true,
   email_logs: false,
   whatsapp_logs: false,
   users: false,
   smtp_settings: false,
   company_settings: false,
   whatsapp_settings: false,
+  backup: false,
 };
 
 export const Users = () => {

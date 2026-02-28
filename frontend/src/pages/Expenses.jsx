@@ -750,7 +750,7 @@ export const Expenses = () => {
                       <TableHead className="w-[100px]">Type</TableHead>
                       <TableHead className="w-[130px]">Account</TableHead>
                       <TableHead className="w-[110px] text-right">Amount</TableHead>
-                      <TableHead className="w-[80px] text-center">Actions</TableHead>
+                      {(canEdit || canDelete) && <TableHead className="w-[80px] text-center">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>

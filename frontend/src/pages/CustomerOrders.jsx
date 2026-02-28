@@ -407,15 +407,31 @@ const CustomerOrders = () => {
                       </div>
                       
                       {/* Items Preview */}
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
                         <Package className="w-3.5 h-3.5" />
                         <span>{order.items?.length || 0} items</span>
                       </div>
+
+                      {/* Transport/Tracking Info */}
+                      {(order.transport_name || order.tracking_number) && (
+                        <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
+                          <Truck className="w-3.5 h-3.5" />
+                          <span className="truncate">
+                            {order.transport_name}{order.tracking_number ? ` • ${order.tracking_number}` : ''}
+                          </span>
+                        </div>
+                      )}
+                      {order.invoice_number && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>INV: {order.invoice_number}{order.invoice_value ? ` • ₹${Number(order.invoice_value).toLocaleString()}` : ''}</span>
+                        </div>
+                      )}
                       
                       {/* Footer */}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                        <p className="text-sm text-slate-600">
-                          {order.items?.length || 0} items
+                      <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-100">
+                        <p className="text-xs text-slate-500">
+                          {order.payment_mode ? (order.payment_mode === 'paid' ? 'Paid' : 'To Pay') : `${order.items?.length || 0} items`}
                         </p>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </div>

@@ -235,7 +235,7 @@ const CustomerRegister = () => {
         {step < 5 && (
           <button 
             onClick={() => {
-              if (step === 1) navigate('/customer/login');
+              if (step === 1) navigate('/login');
               else if (step === 4) setStep(3);
               else if (step > 1) setStep(step - 1);
             }}
@@ -693,7 +693,7 @@ const CustomerRegister = () => {
               </div>
 
               <Button 
-                onClick={() => navigate('/customer/login')}
+                onClick={() => navigate('/login')}
                 className="w-full h-14 bg-emerald-600 hover:bg-emerald-700 rounded-xl text-base font-semibold"
                 data-testid="go-to-login-btn"
               >
@@ -707,7 +707,7 @@ const CustomerRegister = () => {
             <div className="mt-8 text-center">
               <p className="text-slate-500 text-sm">
                 Already have an account?{' '}
-                <Link to="/customer/login" className="text-emerald-600 font-semibold hover:underline">
+                <Link to="/login" className="text-emerald-600 font-semibold hover:underline">
                   Login
                 </Link>
               </p>

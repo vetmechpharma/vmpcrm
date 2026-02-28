@@ -56,20 +56,21 @@
 }
 
 @layer utilities {
+    /* Cuba-style lead status badges */
     .status-customer {
-        @apply bg-emerald-100 text-emerald-700 border-emerald-200;
+        @apply bg-[#28C76F]/15 text-[#28C76F] border-transparent;
     }
     .status-contacted {
-        @apply bg-blue-100 text-blue-700 border-blue-200;
+        @apply bg-[#00CFE8]/15 text-[#00CFE8] border-transparent;
     }
     .status-pipeline {
-        @apply bg-amber-100 text-amber-700 border-amber-200;
+        @apply bg-[#FF9F43]/15 text-[#FF9F43] border-transparent;
     }
     .status-not-interested {
-        @apply bg-slate-100 text-slate-600 border-slate-200;
+        @apply bg-[#A8AAAE]/15 text-[#6E6B7B] border-transparent;
     }
     .status-closed {
-        @apply bg-red-100 text-red-700 border-red-200;
+        @apply bg-[#EA5455]/15 text-[#EA5455] border-transparent;
     }
 }
 

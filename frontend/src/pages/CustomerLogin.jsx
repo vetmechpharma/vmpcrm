@@ -136,7 +136,7 @@ const CustomerLogin = () => {
 
         {/* Back to Admin */}
         <div className="mt-6 text-center">
-          <Link to="/login" className="text-xs text-slate-400 hover:text-slate-600">
+          <Link to="/admin/login" className="text-xs text-slate-400 hover:text-slate-600">
             Admin Login →
           </Link>
         </div>

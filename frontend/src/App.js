@@ -94,7 +94,7 @@ function AppRoutes() {
       
       {/* Legacy customer routes - redirect to new paths */}
       <Route path="/customer/register" element={<Navigate to="/register" replace />} />
-      <Route path="/customer/login" element={<Navigate to="/login" replace />} />
+      <Route path="/customer/login" element={<Navigate to="/" replace />} />
       <Route path="/customer/*" element={<Navigate to="/portal" replace />} />
       
       {/* Public showcase */}

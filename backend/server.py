@@ -4414,22 +4414,28 @@ async def create_customer_order(request: Request, background_tasks: BackgroundTa
 @api_router.get("/customer/tasks")
 async def get_customer_tasks(customer: dict = Depends(get_current_customer)):
     """Get tasks assigned to customer (created by admin/staff for them)"""
-    # Find tasks linked to customer based on phone number match in doctors/medicals/agencies
     tasks = []
     
-    # First check if customer is linked to any doctor/medical/agency record
-    if customer['role'] == 'doctor':
-        linked = await db.doctors.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
-        if linked:
-            tasks = await db.tasks.find({'doctor_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
-    elif customer['role'] == 'medical':
-        linked = await db.medicals.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
-        if linked:
-            tasks = await db.tasks.find({'medical_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
-    elif customer['role'] == 'agency':
-        linked = await db.agencies.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
-        if linked:
-            tasks = await db.tasks.find({'agency_id': linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
+    # Strategy 1: Find linked entity by phone
+    collection_map = {
+        'doctor': ('doctors', 'doctor_id'),
+        'medical': ('medicals', 'medical_id'),
+        'agency': ('agencies', 'agency_id')
+    }
+    
+    role = customer.get('role', 'doctor')
+    coll_name, id_field = collection_map.get(role, ('doctors', 'doctor_id'))
+    collection = db[coll_name]
+    
+    # Try finding by phone first
+    linked = await collection.find_one({'phone': customer['phone']}, {'_id': 0, 'id': 1})
+    
+    # Fallback: try finding by portal_customer_id
+    if not linked:
+        linked = await collection.find_one({'portal_customer_id': customer['id']}, {'_id': 0, 'id': 1})
+    
+    if linked:
+        tasks = await db.tasks.find({id_field: linked['id']}, {'_id': 0}).sort('created_at', -1).to_list(50)
     
     result = []
     for task in tasks:

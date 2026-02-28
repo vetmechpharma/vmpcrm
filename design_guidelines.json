@@ -1,187 +1,141 @@
 {
-  "design_system": {
-    "identity": {
-      "name": "PharmaFlow Mobile",
-      "archetype": "Clinical Organic",
-      "core_values": ["Trust", "Efficiency", "Humanity"],
-      "vibe": "Clean but not sterile. Efficient but not robotic. A medical tool that feels like a consumer app."
+  "project_name": "Pharma Distributor CRM - Materialize Redesign",
+  "theme_strategy": "Hybrid",
+  "theme_description": "Light Content Area with Dark Sidebar (Materialize Style)",
+  "typography": {
+    "font_family_primary": "Inter, sans-serif",
+    "font_family_secondary": "Manrope, sans-serif",
+    "headings": {
+      "weight": "600",
+      "tracking": "-0.02em",
+      "color": "#434050"
     },
-    "typography": {
-      "font_family": {
-        "heading": "Manrope, sans-serif",
-        "body": "Inter, sans-serif",
-        "mono": "JetBrains Mono, monospace"
-      },
-      "scale": {
-        "h1": "text-2xl font-bold tracking-tight leading-tight",
-        "h2": "text-xl font-bold tracking-tight",
-        "h3": "text-lg font-semibold tracking-normal",
-        "body_lg": "text-base font-medium leading-relaxed",
-        "body_base": "text-sm font-normal leading-relaxed",
-        "caption": "text-xs font-medium tracking-wide uppercase text-slate-500"
-      }
+    "body": {
+      "weight": "400",
+      "size": "0.9375rem",
+      "color": "#5D596C"
+    }
+  },
+  "colors": {
+    "primary": "#7367F0",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#A8AAAE",
+    "secondary_foreground": "#FFFFFF",
+    "background": "#F8F7FA",
+    "surface": "#FFFFFF",
+    "sidebar": {
+      "background": "#2F3349",
+      "foreground": "#D0D2D6",
+      "active_bg": "#7367F0",
+      "active_text": "#FFFFFF",
+      "hover_bg": "#3a3e5b"
     },
-    "colors": {
+    "status": {
+      "success": "#28C76F",
+      "danger": "#EA5455",
+      "warning": "#FF9F43",
+      "info": "#00CFE8"
+    },
+    "text": {
+      "primary": "#434050",
+      "secondary": "#8D8A94",
+      "muted": "#B4B2B7"
+    },
+    "border": "#DBDADE"
+  },
+  "layout": {
+    "sidebar": {
+      "width": "260px",
+      "collapsed_width": "80px",
+      "style": "fixed-left-dark"
+    },
+    "header": {
+      "style": "floating",
+      "background": "white",
+      "shadow": "0 2px 4px rgba(165, 163, 174, 0.3)",
+      "radius": "6px",
+      "margin_x": "1.5rem",
+      "margin_top": "1rem"
+    },
+    "content_area": {
+      "padding": "1.5rem"
+    }
+  },
+  "components": {
+    "cards": {
+      "background": "#FFFFFF",
+      "border_radius": "0.5rem",
+      "shadow": "0 0.25rem 1.125rem rgba(75, 70, 92, 0.1)",
+      "border": "none"
+    },
+    "buttons": {
       "primary": {
-        "DEFAULT": "#059669",
-        "foreground": "#FFFFFF",
-        "50": "#ECFDF5",
-        "100": "#D1FAE5",
-        "200": "#A7F3D0",
-        "300": "#6EE7B7",
-        "400": "#34D399",
-        "500": "#10B981",
-        "600": "#059669",
-        "700": "#047857",
-        "800": "#065F46",
-        "900": "#064E3B"
+        "bg": "#7367F0",
+        "text": "#FFFFFF",
+        "hover_bg": "#685DD8",
+        "radius": "0.375rem",
+        "shadow": "0 2px 4px rgba(115, 103, 240, 0.4)"
       },
       "secondary": {
-        "DEFAULT": "#F1F5F9",
-        "foreground": "#0F172A"
-      },
-      "accent": {
-        "DEFAULT": "#F43F5E",
-        "foreground": "#FFFFFF"
-      },
-      "background": "#F8FAFC",
-      "surface": "#FFFFFF",
-      "text": {
-        "primary": "#0F172A",
-        "secondary": "#475569",
-        "muted": "#94A3B8"
-      },
-      "status": {
-        "success": "#10B981",
-        "warning": "#F59E0B",
-        "error": "#EF4444",
-        "info": "#3B82F6"
+        "bg": "#A8AAAE",
+        "text": "#FFFFFF",
+        "radius": "0.375rem"
       }
     },
-    "layout": {
-      "container": "max-w-md mx-auto md:max-w-5xl bg-slate-50 min-h-screen pb-20 md:pb-0",
-      "spacing": {
-        "page_x": "px-4 md:px-6",
-        "page_y": "py-6",
-        "section_gap": "gap-6"
-      },
-      "radius": {
-        "card": "rounded-2xl",
-        "button": "rounded-full",
-        "input": "rounded-xl"
-      },
-      "shadows": {
-        "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-shadow duration-200",
-        "floating": "shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
-      }
-    },
-    "components": {
-      "Button": {
-        "base": "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background h-12 px-6",
-        "variants": {
-          "default": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-emerald-500/20",
-          "outline": "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700",
-          "ghost": "hover:bg-slate-100 hover:text-slate-900",
-          "link": "text-primary underline-offset-4 hover:underline"
-        }
-      },
-      "Card": {
-        "base": "rounded-2xl border border-slate-100 bg-white text-card-foreground shadow-sm overflow-hidden"
-      },
-      "Input": {
-        "base": "flex h-12 w-full rounded-xl border-0 bg-slate-50 px-4 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:bg-white transition-all duration-200"
-      },
-      "Badge": {
-        "base": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-        "variants": {
-          "default": "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-          "secondary": "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-          "outline": "text-foreground"
-        }
-      }
-    },
-    "visual_enhancers": {
-      "glass": "bg-white/80 backdrop-blur-md border-b border-slate-200/50 supports-[backdrop-filter]:bg-white/60",
-      "gradient_text": "bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500",
-      "noise": "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E\")"
-    },
-    "motion": {
-      "page_transition": {
-        "initial": { "opacity": 0, "x": 20 },
-        "animate": { "opacity": 1, "x": 0 },
-        "exit": { "opacity": 0, "x": -20 },
-        "transition": { "duration": 0.3, "ease": "easeOut" }
-      },
-      "list_stagger": {
-        "container": {
-          "hidden": { "opacity": 0 },
-          "show": {
-            "opacity": 1,
-            "transition": { "staggerChildren": 0.05 }
-          }
-        },
-        "item": {
-          "hidden": { "opacity": 0, "y": 10 },
-          "show": { "opacity": 1, "y": 0 }
-        }
-      },
-      "tap_feedback": "active:scale-95 transition-transform duration-100"
+    "stats_widgets": {
+      "style": "icon-square-left",
+      "icon_bg_opacity": "0.15",
+      "title_size": "0.875rem",
+      "value_size": "1.5rem"
     }
   },
   "image_urls": {
-    "hero": {
-      "pharmacist_mobile": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=1000",
-      "doctor_consult": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=1000"
-    },
-    "placeholders": {
-      "medicine_box": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=800",
-      "pills_bottle": "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80&w=800",
-      "delivery_box": "https://images.unsplash.com/photo-1586528243235-c6e6c4a4ccbf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxkZWxpdmVyeSUyMGJveGVzJTIwbWVkaWNhbCUyMGxvZ2lzdGljc3xlbnwwfHx8fDE3NzEzNTQ2ODJ8MA&ixlib=rb-4.1.0&q=85"
-    },
-    "icons": {
-      "logo_placeholder": "https://via.placeholder.com/150x50?text=PharmaFlow"
-    }
-  },
-  "universal_guidelines": {
-    "do": [
-      "Use 'Manrope' for all headings to create a modern, friendly medical feel.",
-      "Use 'Inter' for body text for maximum legibility.",
-      "Use strictly defined 'Deep Emerald' (#059669) as the primary brand color.",
-      "Use 'Soft Sage' (#ECFDF5) for backgrounds of active items or success states.",
-      "Implement a 'Bottom Navigation' bar on mobile screens (fixed at bottom).",
-      "Make all touch targets (buttons, inputs, list items) at least 44px high.",
-      "Use 'Card' components with rounded-2xl corners and subtle shadows for all grouped content.",
-      "Ensure all text inputs have a font size of 16px to prevent iOS zoom on focus.",
-      "Use skeleton loaders instead of spinners for initial data fetching.",
-      "Add 'data-testid' to all interactive elements."
+    "profile_avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1755189118414-14c8dacdb082?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NDh8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBkb2N0b3IlMjBwb3J0cmFpdHxlbnwwfHx8fDE3NzIzMDY5Njl8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Team photo for About page or general usage"
+      },
+      {
+        "url": "https://images.pexels.com/photos/19438566/pexels-photo-19438566.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Professional doctor avatar"
+      }
     ],
-    "dont": [
-      "DO NOT use generic teal (#1B93A4) or standard 'Bootstrap Blue'.",
-      "DO NOT use sharp corners (rounded-none or rounded-sm) - keep it organic (rounded-xl+).",
-      "DO NOT use gradients for backgrounds (except specific hero sections if needed).",
-      "DO NOT use serif fonts.",
-      "DO NOT clutter the mobile view - hide secondary actions in menus.",
-      "DO NOT use 'alert' dialogs for non-critical errors - use 'sonner' toasts."
+    "warehouse": [
+      {
+        "url": "https://images.unsplash.com/photo-1631856956334-35db20cb7748?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHx3YXJlaG91c2UlMjBzaGVsdmVzJTIwbWVkaWNpbmUlMjBib3hlc3xlbnwwfHx8fDE3NzIzMDY5NzR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Warehouse shelves background"
+      }
     ]
   },
-  "instructions_to_main_agent": {
-    "setup": [
-      "Update 'tailwind.config.js' to include the new color palette (Emerald/Slate) and radius settings.",
-      "Update 'index.css' to set the new base styles (background color, text color).",
-      "Install 'lucide-react' for icons if not present.",
-      "Create a 'Layout' component that handles the responsive structure (Sidebar on desktop, Bottom Nav on mobile)."
-    ],
-    "components": [
-      "Refactor 'Button' to be pill-shaped (rounded-full).",
-      "Create a 'BottomNav' component for mobile navigation.",
-      "Create a 'ProductCard' component with image, price, and 'Add to Order' button.",
-      "Create an 'OrderCard' component showing status with color-coded badges."
-    ],
-    "pages": {
-      "dashboard": "Create a 'Home' view with 'Quick Actions' (New Order, Track Order) and 'Recent Activity'.",
-      "products": "Create a searchable grid of products with category filters.",
-      "orders": "Create a list view of orders with filter tabs (Active, Past, Cancelled).",
-      "profile": "Create a profile settings page with delivery address management."
-    }
-  }
+  "instructions_to_main_agent": [
+    "1. GLOBAL STYLES: Update 'index.css' to define CSS variables for the new primary color (#7367F0) and background (#F8F7FA). Ensure dark mode support variables are set for the sidebar.",
+    "2. LAYOUT REFACTOR: Modify 'Layout.jsx' to implement the 'Dark Sidebar' pattern. The sidebar should use the dark background color (#2F3349). The Header should be 'floating' (detached from top/sides with margin) and have a drop shadow, matching the Materialize template.",
+    "3. DASHBOARD REDESIGN: Rewrite 'Dashboard.jsx'. REMOVE the current gradient hero section. Replace it with a clean grid layout. Top row: 4 Stats Cards (Customers, Orders, Items, Expenses) styled with the new card guidelines (white, shadow, no border).",
+    "4. STATS WIDGETS: Update the design of stats widgets. They should have a colored square icon container (opacity 15%) on the left or top-right, with the value and label clearly visible.",
+    "5. CHARTS & TABLES: Ensure charts use the new color palette (Purple for primary series). Tables should have clean rows, no vertical borders, and use the new text colors.",
+    "6. ICONS: Continue using Lucide React but ensure they are sized consistently (usually 20px or 24px) and colored according to the context (Primary Purple for active, Gray for inactive).",
+    "7. DATA-TESTID: PRESERVE ALL existing data-testid attributes. This is critical.",
+    "8. RESPONSIVENESS: Ensure the sidebar is collapsible on mobile and uses a backdrop overlay."
+  ],
+  "universal_guidelines": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) only where specified (e.g. floating header).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Create new components that match the style and conventions of existing components when needed",
+    "Examine existing components to understand the project's component patterns before creating new ones",
+    "Components MUST use named exports (export const ComponentName = ...)",
+    "Pages MUST use default exports (export default function PageName() {...})",
+    "Use 'sonner' for toasts. Sonner component are located in /app/frontend/src/components/ui/sonner.tsx"
+  ]
 }

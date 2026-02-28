@@ -650,13 +650,13 @@ Build a simple CRM for managing doctor leads. Features include:
   - Email Logs, WhatsApp Logs, Users, SMTP Settings, Database Backup moved under collapsible "Company" section
   - Company section auto-expands when navigating to sub-routes
   - Clean visual hierarchy with indented sub-items
-- [x] **Admin Profile Page** (`/admin-profile`):
+- [x] **Admin Profile Page** (`/admin/profile`):
   - Profile Information: Edit name and email
   - Email uniqueness validation
   - Change Password: Current password verification, new password update
   - Password visibility toggles
   - Role display (non-editable)
-- [x] **Database Backup Feature** (`/database-backup`):
+- [x] **Database Backup Feature** (`/admin/database-backup`):
   - **Manual Download**: Export all data as JSON file
   - **Scheduled Backups**: Auto-backup at 9:00 AM and 5:00 PM IST
   - **Notification Recipients**:
@@ -666,6 +666,40 @@ Build a simple CRM for managing doctor leads. Features include:
   - **Trigger Backup Now**: Manually send backup to WhatsApp & Email
   - **Backup History**: View recent backups with status and delivery indicators
   - Collections exported: doctors, medicals, agencies, items, orders, expenses, reminders, pending_items, portal_customers, support_tickets, users, company_settings, item_categories, transports, email_logs, whatsapp_logs, marketing_campaigns
+
+## URL Restructuring - COMPLETED Feb 28, 2026
+- [x] **Customer Portal as Default**:
+  - `/` → Customer Login page (default landing)
+  - `/register` → Customer Registration
+  - `/login` → Customer Login (alias)
+  - `/portal/*` → Customer Portal authenticated routes
+    - `/portal/dashboard` → Customer Dashboard
+    - `/portal/items` → Product Catalog
+    - `/portal/orders` → Order History
+    - `/portal/support` → Support Tickets
+    - `/portal/profile` → Customer Profile
+- [x] **Admin Panel under /admin**:
+  - `/admin/login` → Admin Login
+  - `/admin` → Admin Dashboard
+  - `/admin/doctors` → Doctors Management
+  - `/admin/medicals` → Medicals Management
+  - `/admin/agencies` → Agencies Management
+  - `/admin/items` → Items Management
+  - `/admin/orders` → Orders Management
+  - `/admin/marketing` → Marketing Module
+  - `/admin/expenses` → Expenses
+  - `/admin/reminders` → Reminders
+  - `/admin/pending-items` → Pending Items
+  - `/admin/customers` → Portal Customers
+  - `/admin/support` → Support Tickets
+  - `/admin/company-settings` → Company Details
+  - `/admin/users` → User Management
+  - `/admin/profile` → Admin Profile
+  - `/admin/email-logs` → Email Logs
+  - `/admin/whatsapp-logs` → WhatsApp Logs
+  - `/admin/smtp-settings` → SMTP Settings
+  - `/admin/database-backup` → Database Backup
+- [x] **Legacy Route Redirects**: Old routes automatically redirect to new `/admin/*` paths
 
 ## Tech Stack
 - **Backend**: FastAPI, Motor (async MongoDB), PyJWT, bcrypt

@@ -322,18 +322,12 @@ const CustomerOrders = () => {
                 />
               </div>
 
-              {/* Cart Summary */}
+              {/* Cart Summary - Items count only */}
               <Card className="rounded-xl border-0 shadow-sm bg-slate-50">
                 <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Items ({cart.length})</span>
-                      <span className="text-slate-700">₹{cartTotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-base font-bold pt-2 border-t border-slate-200">
-                      <span className="text-slate-800">Total</span>
-                      <span className="text-emerald-600">₹{cartTotal.toLocaleString()}</span>
-                    </div>
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-slate-600">Total Items</span>
+                    <span className="text-emerald-600 font-bold">{cart.length} items</span>
                   </div>
                 </CardContent>
               </Card>
@@ -505,11 +499,11 @@ const CustomerOrders = () => {
                 </div>
               )}
 
-              {/* Order Summary */}
-              <div className="pt-3 border-t space-y-1.5">
-                <div className="flex justify-between text-sm font-bold">
-                  <span className="text-slate-800">Total</span>
-                  <span className="text-emerald-600">₹{selectedOrder.total_amount?.toLocaleString()}</span>
+              {/* Order Summary - Items count only */}
+              <div className="pt-3 border-t">
+                <div className="flex justify-between text-sm font-medium">
+                  <span className="text-slate-600">Total Items</span>
+                  <span className="text-emerald-600 font-bold">{selectedOrder.items?.length || 0} items</span>
                 </div>
               </div>
             </div>

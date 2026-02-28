@@ -571,14 +571,18 @@ export const Expenses = () => {
             <Printer className="w-4 h-4" />
             Print Report
           </Button>
-          <Button variant="outline" onClick={() => setShowCategoryModal(true)}>
-            <Tag className="w-4 h-4 mr-2" />
-            Categories
-          </Button>
-          <Button onClick={() => setShowAddModal(true)} className="gap-2" data-testid="add-expense-btn">
-            <Plus className="w-4 h-4" />
-            Add Expense
-          </Button>
+          {canAdd && (
+            <>
+              <Button variant="outline" onClick={() => setShowCategoryModal(true)}>
+                <Tag className="w-4 h-4 mr-2" />
+                Categories
+              </Button>
+              <Button onClick={() => setShowAddModal(true)} className="gap-2" data-testid="add-expense-btn">
+                <Plus className="w-4 h-4" />
+                Add Expense
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

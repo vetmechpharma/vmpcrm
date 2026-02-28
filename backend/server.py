@@ -4314,6 +4314,103 @@ async def get_customer_orders(customer: dict = Depends(get_current_customer)):
     
     return result
 
+@api_router.post("/customer/orders")
+async def create_customer_order(request: Request, background_tasks: BackgroundTasks, customer: dict = Depends(get_current_customer)):
+    """Create a new order from the customer portal cart"""
+    body = await request.json()
+    items = body.get('items', [])
+    notes = body.get('notes', '')
+    
+    if not items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+    
+    # Generate order number
+    today_str = datetime.now(timezone.utc).strftime('%Y%m%d')
+    today_orders = await db.orders.count_documents({
+        'order_number': {'$regex': f'^ORD-{today_str}'}
+    })
+    order_number = f"ORD-{today_str}-{(today_orders + 1):04d}"
+    
+    order_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    clean_phone = customer.get('phone', '')
+    customer_name = customer.get('name', '')
+    customer_role = customer.get('role', 'doctor')
+    
+    # Try to find linked entity
+    entity_id = None
+    collection_map = {
+        'doctor': db.doctors,
+        'medical': db.medicals,
+        'agency': db.agencies
+    }
+    collection = collection_map.get(customer_role, db.doctors)
+    linked = await collection.find_one({'phone': clean_phone}, {'_id': 0, 'id': 1})
+    if linked:
+        entity_id = linked['id']
+    
+    # Build order items
+    order_items = []
+    for item in items:
+        order_items.append({
+            'item_id': item.get('item_id', ''),
+            'item_code': item.get('item_code', ''),
+            'item_name': item.get('item_name', ''),
+            'quantity': str(item.get('quantity', '1')),
+            'rate': float(item.get('rate', 0)),
+            'mrp': float(item.get('rate', 0)),
+        })
+    
+    order_doc = {
+        'id': order_id,
+        'order_number': order_number,
+        'doctor_id': entity_id or customer.get('id', ''),
+        'customer_type': customer_role,
+        'doctor_name': customer_name,
+        'doctor_phone': clean_phone,
+        'doctor_email': customer.get('email', ''),
+        'doctor_address': customer.get('address', ''),
+        'items': order_items,
+        'status': 'pending',
+        'notes': notes,
+        'created_by': customer_name,
+        'created_by_id': customer.get('id', ''),
+        'source': 'customer_portal',
+        'created_at': now.isoformat()
+    }
+    
+    await db.orders.insert_one(order_doc)
+    
+    # Send WhatsApp confirmation in background
+    try:
+        order_item_models = [OrderItem(**oi) for oi in order_items]
+        background_tasks.add_task(
+            send_whatsapp_order,
+            clean_phone,
+            order_item_models,
+            order_number,
+            customer_name
+        )
+    except Exception as e:
+        logger.error(f"Failed to queue WhatsApp for customer order: {e}")
+    
+    # Send email confirmation in background
+    try:
+        background_tasks.add_task(
+            send_order_confirmation_email,
+            order_doc,
+            order_items
+        )
+    except Exception as e:
+        logger.error(f"Failed to queue email for customer order: {e}")
+    
+    return {
+        "message": "Order placed successfully",
+        "order_number": order_number,
+        "order_id": order_id
+    }
+
 @api_router.get("/customer/tasks")
 async def get_customer_tasks(customer: dict = Depends(get_current_customer)):
     """Get tasks assigned to customer (created by admin/staff for them)"""

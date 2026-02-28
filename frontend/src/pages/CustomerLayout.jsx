@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
@@ -6,7 +6,9 @@ import {
   ChevronLeft,
   Stethoscope,
   Store,
-  Building2
+  Building2,
+  Download,
+  X
 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import axios from 'axios';
@@ -18,6 +20,20 @@ const CustomerLayout = () => {
   const location = useLocation();
   const [customer, setCustomer] = useState(null);
   const [cart, setCart] = useState([]);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  const handleBeforeInstall = useCallback((e) => {
+    e.preventDefault();
+    setInstallPrompt(e);
+    const dismissed = localStorage.getItem('pwa_install_dismissed');
+    if (!dismissed) setShowInstallBanner(true);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, [handleBeforeInstall]);
 
   useEffect(() => {
     const token = localStorage.getItem('customerToken');

@@ -166,7 +166,7 @@ const CustomerLayout = () => {
       {/* Main Content */}
       <main className="md:ml-72 min-h-screen pt-14 pb-20 md:pt-0 md:pb-0">
         <div className="max-w-5xl mx-auto">
-          <Outlet context={{ customer, setCustomer }} />
+          <Outlet context={{ customer, setCustomer, cart, setCart }} />
         </div>
       </main>
 

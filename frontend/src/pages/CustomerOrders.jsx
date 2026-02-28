@@ -194,23 +194,24 @@ const CustomerOrders = () => {
     return configs[status] || configs.pending;
   };
 
-  const filteredOrders = orders.filter(order => {
-    if (activeTab === 'active') {
-      return !['delivered', 'cancelled'].includes(order.status);
-    }
-    if (activeTab === 'completed') {
-      return order.status === 'delivered';
-    }
-    if (activeTab === 'cancelled') {
-      return order.status === 'cancelled';
-    }
-    return true;
-  });
+  const activeOrders = orders.filter(o => !['delivered', 'cancelled'].includes(o.status));
+  const completedOrders = orders.filter(o => o.status === 'delivered');
+  const cancelledOrders = orders.filter(o => o.status === 'cancelled');
+
+  const getFilteredOrders = () => {
+    if (activeTab === 'active') return activeOrders;
+    if (activeTab === 'completed') return completedOrders;
+    if (activeTab === 'cancelled') return cancelledOrders;
+    return [];
+  };
+
+  const filteredOrders = getFilteredOrders();
 
   const tabs = [
     { id: 'cart', label: `Cart (${cart?.length || 0})`, icon: ShoppingCart },
-    { id: 'active', label: 'Active', icon: Clock },
-    { id: 'completed', label: 'Completed', icon: CheckCircle },
+    { id: 'active', label: `Active (${activeOrders.length})`, icon: Clock },
+    { id: 'completed', label: `Completed (${completedOrders.length})`, icon: CheckCircle },
+    { id: 'cancelled', label: `Cancelled (${cancelledOrders.length})`, icon: XCircle },
   ];
 
   if (loading) {

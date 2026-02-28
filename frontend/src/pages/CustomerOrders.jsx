@@ -495,6 +495,71 @@ const CustomerOrders = () => {
                 </div>
               )}
 
+              {/* Transport & Shipping Details */}
+              {(selectedOrder.transport_name || selectedOrder.tracking_number || selectedOrder.invoice_number || selectedOrder.boxes_count || selectedOrder.cans_count || selectedOrder.bags_count) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-800">Shipping & Invoice Details</p>
+                  <div className="bg-blue-50 rounded-xl p-3 space-y-2">
+                    {selectedOrder.transport_name && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Transport</span>
+                        <span className="font-medium text-slate-800">{selectedOrder.transport_name}</span>
+                      </div>
+                    )}
+                    {selectedOrder.payment_mode && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Payment Mode</span>
+                        <span className={`font-semibold ${selectedOrder.payment_mode === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {selectedOrder.payment_mode === 'paid' ? 'Paid' : 'To Pay'}
+                        </span>
+                      </div>
+                    )}
+                    {selectedOrder.tracking_number && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Tracking No.</span>
+                        <span className="font-medium text-slate-800">{selectedOrder.tracking_number}</span>
+                      </div>
+                    )}
+                    {selectedOrder.delivery_station && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Delivery Station</span>
+                        <span className="font-medium text-slate-800">{selectedOrder.delivery_station}</span>
+                      </div>
+                    )}
+                    {(selectedOrder.boxes_count || selectedOrder.cans_count || selectedOrder.bags_count) && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Packages</span>
+                        <span className="font-medium text-slate-800">
+                          {[
+                            selectedOrder.boxes_count ? `${selectedOrder.boxes_count} Box` : null,
+                            selectedOrder.cans_count ? `${selectedOrder.cans_count} Can` : null,
+                            selectedOrder.bags_count ? `${selectedOrder.bags_count} Bag` : null,
+                          ].filter(Boolean).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    {selectedOrder.invoice_number && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Invoice No.</span>
+                        <span className="font-medium text-slate-800">{selectedOrder.invoice_number}</span>
+                      </div>
+                    )}
+                    {selectedOrder.invoice_value && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Invoice Value</span>
+                        <span className="font-bold text-slate-800">₹{Number(selectedOrder.invoice_value).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {selectedOrder.invoice_date && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500">Invoice Date</span>
+                        <span className="font-medium text-slate-800">{new Date(selectedOrder.invoice_date).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Order Summary - Items count only */}
               <div className="pt-3 border-t">
                 <div className="flex justify-between text-sm font-medium">

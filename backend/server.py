@@ -7062,6 +7062,7 @@ async def update_order_transport(order_id: str, transport_data: OrderStatusUpdat
 
 @api_router.put("/orders/{order_id}/items")
 async def update_order_items(order_id: str, update_data: OrderItemsUpdate, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+
     """Update order items and optionally create pending items for removed items"""
     order = await db.orders.find_one({'id': order_id}, {'_id': 0})
     if not order:

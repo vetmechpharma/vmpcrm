@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
-import { ListTodo, CheckCircle, Clock, Calendar, Loader2, AlertCircle } from 'lucide-react';
+import { ListTodo, CheckCircle, Clock, Calendar, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -10,13 +10,11 @@ const CustomerTasks = () => {
   const { customer } = useOutletContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
     try {
       const token = localStorage.getItem('customerToken');
       const response = await axios.get(`${API_URL}/api/customer/tasks`, {
@@ -27,8 +25,16 @@ const CustomerTasks = () => {
       console.error('Failed to fetch tasks');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => fetchTasks(), 30000);
+    return () => clearInterval(interval);
+  }, [fetchTasks]);
 
   const isOverdue = (dueDate) => {
     if (!dueDate) return false;

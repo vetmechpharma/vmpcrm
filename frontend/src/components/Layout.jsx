@@ -181,6 +181,7 @@ export const Layout = ({ children }) => {
                 </div>
               )}
             </div>
+            )}
           </nav>
 
           {/* User info */}

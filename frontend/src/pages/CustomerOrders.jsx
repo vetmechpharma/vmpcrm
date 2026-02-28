@@ -468,23 +468,23 @@ const CustomerOrders = () => {
                 <p className="text-sm font-medium text-slate-800 mb-2">Items</p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(selectedOrder.items || []).map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                          <Package className="w-4 h-4 text-slate-400" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-slate-800 line-clamp-1">
-                            {item.item_name}
-                          </p>
-                          <p className="text-[10px] text-slate-500">
-                            ₹{item.rate} × {item.quantity}
-                          </p>
-                        </div>
+                    <div key={idx} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg">
+                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                        <Package className="w-4 h-4 text-slate-400" />
                       </div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        ₹{((item.rate || 0) * (parseInt(item.quantity) || 1)).toLocaleString()}
-                      </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-800 line-clamp-1">
+                          {item.item_name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {item.item_code}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-slate-800">
+                          Qty: {item.quantity}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>

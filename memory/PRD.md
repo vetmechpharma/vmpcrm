@@ -642,6 +642,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **CSS variables**: New color palette (primary #7367F0, success #28C76F, warning #FF9F43, danger #EA5455, info #00CFE8)
 - [x] **mat-card class**: Reusable white card with Materialize shadow (0.25rem 1.125rem)
 
+## Cuba Template Design System - COMPLETED Feb 28, 2026
+- [x] **Global Shadcn update**: card.jsx (15px radius, Cuba shadow), badge.jsx (soft color variants), button.jsx (color shadow variants), table.jsx (Cuba header/row styling)
+- [x] **index.css**: Cuba status classes, .mat-card with 15px radius, .page-title-cuba, .cuba-input, .floating-header rounded 15px
+- [x] **Dashboard.jsx**: Welcome banner with greeting + time-of-day, stat cards with % change arrows, recent orders table, combined lead pipeline, two-column expenses/pending
+- [x] **Login.jsx**: Split-screen (image left, form right) matching Cuba login_three template
+- [x] **All admin pages**: Automatically inherit Cuba card/table/badge/button styling through shared Shadcn components
+
 ## Dashboard Enhancements - COMPLETED Feb 27, 2026
 - [x] **Comprehensive Dashboard Stats API**: New endpoint `/api/dashboard/comprehensive-stats` providing real-time statistics
 - [x] **Customers Overview**:

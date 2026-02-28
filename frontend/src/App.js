@@ -81,6 +81,7 @@ function AppRoutes() {
       <Route path="/" element={<CustomerLogin />} />
       <Route path="/register" element={<CustomerRegister />} />
       <Route path="/login" element={<CustomerLogin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       
       {/* Customer Portal - Authenticated Routes */}
       <Route path="/portal" element={<CustomerLayout />}>

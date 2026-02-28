@@ -878,6 +878,9 @@ export const Orders = () => {
                             <Button variant="ghost" size="sm" onClick={() => openUpdateModal(order)} title="Update Status">
                               <Truck className="w-4 h-4" />
                             </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteOrder(order.id)} title="Delete Order" className="text-red-500 hover:text-red-700 hover:bg-red-50" data-testid={`delete-order-${order.id}`}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </td>
                       </tr>

@@ -4189,8 +4189,7 @@ async def customer_login_otp_send(request: CustomerOTPRequest):
     config = await get_whatsapp_config()
     if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
-            message = f"Your VMP CRM login OTP is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
-            await send_whatsapp_message(config, clean_phone, message)
+            await send_whatsapp_otp(clean_phone, otp)
         except Exception as e:
             logger.error(f"Failed to send login OTP via WhatsApp: {e}")
     

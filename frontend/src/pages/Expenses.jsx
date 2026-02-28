@@ -793,16 +793,22 @@ export const Expenses = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold">₹{expense.amount.toLocaleString()}</TableCell>
+                        {(canEdit || canDelete) && (
                         <TableCell>
                           <div className="flex justify-center gap-1">
+                            {canEdit && (
                             <Button variant="ghost" size="sm" onClick={() => openEditModal(expense)} className="h-8 w-8 p-0">
                               <Edit2 className="w-4 h-4" />
                             </Button>
+                            )}
+                            {canDelete && (
                             <Button variant="ghost" size="sm" onClick={() => openDeleteModal(expense)} className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
                               <Trash2 className="w-4 h-4" />
                             </Button>
+                            )}
                           </div>
                         </TableCell>
+                        )}
                       </TableRow>
                     ))}
                     {/* Total Row */}

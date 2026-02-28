@@ -75,6 +75,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const hasPermission = (perm) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.permissions?.[perm] === true;
+  };
+
   const value = {
     user,
     loading,
@@ -84,6 +90,7 @@ export const AuthProvider = ({ children }) => {
     refreshUser,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    hasPermission,
   };
 
   return (

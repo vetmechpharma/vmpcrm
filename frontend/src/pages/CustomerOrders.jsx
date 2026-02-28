@@ -418,8 +418,8 @@ const CustomerOrders = () => {
                       
                       {/* Footer */}
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                        <p className="text-base font-bold text-emerald-600">
-                          ₹{order.total_amount?.toLocaleString()}
+                        <p className="text-sm text-slate-600">
+                          {order.items?.length || 0} items
                         </p>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </div>

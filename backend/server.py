@@ -865,15 +865,20 @@ class UserPermissions(BaseModel):
     agencies: bool = True
     items: bool = True
     orders: bool = True
+    delete_orders: bool = False
     expenses: bool = True
     reminders: bool = True
     pending_items: bool = True
+    marketing: bool = True
+    support: bool = True
+    portal_customers: bool = True
     email_logs: bool = False
     whatsapp_logs: bool = False
     users: bool = False
     smtp_settings: bool = False
     company_settings: bool = False
     whatsapp_settings: bool = False
+    backup: bool = False
 
 class UserCreateByAdmin(BaseModel):
     email: EmailStr

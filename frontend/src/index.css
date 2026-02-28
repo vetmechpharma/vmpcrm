@@ -80,9 +80,9 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.625rem 1rem;
-    border-radius: 0.375rem;
+    border-radius: 8px;
     color: var(--sidebar-fg);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     transition: background-color 0.15s ease, color 0.15s ease;
     cursor: pointer;
 }
@@ -93,7 +93,7 @@
 .sidebar-nav-item.active {
     background: var(--sidebar-active);
     color: #fff;
-    box-shadow: 0 2px 6px rgba(115, 103, 240, 0.4);
+    box-shadow: 0 2px 8px rgba(115, 103, 240, 0.45);
 }
 
 /* Custom scrollbar */

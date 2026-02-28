@@ -48,7 +48,7 @@ export const Login = () => {
     try {
       await login(data.email, data.password);
       toast.success('Welcome back!');
-      navigate('/');
+      navigate('/admin');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Invalid credentials');
     } finally {

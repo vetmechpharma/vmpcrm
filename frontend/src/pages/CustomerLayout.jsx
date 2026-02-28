@@ -17,6 +17,7 @@ const CustomerLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [customer, setCustomer] = useState(null);
+  const [cart, setCart] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('customerToken');
@@ -29,6 +30,16 @@ const CustomerLayout = () => {
     
     setCustomer(JSON.parse(customerData));
     fetchProfile(token);
+    
+    // Load cart from localStorage
+    const savedCart = localStorage.getItem('customerCart');
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.error('Failed to parse cart');
+      }
+    }
   }, [navigate]);
 
   const fetchProfile = async (token) => {

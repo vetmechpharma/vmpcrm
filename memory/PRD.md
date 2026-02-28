@@ -628,6 +628,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Added Cancelled tab**: Cancelled orders now have dedicated tab
 - [x] **Dynamic tab counts**: Each tab label shows order count (e.g., "Active (10)", "Completed (1)")
 
+## Customer Tasks Sync Fix - COMPLETED Feb 28, 2026
+- [x] **Fixed entity linkage**: `GET /api/customer/tasks` now also checks by `portal_customer_id` as fallback
+- [x] **Fixed `update_task` endpoint**: Now handles tasks linked to medicals/agencies (not just doctors)
+- [x] **Added auto-refresh**: CustomerTasks polls every 30s for real-time updates from admin changes
+- [x] **Added Refresh button**: Manual refresh button on tasks page
+- [x] **Data fix**: Created missing linked doctor record for test customer (9999777766)
+
 ## Dashboard Enhancements - COMPLETED Feb 27, 2026
 - [x] **Comprehensive Dashboard Stats API**: New endpoint `/api/dashboard/comprehensive-stats` providing real-time statistics
 - [x] **Customers Overview**:

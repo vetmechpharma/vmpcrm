@@ -361,7 +361,7 @@ const CustomerItems = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
           {filteredItems.map((item) => {
             const price = getPrice(item);
             const offer = getOffer(item);

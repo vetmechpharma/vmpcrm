@@ -2472,7 +2472,19 @@ async def update_task(task_id: str, task_data: TaskUpdate, current_user: dict = 
         await db.tasks.update_one({'id': task_id}, {'$set': update_data})
     
     updated_task = await db.tasks.find_one({'id': task_id}, {'_id': 0})
-    doctor = await db.doctors.find_one({'id': updated_task['doctor_id']}, {'_id': 0, 'name': 1})
+    
+    # Find entity name - check doctor_id, medical_id, or agency_id
+    entity_name = None
+    entity_id = updated_task.get('doctor_id') or updated_task.get('medical_id') or updated_task.get('agency_id') or ''
+    if updated_task.get('doctor_id'):
+        entity = await db.doctors.find_one({'id': updated_task['doctor_id']}, {'_id': 0, 'name': 1})
+        entity_name = entity['name'] if entity else None
+    elif updated_task.get('medical_id'):
+        entity = await db.medicals.find_one({'id': updated_task['medical_id']}, {'_id': 0, 'name': 1})
+        entity_name = entity['name'] if entity else None
+    elif updated_task.get('agency_id'):
+        entity = await db.agencies.find_one({'id': updated_task['agency_id']}, {'_id': 0, 'name': 1})
+        entity_name = entity['name'] if entity else None
     
     created_at = updated_task['created_at']
     if isinstance(created_at, str):
@@ -2480,8 +2492,8 @@ async def update_task(task_id: str, task_data: TaskUpdate, current_user: dict = 
     
     return TaskResponse(
         id=updated_task['id'],
-        doctor_id=updated_task['doctor_id'],
-        doctor_name=doctor['name'] if doctor else None,
+        doctor_id=entity_id,
+        doctor_name=entity_name,
         title=updated_task['title'],
         description=updated_task.get('description'),
         due_date=updated_task.get('due_date'),

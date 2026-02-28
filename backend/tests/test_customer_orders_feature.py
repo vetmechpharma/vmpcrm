@@ -22,7 +22,7 @@ class TestCustomerOrderFeature:
     @pytest.fixture(scope="class")
     def customer_token(self):
         """Get customer authentication token"""
-        response = requests.post(f"{BASE_URL}/api/portal/login", json={
+        response = requests.post(f"{BASE_URL}/api/customer/login", json={
             "phone": CUSTOMER_PHONE,
             "password": CUSTOMER_PASSWORD
         })
@@ -224,7 +224,7 @@ class TestCustomerOrderEdgeCases:
     @pytest.fixture(scope="class")
     def customer_token(self):
         """Get customer authentication token"""
-        response = requests.post(f"{BASE_URL}/api/portal/login", json={
+        response = requests.post(f"{BASE_URL}/api/customer/login", json={
             "phone": CUSTOMER_PHONE,
             "password": CUSTOMER_PASSWORD
         })

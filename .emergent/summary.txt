@@ -1,153 +1,173 @@
 <analysis>**original_problem_statement:**
-The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers (Doctors, Medicals, Agencies), products, and a complex ordering system. It must include a customer-facing portal with role-based registration/login, a product showcase, account management, and a support ticket system.
+The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers, products, and a complex ordering system.
 
-A new request was to add a Marketing module to send promotional and informational messages (with images and scheduling) to customers via WhatsApp. The user also reported several bugs: the portal customer approval/disable function was not working, and the admin support ticket page was missing key features like add, edit, delete, and status updates.
+Recent feature requests implemented:
+-   **Enhanced Customer Management:** Display all registration data on the portal customer approval page, prevent duplicate registrations via mobile number, and add an option for admins to send new passwords to customers.
+-   **Dashboard Overhaul:** Create a comprehensive admin dashboard showing detailed statistics for customers, orders, items, expenses, and support tickets.
+-   **Admin & Backup Features:** Reorganize the admin sidebar, add an admin profile page for password changes, and implement a database backup system (manual download and scheduled backups sent via WhatsApp/Email).
+-   **URL Restructuring:** Rework the application's routing so the customer portal is the default (), and the admin panel is accessible under .
+-   **Customer Forgot Password:** Implement a Forgot Password flow for portal customers using WhatsApp OTP.
+-   **Customer Portal Product Page:** Overhaul the product listing page to include images, sub-category filters, text-based quantity input (supporting expressions like 10+5), add-to-cart functionality, and a responsive 2/4-column grid layout for mobile/desktop.
 
-**PRODUCT REQUIREMENTS:**
-- **Core CRM:** Manage Doctors, Medicals, Agencies.
-- **Product Management:** Manage items with role-based pricing.
-- **Order Management:** Public showcase, admin order creation, advanced tracking.
-- **Admin & User Management:** Role-based privileges.
-- **Customer Portal:** Separate registration/login, role-based pricing, order history, profile management, support tickets.
-- **Marketing Module:** Target customers by role/status, send promotional/greeting messages via WhatsApp, attach images, schedule campaigns, and track history.
-- **Logging & Reporting:** Message logs, expense tracking.
-- **Reminder System:** WhatsApp notifications for various events.
+Current reported issues:
+-   After adding items to the cart on the customer portal, the View Cart and Submit Order functionality is not working.
+-   The product grid on the customer portal should display four items per row on desktop.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM (FastAPI, React, MongoDB) with core features for managing customers, products, and orders.
-- A complete, mobile-first customer portal with a multi-step, role-based registration flow and a fallback OTP system.
-- An admin panel to manage portal customers, support tickets, and role-based item pricing.
-- A new, fully functional marketing module allowing admins to create, schedule, and send targeted WhatsApp campaigns with images and product details.
-- WhatsApp notifications are integrated for support ticket status updates and replies.
+A full-stack CRM application (FastAPI, React, MongoDB) with the following features:
+-   An admin panel () for managing customers, products, orders, marketing, support tickets, users, and system settings.
+-   A comprehensive admin dashboard with detailed business statistics.
+-   A customer portal (default at ) with role-based registration, login, forgot password, product browsing, and an in-progress cart system.
+-   A marketing module for sending scheduled WhatsApp campaigns.
+-   A database backup system with manual and automated (scheduled) backups sent to WhatsApp and email.
+-   The URL structure has been refactored to separate admin and customer-facing routes.
 
 **Last working item**:
-- **Last item agent was working**: Implementing and enhancing WhatsApp notifications for the support ticket system. The agent added notifications for status changes and refined the message template for replies to make it more professional.
-- **Status**: USER VERIFICATION PENDING
-- **Agent Testing Done**: Y
-- **Which testing method agent to use?**: Backend testing agent to verify the content and delivery of WhatsApp messages for different ticket events (status change, new reply).
-- **User Testing Done**: N
+-   **Last item agent was working**: Fixing the broken cart and order submission flow for the customer portal. The agent identified that the existing  page was only for viewing history and started creating a new, comprehensive page to handle both the cart view and order submission logic.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: Frontend testing agent to conduct a full end-to-end test of the customer ordering flow: adding multiple items to the cart, viewing the cart, updating quantities, placing the order, and verifying the order appears in both the customer's history and the admin panel.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-None. All user-reported issues from the last session have been resolved.
+-   **Issue 1 (P0):** The customer portal's View Cart and Submit Order functionality is broken.
+    -   **Attempted fixes:** The agent identified that  was inadequate and started rewriting it to include cart functionality.
+    -   **Next debug checklist:**
+        1.  Complete the implementation of  to display items from the  state.
+        2.  Implement logic to calculate totals, and allow users to modify or remove items from the cart.
+        3.  Create a  endpoint in  to handle order submission from the cart.
+        4.  Implement the  function in  to call the new API endpoint.
+        5.  Ensure the cart is cleared and the user is redirected to an order success or history page after submission.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical bug blocking the core business function of the customer portal (placing orders). Fixing it will complete the e-commerce loop.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
-None.
+-   **Task 1 (P0):** Complete the Customer Cart and Order Submission Feature.
+    -   **Where to resume:** Continue building the  component. The file has been created but the logic for displaying cart items, calculating totals, and submitting the order needs to be written.
+    -   **What will be achieved with this?**: A fully functional shopping cart and ordering system for the customer portal.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: None
+
+-   **Task 2 (P1):** Make the customer portal product grid responsive.
+    -   **Where to resume:** The agent has already updated  to use a 2-column grid. This needs to be modified to be responsive: 4 columns on large screens (), 2 on smaller screens.
+    -   **What will be achieved with this?**: An improved user experience on desktop, matching the user's request.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-  - (P0) **Refactor :** This monolithic file is now over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (e.g., routers, models, services) to improve maintainability and stability.
-  - (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
-  - (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
-- **Future Tasks:**
-  - (P2) Sales reports with charts and top performers.
-  - (P2) Data import/export functionality for other modules.
-  - (P2) Sales target management.
+-   **Upcoming Tasks:**
+    -   (P0) **Refactor :** This monolithic file is over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (e.g., routers, models, services) to improve maintainability and stability.
+    -   (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
+    -   (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
+-   **Future Tasks:**
+    -   (P2) Sales reports with charts and top performers.
+    -   (P2) Data import/export functionality for other modules.
+    -   (P2) Sales target management.
 
 **Completed work in this session**
-- **Enhanced Registration & Fallback OTP System:** Fixed the WhatsApp OTP delivery bug, implemented an admin UI for fallback OTPs, and created the multi-step, role-based registration flow.
-- **New Marketing Module:** Built a complete marketing module from scratch, including backend APIs and a frontend UI. Admins can now create and send targeted WhatsApp campaigns with images, product details, and scheduling.
-- **Portal Customer Management Fix:** Resolved a bug preventing admins from approving, rejecting, or suspending portal customers. The UI in  is now fully functional.
-- **Admin Support Ticket Overhaul:** Rewrote the  page to include full CRUD (Create, Read, Update, Delete) functionality for tickets, including in-line status updates and filters.
-- **Support Ticket Notifications:** Implemented automatic WhatsApp notifications to customers when their ticket status is updated or a new reply is added.
-- **Marketing Image Attachment Fix:** Corrected the image handling for marketing campaigns. The system now defaults to using a product's image for promotions and correctly sends it via the WhatsApp API.
-- **Marketing Product Selection Fix:** Improved the UI for product promotions to properly display role-based pricing and handle item selection.
+-   **Enhanced Customer Admin:** The portal customer approval page () now displays all registration data, and a duplicate mobile number check was added to the registration flow.
+-   **Password Management:** Implemented a Send New Password feature for portal customers and a Send Portal Access feature for admin-created customers. Added a Forgot Password flow for the customer portal.
+-   **Admin Profile Management:** Created a new page () allowing admins to edit their details and change their password.
+-   **Comprehensive Admin Dashboard:** The dashboard () was completely redesigned to show detailed stats on customers, orders, items, expenses, and support tickets, powered by a new  endpoint.
+-   **Sidebar & URL Restructuring:** Reorganized the admin sidebar () and fundamentally changed the app's routing in  to serve the customer portal from the root () and the admin panel from .
+-   **Database Backup System:** Implemented manual and scheduled database backups, with delivery via WhatsApp and email, configured via a new  page.
+-   **Customer Product Page Overhaul:** The customer-facing product page () was rebuilt to match user-provided designs, including a responsive grid, text-based quantity inputs, sub-category filters, and a complete Add to Cart workflow with UI feedback.
 
 **Earlier issues found/mentioned but not fixed**
-- **Issue 1: Monolithic  file**: This is a long-standing issue and has been escalated to the highest priority refactoring task (P0). The file's size and complexity pose a significant risk to future development.
+-   **Issue 1: Monolithic  file**: This remains a critical, high-priority (P0) refactoring task. The file's size makes development slow and risky.
 
 **Known issue recurrence from previous fork**
-- None.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
-- **Frontend:** React, TailwindCSS, Shadcn/UI, .
-- **Architecture:** Monolithic backend with a React SPA frontend. The session heavily expanded functionality by adding a new marketing module and overhauling existing admin pages.
+-   **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio,  for scheduled backups.
+-   **Frontend:** React, TailwindCSS, Shadcn/UI, ,  for complex routing.
+-   **Architecture:** Monolithic backend with a React SPA frontend. The URL structure was significantly refactored to separate admin and customer areas.
 
 **key DB schema**
-- **New Collections:**
-  - : Stores campaign details, type, message, recipients, schedule, and image data ().
-  - : Stores reusable message templates.
-- **Modified Collections:**
-  - :  field updated to handle , , , and  states.
-  - : Schema enhanced with , , and fields for admin-side creation/editing.
+-   No new collections were added, but the  collection was manually managed (re-created) during a debugging session to fix a login issue.
 
 **changes in tech stack**
-- None.
+-    was introduced on the backend to handle scheduled database backups.
 
 **All files of reference**
-- **Heavily Modified/Rewritten:** , , .
-- **New Files:** .
-- **Modified:** , , , .
-- **Reports**: , .
+-   **Critically Modified:**  (routing overhaul),  (UI rewrite),  (UI rewrite and new functionality).
+-   **New Files:** , , , .
+-   **Backend Modified:**  (added dashboard stats, admin profile, and backup APIs).
 
 **Areas that need refactoring**:
-- ** (CRITICAL)**: The absolute top priority. This monolithic file must be broken down into a modern folder structure (e.g., , , ) to ensure the project remains maintainable.
-- **, , **: These files contain duplicated logic (address form, portal badge) that should be extracted into reusable components.
+-   ** (CRITICAL)**: The top priority is to break this monolithic file into a modern folder structure (e.g., , , ).
+-   **, , **: These files still contain duplicated UI and logic that should be extracted into reusable components.
 
 **key api endpoints**
-- **New Marketing Endpoints:**
-  - 
-  - 
-  - 
-- **New/Modified Admin Support Ticket Endpoints:**
-  - 
-  - 
-  - 
-  - 
-- **Modified Portal Customer Endpoints:**
-  - 
-  - 
-  - 
-  - 
+-   **New Dashboard Endpoint:** 
+-   **New Admin Management Endpoints:**
+    -   
+    -   
+    -   
+-   **New Database Backup Endpoints:**
+    -   
+    -   
+    -   
+    -   
+-   **New Customer Endpoint:** 
 
 **Critical Info for New Agent**
-- The agent successfully completed all recent user feature requests and bug fixes. The application is in a stable, enhanced state.
-- **Your immediate priority is to propose and execute the refactoring of **. This is a critical technical debt that hinders development and increases risk. Do not start new feature work until this is addressed.
-- The  WhatsApp integration is now a core part of the application, used for OTP, marketing, and support notifications. All related logic resides in .
+-   The application's URL structure has been completely refactored. The customer portal is now at the root (, ), and the admin panel is entirely under the  prefix. Be mindful of this when creating or updating links.
+-   The immediate task is to fix the broken View Cart and Submit Order functionality. A new  file has been created for this purpose, but it is empty. You must build out the cart UI and the backend order submission API.
+-   The P0 priority refactoring of  should be addressed after the critical cart functionality is fixed.
 
 **documents and test reports created in this job**
--  (updated)
-- 
-- 
+-    (updated)
+-   
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  - User requested WhatsApp notifications for support ticket status changes. **Status: COMPLETED**
-9.  - User reported missing CRUD features on the admin support ticket page. **Status: COMPLETED**
-8.  - User reported that the approve/reject/suspend buttons were not working for portal customers. **Status: COMPLETED**
-7.  - User reported two issues: general image attachment wasn't working, and product promotions should use the item's image by default. **Status: COMPLETED**
-6.  - User reported issues with the product selection UI in the marketing module. **Status: COMPLETED**
-5.  - User reported that images were not being attached to marketing campaigns. **Status: COMPLETED**
-4.  - User provided detailed requirements for the new Marketing Module. **Status: COMPLETED**
-3.  - Agent confirmed understanding and started building the marketing feature. **Status: HANDLED**
-2.  - User provided additional requirements for the marketing module to prevent WhatsApp account banning. **Status: COMPLETED**
-1.  - User instruction to continue. **Status: HANDLED**
+10.  - User requested text-based quantity input and a 2-column mobile layout for the product page. **Status: COMPLETED**
+9.   - User requested a 4-column desktop layout and reported that the cart/order submission is broken. **Status: IN PROGRESS**
+8.   - User reported multiple issues on the customer product page: no quantity input, missing sub-category filter, and missing images. **Status: COMPLETED**
+7.   - User reported the forgot password link was broken. **Status: COMPLETED**
+6.   - User requested a major URL restructuring. **Status: COMPLETED**
+5.   - User requested sidebar reorganization and admin user management features. **Status: COMPLETED**
+4.   - User requested a comprehensive database backup system with scheduling. **Status: COMPLETED**
+3.   - User requested a complete overhaul of the admin dashboard with detailed statistics. **Status: COMPLETED**
+2.   - User requested enhancements to the portal customer management and registration process. **Status: COMPLETED**
+1.   - User instruction to continue. **Status: HANDLED**
 
 **Project Health Check:**
-- **Working**: All core CRM features, a fully functional mobile-first customer portal, a complete marketing module, and enhanced admin tools for managing portal users and support tickets.
-- **Broken**: No features are currently reported as broken.
-- **In-progress**: None.
+-   **Working**: Admin panel, comprehensive dashboard, customer registration/login, product browsing, marketing module, backup system.
+-   **Broken**: The customer's ability to view their cart and place an order is completely broken. This is a critical business function.
+-   **In-progress**: The cart/order submission fix and the responsive product grid layout.
 
 **3rd Party Integrations**
-- **Custom SMTP:** For emails.
-- **WhatsApp API (BotMasterSender):** Used for OTP, marketing campaigns, and support ticket notifications.
-- **openpyxl:** For reading  files on the backend.
+-   **Custom SMTP:** For emails.
+-   **WhatsApp API (BotMasterSender):** Used for OTP, marketing campaigns, and support/backup notifications.
+-   **openpyxl:** For reading  files on the backend.
+-   **apscheduler:** For scheduling database backups.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES
-- **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None.
-- **Known regressions:** None.
+-   **Testing agent used after significant changes:** YES
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** None.
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
-- **Admin Email:** 
-- **Admin Password:** 
-- **Test Customer Email/Phone:** 
-- **Test Customer Password:** 
+-   **Admin Email:** 
+-   **Admin Password:** 
+-   **Test Customer Email/Phone:** 
+-   **Test Customer Password:** 
 
 **What agent forgot to execute**
-- The agent successfully addressed all user requests from the session. No tasks were forgotten.</analysis>
+-   The critical refactoring of  was deferred to prioritize feature requests. It remains the most important piece of technical debt.
+-   The current task to fix the cart functionality was started but not completed.</analysis>

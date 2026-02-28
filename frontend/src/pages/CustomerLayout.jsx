@@ -96,6 +96,22 @@ const CustomerLayout = () => {
     return 'VMP Portal';
   };
 
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const result = await installPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      toast.success('App installed successfully!');
+    }
+    setInstallPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const dismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    localStorage.setItem('pwa_install_dismissed', 'true');
+  };
+
   if (!customer) return null;
 
   return (

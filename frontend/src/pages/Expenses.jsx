@@ -69,6 +69,10 @@ const YEARS = Array.from({ length: currentYear - 2019 }, (_, i) => ({
 })).reverse();
 
 export const Expenses = () => {
+  const { user, isAdmin, hasPermission } = useAuth();
+  const canAdd = isAdmin || hasPermission('expenses_add');
+  const canEdit = isAdmin || hasPermission('expenses_edit');
+  const canDelete = isAdmin || hasPermission('expenses_delete');
   const [expenses, setExpenses] = useState([]);
   const [allExpenses, setAllExpenses] = useState([]); // For print filtering
   const [categories, setCategories] = useState([]);

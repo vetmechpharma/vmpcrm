@@ -11,11 +11,11 @@ const BottomNav = () => {
   const location = useLocation();
   
   const navItems = [
-    { path: '/customer/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/customer/items', icon: Package, label: 'Products' },
-    { path: '/customer/orders', icon: ShoppingBag, label: 'Orders' },
-    { path: '/customer/support', icon: LifeBuoy, label: 'Support' },
-    { path: '/customer/profile', icon: User, label: 'Profile' },
+    { path: '/portal/dashboard', icon: LayoutDashboard, label: 'Home' },
+    { path: '/portal/items', icon: Package, label: 'Products' },
+    { path: '/portal/orders', icon: ShoppingBag, label: 'Orders' },
+    { path: '/portal/support', icon: LifeBuoy, label: 'Support' },
+    { path: '/portal/profile', icon: User, label: 'Profile' },
   ];
 
   return (

@@ -32,28 +32,28 @@ import {
 import { cn } from '../lib/utils';
 
 const mainNavItems = [
-  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/doctors', icon: Users, label: 'Doctors' },
-  { path: '/admin/medicals', icon: Store, label: 'Medicals' },
-  { path: '/admin/agencies', icon: Building, label: 'Agencies' },
-  { path: '/admin/items', icon: Package, label: 'Items' },
-  { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
-  { path: '/admin/marketing', icon: Megaphone, label: 'Marketing' },
-  { path: '/admin/expenses', icon: Receipt, label: 'Expenses' },
-  { path: '/admin/reminders', icon: Bell, label: 'Reminders' },
-  { path: '/admin/pending-items', icon: Clock, label: 'Pending Items', showBadge: true },
-  { path: '/admin/customers', icon: UserCheck, label: 'Portal Customers' },
-  { path: '/admin/support', icon: LifeBuoy, label: 'Support Tickets' },
+  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', perm: null },
+  { path: '/admin/doctors', icon: Users, label: 'Doctors', perm: 'doctors' },
+  { path: '/admin/medicals', icon: Store, label: 'Medicals', perm: 'medicals' },
+  { path: '/admin/agencies', icon: Building, label: 'Agencies', perm: 'agencies' },
+  { path: '/admin/items', icon: Package, label: 'Items', perm: 'items' },
+  { path: '/admin/orders', icon: ShoppingCart, label: 'Orders', perm: 'orders' },
+  { path: '/admin/marketing', icon: Megaphone, label: 'Marketing', perm: 'marketing' },
+  { path: '/admin/expenses', icon: Receipt, label: 'Expenses', perm: 'expenses' },
+  { path: '/admin/reminders', icon: Bell, label: 'Reminders', perm: 'reminders' },
+  { path: '/admin/pending-items', icon: Clock, label: 'Pending Items', perm: 'pending_items', showBadge: true },
+  { path: '/admin/customers', icon: UserCheck, label: 'Portal Customers', perm: 'portal_customers' },
+  { path: '/admin/support', icon: LifeBuoy, label: 'Support Tickets', perm: 'support' },
 ];
 
 const companySubItems = [
-  { path: '/admin/company-settings', icon: Building2, label: 'Company Details' },
+  { path: '/admin/company-settings', icon: Building2, label: 'Company Details', perm: 'company_settings' },
   { path: '/admin/users', icon: UserCog, label: 'Users', adminOnly: true },
   { path: '/admin/profile', icon: Key, label: 'Admin Profile', adminOnly: true },
-  { path: '/admin/email-logs', icon: Mail, label: 'Email Logs' },
-  { path: '/admin/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs' },
-  { path: '/admin/smtp-settings', icon: Settings, label: 'SMTP Settings' },
-  { path: '/admin/database-backup', icon: Database, label: 'Database Backup', adminOnly: true },
+  { path: '/admin/email-logs', icon: Mail, label: 'Email Logs', perm: 'email_logs' },
+  { path: '/admin/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs', perm: 'whatsapp_logs' },
+  { path: '/admin/smtp-settings', icon: Settings, label: 'SMTP Settings', perm: 'smtp_settings' },
+  { path: '/admin/database-backup', icon: Database, label: 'Database Backup', perm: 'backup' },
 ];
 
 export const Layout = ({ children }) => {

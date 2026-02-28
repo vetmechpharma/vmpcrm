@@ -42,7 +42,7 @@ const CustomerLogin = () => {
       localStorage.setItem('customerToken', response.data.access_token);
       localStorage.setItem('customerData', JSON.stringify(response.data.customer));
       toast.success('Welcome back!');
-      navigate('/customer/dashboard');
+      navigate('/portal/dashboard');
     } catch (error) {
       const message = error.response?.data?.detail || 'Login failed';
       toast.error(message);
@@ -128,7 +128,7 @@ const CustomerLogin = () => {
         <div className="mt-8 text-center">
           <p className="text-slate-500 text-sm">
             Don't have an account?{' '}
-            <Link to="/customer/register" className="text-emerald-600 font-semibold hover:underline">
+            <Link to="/register" className="text-emerald-600 font-semibold hover:underline">
               Register Now
             </Link>
           </p>

@@ -116,6 +116,19 @@ const CustomerLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* PWA Install Banner */}
+      {showInstallBanner && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-emerald-600 text-white px-4 py-3 flex items-center justify-between safe-area-pt" data-testid="pwa-install-banner">
+          <div className="flex items-center gap-2 flex-1">
+            <Download className="w-5 h-5 shrink-0" />
+            <span className="text-sm font-medium">Install VMP CRM app for quick access</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleInstall} className="px-3 py-1 bg-white text-emerald-700 rounded-lg text-xs font-bold" data-testid="pwa-install-btn">Install</button>
+            <button onClick={dismissInstallBanner} className="p-1 hover:bg-emerald-700 rounded-lg" data-testid="pwa-dismiss-btn"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
       {/* Mobile Header - Glassmorphism */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50 safe-area-pt">
         <div className="flex items-center justify-between h-14 px-4 max-w-md mx-auto">

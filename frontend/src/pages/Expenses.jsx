@@ -815,7 +815,7 @@ export const Expenses = () => {
                     <TableRow className="bg-slate-100 font-semibold">
                       <TableCell colSpan={6} className="text-right">TOTAL</TableCell>
                       <TableCell className="text-right text-lg">₹{totalFiltered.toLocaleString()}</TableCell>
-                      <TableCell></TableCell>
+                      {(canEdit || canDelete) && <TableCell></TableCell>}
                     </TableRow>
                   </TableBody>
                 </Table>

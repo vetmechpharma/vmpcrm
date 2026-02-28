@@ -672,12 +672,20 @@ Build a simple CRM for managing doctor leads. Features include:
   - `/` → Customer Login page (default landing)
   - `/register` → Customer Registration
   - `/login` → Customer Login (alias)
+  - `/forgot-password` → Customer Forgot Password (WhatsApp OTP)
   - `/portal/*` → Customer Portal authenticated routes
     - `/portal/dashboard` → Customer Dashboard
     - `/portal/items` → Product Catalog
     - `/portal/orders` → Order History
     - `/portal/support` → Support Tickets
     - `/portal/profile` → Customer Profile
+- [x] **Customer Forgot Password** (`/forgot-password`):
+  - 3-step wizard: Phone → OTP → New Password
+  - WhatsApp OTP verification
+  - Progress indicator
+  - Password visibility toggles
+  - Resend OTP option
+  - Change phone number option
 - [x] **Admin Panel under /admin**:
   - `/admin/login` → Admin Login
   - `/admin` → Admin Dashboard

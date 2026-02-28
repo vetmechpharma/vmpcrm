@@ -1,65 +1,63 @@
 <analysis>**original_problem_statement:**
 The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers, products, and a complex ordering system.
 
-Recent feature requests implemented:
--   **Enhanced Customer Management:** Display all registration data on the portal customer approval page, prevent duplicate registrations via mobile number, and add an option for admins to send new passwords to customers.
--   **Dashboard Overhaul:** Create a comprehensive admin dashboard showing detailed statistics for customers, orders, items, expenses, and support tickets.
--   **Admin & Backup Features:** Reorganize the admin sidebar, add an admin profile page for password changes, and implement a database backup system (manual download and scheduled backups sent via WhatsApp/Email).
--   **URL Restructuring:** Rework the application's routing so the customer portal is the default (), and the admin panel is accessible under .
--   **Customer Forgot Password:** Implement a Forgot Password flow for portal customers using WhatsApp OTP.
--   **Customer Portal Product Page:** Overhaul the product listing page to include images, sub-category filters, text-based quantity input (supporting expressions like 10+5), add-to-cart functionality, and a responsive 2/4-column grid layout for mobile/desktop.
-
-Current reported issues:
--   After adding items to the cart on the customer portal, the View Cart and Submit Order functionality is not working.
--   The product grid on the customer portal should display four items per row on desktop.
+**Recent Feature Requests (Current Session):**
+*   **Order Management:**
+    *   Fix broken customer cart and order submission flow.
+    *   Resolve incorrect order status filtering on the customer portal.
+    *   Display detailed transport and invoice information on order details pages (for both active and completed orders).
+    *   Add the ability for admins to delete orders.
+*   **Task Management:** Fix a bug where tasks updated in the admin panel were not refreshing on the customer portal.
+*   **Product Display:** Show the 'composition' of each item on the customer portal's product listing.
+*   **Customer Authentication:** Implement an OTP-based login option for the customer portal, in addition to the existing password login.
+*   **PWA:** Convert the customer-facing portal into an installable Progressive Web App (PWA).
+*   **UI/UX Redesign:**
+    *   Redesign the entire admin panel to match the Cuba admin template design provided by the user (including dashboard, login page, tables, cards, and buttons).
+*   **User Privileges:**
+    *   Implement a fine-grained user privilege system.
+    *   Create a restricted Accountant role ('CA' / 'Admin@123') with read-only access to the Expenses module.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application (FastAPI, React, MongoDB) with the following features:
--   An admin panel () for managing customers, products, orders, marketing, support tickets, users, and system settings.
--   A comprehensive admin dashboard with detailed business statistics.
--   A customer portal (default at ) with role-based registration, login, forgot password, product browsing, and an in-progress cart system.
--   A marketing module for sending scheduled WhatsApp campaigns.
--   A database backup system with manual and automated (scheduled) backups sent to WhatsApp and email.
--   The URL structure has been refactored to separate admin and customer-facing routes.
+A full-stack CRM application with a FastAPI backend, React frontend, and MongoDB.
+-   **Admin Panel ():** Features a complete Cuba themed redesign. It includes a comprehensive dashboard, management modules for customers, products, orders (with delete functionality), expenses, etc. It now supports a role-based privilege system that dynamically adjusts the UI (e.g., sidebar menus, action buttons) based on the user's permissions.
+-   **Customer Portal ():** A PWA-enabled portal for customers. It supports registration, login (password & OTP), password reset, product browsing, a fully functional cart and ordering system, order history with status tracking, and task management.
+-   **Authentication:** JWT-based auth for both admin and customers. The customer portal now supports dual login methods: password and WhatsApp OTP.
+-   **Backend:** A monolithic  containing all API logic, including new endpoints for customer order submission, OTP login, and order deletion. Endpoints are now protected by permission checks.
 
 **Last working item**:
--   **Last item agent was working**: Fixing the broken cart and order submission flow for the customer portal. The agent identified that the existing  page was only for viewing history and started creating a new, comprehensive page to handle both the cart view and order submission logic.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: Frontend testing agent to conduct a full end-to-end test of the customer ordering flow: adding multiple items to the cart, viewing the cart, updating quantities, placing the order, and verifying the order appears in both the customer's history and the admin panel.
+-   **Last item agent was working**: Creating a read-only 'Accountant' user role. The agent successfully created the user  (password: ), implemented the permission checks to restrict their access to only the Dashboard and a read-only Expenses page, and verified the flow. A minor UI glitch was noticed where an empty Settings section appears in the sidebar for this user.
+-   **Status**: USER VERIFICATION PENDING
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: manual testing by curl
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0):** The customer portal's View Cart and Submit Order functionality is broken.
-    -   **Attempted fixes:** The agent identified that  was inadequate and started rewriting it to include cart functionality.
+-   **Issue 1 (P0):** Minor UI Glitch: Empty Settings section in the sidebar for restricted users.
     -   **Next debug checklist:**
-        1.  Complete the implementation of  to display items from the  state.
-        2.  Implement logic to calculate totals, and allow users to modify or remove items from the cart.
-        3.  Create a  endpoint in  to handle order submission from the cart.
-        4.  Implement the  function in  to call the new API endpoint.
-        5.  Ensure the cart is cleared and the user is redirected to an order success or history page after submission.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical bug blocking the core business function of the customer portal (placing orders). Fixing it will complete the e-commerce loop.
+        1.  Edit .
+        2.  Wrap the Settings  component in a condition that checks if the user has any settings-related permissions (e.g., ).
+    -   **Why fix this issue and what will be achieved with the fix?**: Improves UX by hiding empty, non-functional UI elements for restricted-access users like the new Accountant role.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
-**In progress Task List**:
--   **Task 1 (P0):** Complete the Customer Cart and Order Submission Feature.
-    -   **Where to resume:** Continue building the  component. The file has been created but the logic for displaying cart items, calculating totals, and submitting the order needs to be written.
-    -   **What will be achieved with this?**: A fully functional shopping cart and ordering system for the customer portal.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: None
+-   **Issue 2 (P1):** OTP delivery via WhatsApp is failing.
+    -   **Attempted fixes:** The agent identified and fixed an incorrect function call in the backend. However, the third-party WhatsApp API (BotMasterSender) is now returning a  error, indicating a configuration problem (e.g., invalid credentials, incorrect setup) outside the agent's control. The OTP generation and verification logic itself is working (verified via logs).
+    -   **Next debug checklist:**
+        1.  Inform the user about the 400 error from the BotMasterSender API.
+        2.  Explain that this is likely a configuration issue with their WhatsApp API account credentials or setup.
+        3.  Ask the user to verify their credentials and configuration for the BotMasterSender service.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is blocking the primary delivery method for the OTP login feature.
+    -   **Status**: BLOCKED
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Blocked on other issue**: User action (verifying 3rd party API credentials).
 
--   **Task 2 (P1):** Make the customer portal product grid responsive.
-    -   **Where to resume:** The agent has already updated  to use a 2-column grid. This needs to be modified to be responsive: 4 columns on large screens (), 2 on smaller screens.
-    -   **What will be achieved with this?**: An improved user experience on desktop, matching the user's request.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**: None
+**In progress Task List**:
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
@@ -72,16 +70,20 @@ A full-stack CRM application (FastAPI, React, MongoDB) with the following featur
     -   (P2) Sales target management.
 
 **Completed work in this session**
--   **Enhanced Customer Admin:** The portal customer approval page () now displays all registration data, and a duplicate mobile number check was added to the registration flow.
--   **Password Management:** Implemented a Send New Password feature for portal customers and a Send Portal Access feature for admin-created customers. Added a Forgot Password flow for the customer portal.
--   **Admin Profile Management:** Created a new page () allowing admins to edit their details and change their password.
--   **Comprehensive Admin Dashboard:** The dashboard () was completely redesigned to show detailed stats on customers, orders, items, expenses, and support tickets, powered by a new  endpoint.
--   **Sidebar & URL Restructuring:** Reorganized the admin sidebar () and fundamentally changed the app's routing in  to serve the customer portal from the root () and the admin panel from .
--   **Database Backup System:** Implemented manual and scheduled database backups, with delivery via WhatsApp and email, configured via a new  page.
--   **Customer Product Page Overhaul:** The customer-facing product page () was rebuilt to match user-provided designs, including a responsive grid, text-based quantity inputs, sub-category filters, and a complete Add to Cart workflow with UI feedback.
+-   **Customer Cart & Order Submission:** Fixed the entire customer ordering flow, from adding items to the cart to submitting the order and verifying it in the admin panel.
+-   **Admin Panel Redesign:** Overhauled the entire admin panel UI/UX to match the Cuba admin template, including the login page, dashboard, sidebar, cards, tables, and buttons.
+-   **User Privileges & Roles:** Implemented a comprehensive permission system. The UI now dynamically adapts to the user's role. Created a restricted 'Accountant' role.
+-   **Order Deletion:** Added functionality for admins with the correct permissions to delete orders.
+-   **OTP Login & PWA:** Implemented OTP-based login for the customer portal and converted the portal into an installable Progressive Web App.
+-   **Bug Fix (Task Sync):** Resolved an issue where admin updates to tasks were not reflecting on the customer portal by fixing data linkage and adding auto-refresh.
+-   **UI Enhancements:**
+    -   Added product 'composition' to the customer item view.
+    -   Added detailed transport and invoice information to the customer's order history.
+    -   Fixed order status filtering on the customer portal and added a Cancelled tab with dynamic counts.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Monolithic  file**: This remains a critical, high-priority (P0) refactoring task. The file's size makes development slow and risky.
+-   **Issue 1: Monolithic  file**: Remains a critical, high-priority (P0) refactoring task.
+-   **Issue 2: Duplicated UI logic**: The , , and  files still contain duplicated UI and logic that should be refactored into reusable components.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -90,74 +92,76 @@ A full-stack CRM application (FastAPI, React, MongoDB) with the following featur
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio,  for scheduled backups.
--   **Frontend:** React, TailwindCSS, Shadcn/UI, ,  for complex routing.
--   **Architecture:** Monolithic backend with a React SPA frontend. The URL structure was significantly refactored to separate admin and customer areas.
+-   **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
+-   **Frontend:** React, TailwindCSS, Shadcn/UI, , .
+-   **Theming:** Heavy use of CSS variables (, etc.) in  to apply the Cuba theme globally.
+-   **PWA:** Service Workers, , and the  event for creating an installable web app.
+-   **State Management:** React Context () was extended to manage user permissions.
 
 **key DB schema**
--   No new collections were added, but the  collection was manually managed (re-created) during a debugging session to fix a login issue.
+-   **users:** The user document now contains a  object (e.g., ).
+-   **orders:** The order document now includes additional fields for shipping and invoicing: , , , , , .
 
 **changes in tech stack**
--    was introduced on the backend to handle scheduled database backups.
+-   None.
 
 **All files of reference**
--   **Critically Modified:**  (routing overhaul),  (UI rewrite),  (UI rewrite and new functionality).
--   **New Files:** , , , .
--   **Backend Modified:**  (added dashboard stats, admin profile, and backup APIs).
+-   **/app/backend/server.py**: Modified to add new endpoints and permission checks.
+-   **/app/frontend/src/pages/admin/Dashboard.jsx**: Completely rewritten for the new theme.
+-   **/app/frontend/src/pages/portal/CustomerOrders.jsx**: Completely rewritten to implement cart/order flow and subsequent UI updates.
+-   **/app/frontend/src/pages/admin/Login.jsx**: Completely rewritten for the new theme.
+-   **/app/frontend/src/pages/CustomerLogin.jsx**: Completely rewritten to support OTP login.
+-   **/app/frontend/src/components/layout/Layout.jsx**: Completely rewritten for the new theme and permission-based rendering.
+-   **/app/frontend/src/context/AuthContext.js**: Modified to add  helper.
+-   **/app/frontend/src/styles/index.css**: Modified with global CSS variables for theming.
+-   **/app/frontend/public/manifest.json**: New file for PWA.
+-   **/app/frontend/public/service-worker.js**: New file for PWA.
 
 **Areas that need refactoring**:
--   ** (CRITICAL)**: The top priority is to break this monolithic file into a modern folder structure (e.g., , , ).
--   **, , **: These files still contain duplicated UI and logic that should be extracted into reusable components.
+-   ** (CRITICAL)**: Top priority. The monolithic structure is unsustainable.
+-   **, , **: These pages share similar layouts and logic that should be extracted into reusable components to align with the new Cuba design system.
 
 **key api endpoints**
--   **New Dashboard Endpoint:** 
--   **New Admin Management Endpoints:**
-    -   
-    -   
-    -   
--   **New Database Backup Endpoints:**
-    -   
-    -   
-    -   
-    -   
--   **New Customer Endpoint:** 
+-   : (New) Creates an order from the customer's cart.
+-   : (New) Sends a login OTP to a customer's registered number.
+-   : (New) Validates an OTP and returns a JWT token.
+-   : (New) Deletes an order (requires permission).
+-   : Modified to include the user's  object in the response.
+-   : Modified to handle updates to the new  structure.
 
 **Critical Info for New Agent**
--   The application's URL structure has been completely refactored. The customer portal is now at the root (, ), and the admin panel is entirely under the  prefix. Be mindful of this when creating or updating links.
--   The immediate task is to fix the broken View Cart and Submit Order functionality. A new  file has been created for this purpose, but it is empty. You must build out the cart UI and the backend order submission API.
--   The P0 priority refactoring of  should be addressed after the critical cart functionality is fixed.
+-   **User Privileges are Active:** The admin panel is now driven by a permissions system. UI elements (sidebar links, buttons) are conditionally rendered using the  hook. Backend endpoints are also protected. Always consider permissions when adding or modifying admin features.
+-   **Cuba Design System:** All new admin UI development must conform to the Cuba theme. Utilize the global CSS variables in  and the styled Shadcn components.
+-   **Monolithic Backend:** Be extremely careful when editing . The file is very large, and changes can have unintended side effects. The top priority after fixing any critical bugs is to plan and execute its refactoring.
 
 **documents and test reports created in this job**
 -    (updated)
 -   
--   
--   
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  - User requested text-based quantity input and a 2-column mobile layout for the product page. **Status: COMPLETED**
-9.   - User requested a 4-column desktop layout and reported that the cart/order submission is broken. **Status: IN PROGRESS**
-8.   - User reported multiple issues on the customer product page: no quantity input, missing sub-category filter, and missing images. **Status: COMPLETED**
-7.   - User reported the forgot password link was broken. **Status: COMPLETED**
-6.   - User requested a major URL restructuring. **Status: COMPLETED**
-5.   - User requested sidebar reorganization and admin user management features. **Status: COMPLETED**
-4.   - User requested a comprehensive database backup system with scheduling. **Status: COMPLETED**
-3.   - User requested a complete overhaul of the admin dashboard with detailed statistics. **Status: COMPLETED**
-2.   - User requested enhancements to the portal customer management and registration process. **Status: COMPLETED**
-1.   - User instruction to continue. **Status: HANDLED**
+10. : Request to create a read-only Accountant user role. **Status: COMPLETED** (pending minor UI tweak)
+9.  : Request to add order deletion and a user permission system. **Status: COMPLETED**
+8.  : Request to redesign the entire admin panel using the Cuba theme. **Status: COMPLETED**
+7.  : Request to redesign the admin login page. **Status: COMPLETED**
+6.  : Initial request for an admin panel redesign (later superseded by the Cuba theme). **Status: COMPLETED**
+5.  : Request to show transport details on active order cards. **Status: COMPLETED**
+4.  : Request to add detailed shipping/invoice info to the order details modal. **Status: COMPLETED**
+3.  : Request for OTP login and PWA functionality. **Status: COMPLETED**
+2.  : Request to show product composition. **Status: COMPLETED**
+1.  : Bug report about tasks not syncing between admin and customer panels. **Status: COMPLETED**
 
 **Project Health Check:**
--   **Working**: Admin panel, comprehensive dashboard, customer registration/login, product browsing, marketing module, backup system.
--   **Broken**: The customer's ability to view their cart and place an order is completely broken. This is a critical business function.
--   **In-progress**: The cart/order submission fix and the responsive product grid layout.
+-   **Broken**: WhatsApp OTP delivery is non-functional due to a suspected third-party API configuration issue.
+-   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **Custom SMTP:** For emails.
--   **WhatsApp API (BotMasterSender):** Used for OTP, marketing campaigns, and support/backup notifications.
--   **openpyxl:** For reading  files on the backend.
+-   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(Currently experiencing issues)**.
+-   **openpyxl:** For reading  files.
 -   **apscheduler:** For scheduling database backups.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES
+-   **Testing agent used after significant changes:** YES (for the initial order flow fix).
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None.
 -   **Known regressions:** None.
@@ -165,9 +169,10 @@ A full-stack CRM application (FastAPI, React, MongoDB) with the following featur
 **Credentials to test flow:**
 -   **Admin Email:** 
 -   **Admin Password:** 
--   **Test Customer Email/Phone:** 
+-   **Test Customer Phone:** 
 -   **Test Customer Password:** 
+-   **Accountant Email:** 
+-   **Accountant Password:** 
 
 **What agent forgot to execute**
--   The critical refactoring of  was deferred to prioritize feature requests. It remains the most important piece of technical debt.
--   The current task to fix the cart functionality was started but not completed.</analysis>
+-   The critical refactoring of the monolithic  file has been consistently deferred to prioritize feature requests and bug fixes. It remains the most significant piece of technical debt.</analysis>

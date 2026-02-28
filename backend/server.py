@@ -5735,12 +5735,12 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Check if campaign has uploaded image
                     if campaign.get('has_image', False):
-                        image_url_to_send = f"https://order-flow-dev.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                        image_url_to_send = f"https://distributor-hub-17.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"https://order-flow-dev.preview.emergentagent.com/api/items/{item['id']}/image"
+                                image_url_to_send = f"https://distributor-hub-17.preview.emergentagent.com/api/items/{item['id']}/image"
                                 break
                     
                     if image_url_to_send:

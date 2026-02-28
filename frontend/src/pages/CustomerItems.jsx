@@ -420,6 +420,13 @@ const CustomerItems = () => {
                   {/* Code */}
                   <p className="text-[10px] text-slate-400 mt-0.5">{item.item_code}</p>
                   
+                  {/* Composition */}
+                  {item.composition && (
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                      {item.composition}
+                    </p>
+                  )}
+                  
                   {/* Price Section */}
                   <div className="flex items-baseline gap-1.5 mt-1.5">
                     <span className="text-base font-bold text-slate-900">₹{price}</span>

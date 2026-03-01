@@ -241,6 +241,19 @@ async def send_daily_reminder_summary():
 
 # ============== MODELS ==============
 
+# Greeting Template Models
+class GreetingTemplateCreate(BaseModel):
+    type: str  # birthday, anniversary
+    message: str  # Template with {customer_name}, {company_name} placeholders
+    image_url: Optional[str] = None
+    is_active: bool = True
+
+class GreetingTemplateUpdate(BaseModel):
+    type: Optional[str] = None
+    message: Optional[str] = None
+    image_url: Optional[str] = None
+    is_active: Optional[bool] = None
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str

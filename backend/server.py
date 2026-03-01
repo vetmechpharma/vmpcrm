@@ -144,6 +144,32 @@ async def send_daily_reminder_summary():
                 logger.info("No reminders today, skipping notification")
                 continue
             
+            # Collect detailed lists per type
+            followup_list = []
+            birthday_list = []
+            anniversary_list = []
+
+            for doc in doctors:
+                if doc.get('dob') and doc['dob'][5:] == month_day:
+                    birthday_list.append({'name': doc['name'], 'phone': doc.get('phone', ''), 'type': 'Doctor'})
+                if doc.get('follow_up_date') and doc['follow_up_date'] <= today_str:
+                    followup_list.append({'name': doc['name'], 'phone': doc.get('phone', ''), 'type': 'Doctor', 'status': doc.get('lead_status', '')})
+
+            for entity in medicals + agencies:
+                etype = 'Medical' if entity in medicals else 'Agency'
+                if entity.get('birthday') and entity['birthday'][5:] == month_day:
+                    birthday_list.append({'name': entity['name'], 'phone': entity.get('phone', ''), 'type': etype})
+                if entity.get('anniversary') and entity['anniversary'][5:] == month_day:
+                    anniversary_list.append({'name': entity['name'], 'phone': entity.get('phone', ''), 'type': etype})
+                if entity.get('follow_up_date') and entity['follow_up_date'] <= today_str:
+                    followup_list.append({'name': entity['name'], 'phone': entity.get('phone', ''), 'type': etype, 'status': entity.get('lead_status', '')})
+
+            # Get manual/custom reminders
+            manual_reminders = await db.reminders.find({
+                'reminder_date': today_str,
+                'is_completed': {'$ne': True}
+            }, {'_id': 0, 'title': 1, 'entity_name': 1}).to_list(50)
+
             # Build message
             message_lines = [
                 f"🌅 *Good Morning!*",
@@ -151,17 +177,37 @@ async def send_daily_reminder_summary():
                 f"Total: {total_count} reminder(s)",
                 ""
             ]
-            
-            if followup_count > 0:
-                message_lines.append(f"📞 Follow-ups: {followup_count}")
-            if birthday_count > 0:
-                message_lines.append(f"🎂 Birthdays: {birthday_count}")
-            if anniversary_count > 0:
-                message_lines.append(f"🎉 Anniversaries: {anniversary_count}")
-            if manual_count > 0:
-                message_lines.append(f"📝 Custom: {manual_count}")
-            
-            message_lines.append("")
+
+            if followup_list:
+                message_lines.append(f"📞 *Follow-ups ({len(followup_list)}):*")
+                for item in followup_list[:10]:
+                    status_tag = f" [{item['status']}]" if item.get('status') else ''
+                    message_lines.append(f"  • {item['name']} - {item['phone']}{status_tag}")
+                if len(followup_list) > 10:
+                    message_lines.append(f"  +{len(followup_list) - 10} more...")
+                message_lines.append("")
+
+            if birthday_list:
+                message_lines.append(f"🎂 *Birthdays ({len(birthday_list)}):*")
+                for item in birthday_list:
+                    message_lines.append(f"  • {item['name']} - {item['phone']} ({item['type']})")
+                message_lines.append("")
+
+            if anniversary_list:
+                message_lines.append(f"🎉 *Anniversaries ({len(anniversary_list)}):*")
+                for item in anniversary_list:
+                    message_lines.append(f"  • {item['name']} - {item['phone']} ({item['type']})")
+                message_lines.append("")
+
+            if manual_reminders:
+                message_lines.append(f"📝 *Custom ({len(manual_reminders)}):*")
+                for r in manual_reminders[:5]:
+                    name_part = f" - {r['entity_name']}" if r.get('entity_name') else ''
+                    message_lines.append(f"  • {r['title']}{name_part}")
+                if len(manual_reminders) > 5:
+                    message_lines.append(f"  +{len(manual_reminders) - 5} more...")
+                message_lines.append("")
+
             message_lines.append("Login to CRM to view details.")
             
             message = "\n".join(message_lines)

@@ -111,6 +111,16 @@ export const followupsAPI = {
   getHistory: (entityType, entityId) => api.get(`/followups/${entityType}/${entityId}`),
 };
 
+// Greeting Template APIs
+export const greetingTemplatesAPI = {
+  getAll: (params) => api.get('/greeting-templates', { params }),
+  create: (data) => api.post('/greeting-templates', data),
+  update: (id, data) => api.put(`/greeting-templates/${id}`, data),
+  delete: (id) => api.delete(`/greeting-templates/${id}`),
+  testSend: (params) => api.post('/greeting-templates/test-send', null, { params }),
+  getLogs: (limit) => api.get('/greeting-logs', { params: { limit } }),
+};
+
 // SMTP Config APIs
 export const smtpAPI = {
   getConfig: () => api.get('/smtp-config'),

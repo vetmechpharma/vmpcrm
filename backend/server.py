@@ -8738,13 +8738,16 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
     try:
         import httpx
         async with httpx.AsyncClient() as client:
-            response = await client.post(
+            params = {
+                'action': 'send',
+                'senderId': wa_config['sender_id'],
+                'authToken': wa_config['auth_token'],
+                'messageText': message,
+                'receiverId': admin_phone
+            }
+            response = await client.get(
                 wa_config['api_url'],
-                json={
-                    "token": wa_config['api_token'],
-                    "phone": admin_phone,
-                    "message": message
-                },
+                params=params,
                 timeout=30.0
             )
             
@@ -8754,6 +8757,8 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
             else:
                 logger.error(f"Failed to send reminder summary: {response.text}")
                 raise HTTPException(status_code=500, detail="Failed to send WhatsApp message")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error sending reminder summary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -160,7 +160,6 @@ const Customers = () => {
       if (response.data.password_sent) {
         toast.success(`New password sent to ${selectedCustomer.name} via WhatsApp!`);
       } else if (response.data.password) {
-        // WhatsApp failed - show password for manual sharing
         toast.info(
           <div>
             <p>{response.data.message}</p>
@@ -175,6 +174,57 @@ const Customers = () => {
       toast.error(error.response?.data?.detail || 'Failed to send new password');
     } finally {
       setSendingPassword(false);
+    }
+  };
+
+  const openEditModal = (customer) => {
+    setSelectedCustomer(customer);
+    setEditFormData({
+      name: customer.name || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      role: customer.role || 'doctor',
+      proprietor_name: customer.proprietor_name || '',
+      gst_number: customer.gst_number || '',
+      drug_license: customer.drug_license || '',
+      address_line_1: customer.address_line_1 || '',
+      address_line_2: customer.address_line_2 || '',
+      state: customer.state || '',
+      district: customer.district || '',
+      pincode: customer.pincode || '',
+      delivery_station: customer.delivery_station || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditCustomer = async () => {
+    if (!editFormData.name || !editFormData.phone) { toast.error('Name and phone are required'); return; }
+    setProcessing(true);
+    try {
+      await api.put(`/customers/${selectedCustomer.id}`, editFormData);
+      toast.success('Customer updated successfully');
+      setShowEditModal(false);
+      fetchCustomers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update customer');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/customers/${selectedCustomer.id}`);
+      toast.success(`${selectedCustomer.name} deleted successfully`);
+      setShowDeleteModal(false);
+      setShowDetailModal(false);
+      setSelectedCustomer(null);
+      fetchCustomers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete customer');
+    } finally {
+      setDeleting(false);
     }
   };
 

@@ -198,6 +198,14 @@ function AppRoutes() {
         } 
       />
       <Route 
+        path="/admin/greeting-templates" 
+        element={
+          <AdminProtectedRoute>
+            <GreetingTemplates />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
         path="/admin/customers" 
         element={
           <AdminProtectedRoute>

@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 # Global variable for background task
 daily_reminder_task = None
+greeting_task = None
 
 async def send_daily_reminder_summary():
     """Background task to send daily reminder summary to admin via WhatsApp"""

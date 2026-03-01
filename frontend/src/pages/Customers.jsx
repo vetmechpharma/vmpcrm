@@ -46,6 +46,10 @@ const Customers = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
   const [sendingPassword, setSendingPassword] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchCustomers();

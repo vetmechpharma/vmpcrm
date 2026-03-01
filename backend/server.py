@@ -239,6 +239,220 @@ async def send_daily_reminder_summary():
             # Wait 1 hour before retrying on error
             await asyncio.sleep(3600)
 
+
+async def send_birthday_anniversary_greetings():
+    """Background task to auto-send birthday/anniversary greetings at 10 AM IST via WhatsApp & Email"""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            # 10 AM IST = 4:30 AM UTC
+            target_hour = 4
+            target_minute = 30
+
+            next_run = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            if now >= next_run:
+                next_run += timedelta(days=1)
+
+            wait_seconds = (next_run - now).total_seconds()
+            logger.info(f"Birthday/Anniversary greeting task scheduled. Next run in {wait_seconds/3600:.1f} hours")
+            await asyncio.sleep(wait_seconds)
+
+            logger.info("Executing birthday/anniversary greetings...")
+
+            today = datetime.now(timezone.utc).date()
+            today_md = today.strftime('%m-%d')
+
+            # Get company name
+            company = await db.company_settings.find_one({}, {'_id': 0})
+            company_name = company.get('name', 'Our Company') if company else 'Our Company'
+
+            # Get configs
+            wa_config = await db.whatsapp_config.find_one({}, {'_id': 0})
+            smtp_config = await db.smtp_config.find_one({}, {'_id': 0})
+
+            # Collect all birthday/anniversary people
+            contacts = []
+
+            # Doctors (use dob field)
+            doctors = await db.doctors.find({'dob': {'$exists': True, '$ne': None, '$ne': ''}}, {'_id': 0}).to_list(1000)
+            for doc in doctors:
+                if doc.get('dob') and doc['dob'][5:] == today_md:
+                    contacts.append({'name': doc['name'], 'phone': doc.get('phone', ''), 'email': doc.get('email', ''), 'type': 'birthday', 'entity_type': 'doctor', 'entity_id': doc['id']})
+
+            # Medicals
+            medicals = await db.medicals.find({}, {'_id': 0, 'name': 1, 'id': 1, 'phone': 1, 'email': 1, 'birthday': 1, 'anniversary': 1, 'proprietor_name': 1}).to_list(1000)
+            for m in medicals:
+                if m.get('birthday') and m['birthday'][5:] == today_md:
+                    contacts.append({'name': m.get('proprietor_name') or m['name'], 'phone': m.get('phone', ''), 'email': m.get('email', ''), 'type': 'birthday', 'entity_type': 'medical', 'entity_id': m['id']})
+                if m.get('anniversary') and m['anniversary'][5:] == today_md:
+                    contacts.append({'name': m['name'], 'phone': m.get('phone', ''), 'email': m.get('email', ''), 'type': 'anniversary', 'entity_type': 'medical', 'entity_id': m['id']})
+
+            # Agencies
+            agencies = await db.agencies.find({}, {'_id': 0, 'name': 1, 'id': 1, 'phone': 1, 'email': 1, 'birthday': 1, 'anniversary': 1, 'proprietor_name': 1}).to_list(1000)
+            for a in agencies:
+                if a.get('birthday') and a['birthday'][5:] == today_md:
+                    contacts.append({'name': a.get('proprietor_name') or a['name'], 'phone': a.get('phone', ''), 'email': a.get('email', ''), 'type': 'birthday', 'entity_type': 'agency', 'entity_id': a['id']})
+                if a.get('anniversary') and a['anniversary'][5:] == today_md:
+                    contacts.append({'name': a['name'], 'phone': a.get('phone', ''), 'email': a.get('email', ''), 'type': 'anniversary', 'entity_type': 'agency', 'entity_id': a['id']})
+
+            if not contacts:
+                logger.info("No birthdays/anniversaries today")
+                continue
+
+            logger.info(f"Found {len(contacts)} birthday/anniversary contacts today")
+
+            for contact in contacts:
+                try:
+                    # Get a random active template
+                    templates = await db.greeting_templates.find(
+                        {'type': contact['type'], 'is_active': True}, {'_id': 0}
+                    ).to_list(50)
+
+                    if not templates:
+                        logger.warning(f"No active {contact['type']} templates found")
+                        continue
+
+                    import random
+                    template = random.choice(templates)
+                    message = template['message'].replace('{customer_name}', contact['name']).replace('{company_name}', company_name)
+                    image_url = template.get('image_url', '')
+
+                    # Send WhatsApp
+                    if wa_config and contact.get('phone'):
+                        try:
+                            async with httpx.AsyncClient() as http_client:
+                                if image_url:
+                                    params = {
+                                        'action': 'send',
+                                        'senderId': wa_config['sender_id'],
+                                        'authToken': wa_config['auth_token'],
+                                        'messageText': message,
+                                        'mediaUrl': image_url,
+                                        'receiverId': contact['phone']
+                                    }
+                                else:
+                                    params = {
+                                        'action': 'send',
+                                        'senderId': wa_config['sender_id'],
+                                        'authToken': wa_config['auth_token'],
+                                        'messageText': message,
+                                        'receiverId': contact['phone']
+                                    }
+                                resp = await http_client.get(wa_config['api_url'], params=params, timeout=30)
+                                logger.info(f"WhatsApp greeting sent to {contact['name']} ({contact['phone']}): {resp.status_code}")
+                        except Exception as we:
+                            logger.error(f"WhatsApp greeting failed for {contact['name']}: {we}")
+
+                    # Send Email
+                    if smtp_config and contact.get('email'):
+                        try:
+                            subject = f"Happy {'Birthday' if contact['type'] == 'birthday' else 'Anniversary'}! - {company_name}"
+                            html_body = f"""
+                            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+                                {'<img src="' + image_url + '" style="width:100%;max-width:600px;border-radius:12px;margin-bottom:20px;" />' if image_url else ''}
+                                <div style="white-space:pre-line;font-size:16px;line-height:1.6;color:#333;">{message}</div>
+                                <hr style="margin:20px 0;border:none;border-top:1px solid #eee;" />
+                                <p style="font-size:12px;color:#999;">Sent with love from {company_name}</p>
+                            </div>"""
+                            msg = MIMEMultipart()
+                            msg['From'] = f"{smtp_config['from_name']} <{smtp_config['from_email']}>"
+                            msg['To'] = f"{contact['name']} <{contact['email']}>"
+                            msg['Subject'] = subject
+                            msg.attach(MIMEText(html_body, 'html'))
+                            with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
+                                server.starttls()
+                                server.login(smtp_config['smtp_username'], smtp_config['smtp_password'])
+                                server.sendmail(smtp_config['from_email'], [contact['email']], msg.as_string())
+                            logger.info(f"Email greeting sent to {contact['name']} ({contact['email']})")
+                        except Exception as ee:
+                            logger.error(f"Email greeting failed for {contact['name']}: {ee}")
+
+                    # Log the greeting
+                    await db.greeting_logs.insert_one({
+                        'id': str(uuid.uuid4()),
+                        'contact_name': contact['name'],
+                        'contact_phone': contact.get('phone', ''),
+                        'contact_email': contact.get('email', ''),
+                        'entity_type': contact['entity_type'],
+                        'entity_id': contact['entity_id'],
+                        'greeting_type': contact['type'],
+                        'template_id': template.get('id'),
+                        'message': message,
+                        'sent_at': datetime.now(timezone.utc).isoformat()
+                    })
+
+                except Exception as ce:
+                    logger.error(f"Error sending greeting to {contact['name']}: {ce}")
+
+        except asyncio.CancelledError:
+            logger.info("Birthday/Anniversary greeting task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Error in greeting task: {str(e)}")
+            await asyncio.sleep(3600)
+
+
+async def seed_default_greeting_templates():
+    """Seed default greeting templates if none exist"""
+    count = await db.greeting_templates.count_documents({})
+    if count > 0:
+        return
+
+    templates = [
+        # Birthday templates
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Dear {customer_name},\n\nWishing you a very Happy Birthday! May this special day bring you endless joy and happiness.\n\nWarm regards,\n{company_name} Family",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Happy Birthday, {customer_name}!\n\nMay your birthday be filled with sunshine and smiles, laughter and love. Here's to another wonderful year!\n\nBest wishes,\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Many happy returns of the day, {customer_name}!\n\nOn your special day, we wish you nothing but the best. May all your dreams come true.\n\nWith love,\nTeam {company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Dear {customer_name},\n\nHappiest birthday to you! We value our association with you and wish you good health and prosperity.\n\nCheers,\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Happy Birthday {customer_name}!\n\nAnother year of success, health and happiness. Wishing you the best on your big day!\n\nRegards,\n{company_name} Team",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Dear {customer_name},\n\nBirthdays are nature's way of telling us to eat more cake! Wishing you a day filled with sweet moments.\n\nHappy Birthday!\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Warmest wishes on your birthday, {customer_name}!\n\nMay this year bring new goals, new achievements and a whole lot of new inspirations.\n\nFrom all of us at {company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "birthday", "is_active": True,
+         "message": "Dear {customer_name},\n\nWishing you a birthday that's as special as you are! Thank you for being a valued part of our family.\n\nHappy Birthday!\n{company_name}",
+         "image_url": ""},
+        # Anniversary templates
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Dear {customer_name},\n\nHappy Anniversary! Congratulations on another successful year. Wishing you continued growth and prosperity.\n\nBest regards,\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Congratulations on your anniversary, {customer_name}!\n\nAnother milestone achieved! We are proud to be associated with your journey of success.\n\nWarm wishes,\n{company_name} Team",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Happy Anniversary {customer_name}!\n\nCelebrating your remarkable journey today. May the years ahead bring even more success and achievements.\n\nBest wishes,\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Dear {customer_name},\n\nWishing you a wonderful anniversary! Thank you for your continued trust and partnership with us.\n\nWith appreciation,\n{company_name} Family",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Happy Anniversary {customer_name}!\n\nEvery year together is a year of growth. Here's to many more successful years ahead!\n\nCheers,\nTeam {company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Dear {customer_name},\n\nOn this special anniversary, we celebrate the wonderful bond we share. May it grow stronger with each passing year.\n\nHeartfelt wishes,\n{company_name}",
+         "image_url": ""},
+        {"id": str(uuid.uuid4()), "type": "anniversary", "is_active": True,
+         "message": "Congratulations {customer_name}!\n\nAnother glorious year! Your dedication inspires us. Wishing you an amazing anniversary and a bright future.\n\nRegards,\n{company_name}",
+         "image_url": ""},
+    ]
+
+    for t in templates:
+        t['created_at'] = datetime.now(timezone.utc).isoformat()
+    await db.greeting_templates.insert_many(templates)
+    logger.info(f"Seeded {len(templates)} default greeting templates")
+
 # ============== MODELS ==============
 
 # Greeting Template Models

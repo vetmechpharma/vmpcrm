@@ -320,7 +320,8 @@ export const Reminders = () => {
             <AlertCircle className="w-4 h-4" />Overdue
             {overdueFollowUps.length > 0 && <Badge className="bg-red-500 text-white ml-1">{overdueFollowUps.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="all" className="gap-2"><Calendar className="w-4 h-4" />All Reminders</TabsTrigger>
+          <TabsTrigger value="all" className="gap-2"><Calendar className="w-4 h-4" />Upcoming</TabsTrigger>
+          <TabsTrigger value="history" className="gap-2" onClick={() => { if (historyReminders.length === 0) fetchHistory(); }}><Clock className="w-4 h-4" />History</TabsTrigger>
         </TabsList>
 
         {/* Today Tab */}

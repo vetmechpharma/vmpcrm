@@ -17,6 +17,8 @@ import {
   Clock, 
   Loader2,
   Eye,
+  Edit2,
+  Trash2,
   Stethoscope,
   Store,
   Building2,

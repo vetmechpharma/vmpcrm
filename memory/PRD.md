@@ -777,6 +777,11 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Auto-close Logic**: When new follow-up is added, previous open follow-up is auto-closed
 - [x] **Entity Updates**: Follow-up auto-updates entity's `last_contact_date`, `follow_up_date`, `lead_status`
 
+## WhatsApp Reminder Template Enhancement - COMPLETED Mar 1, 2026
+- [x] **Detailed WhatsApp message**: Now includes customer names, phone numbers, and lead status grouped by type
+- [x] **Format**: Overdue Follow-ups, Today's Follow-ups, Birthdays (with entity type), Anniversaries, Custom reminders
+- [x] **Auto-detect birthdays/anniversaries**: When DOB/anniversary date added to Doctor/Medical/Agency, auto-shows in Reminders page on that date
+
 ## Pending/Upcoming Tasks
 - [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management

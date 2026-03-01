@@ -757,3 +757,31 @@ Build a simple CRM for managing doctor leads. Features include:
 - **Frontend**: React 19, React Router, Axios, Tailwind CSS, Shadcn/UI, Recharts
 - **Database**: MongoDB
 - **Auth**: JWT tokens (separate for admin and customers)
+
+
+## Lead Follow-up Management System - COMPLETED Mar 1, 2026
+- [x] **Follow-up API**: New `followups` collection with CRUD endpoints
+  - `POST /api/followups` - Create follow-up (auto-closes previous open, updates entity status/date)
+  - `GET /api/followups/{entity_type}/{entity_id}` - Follow-up history per entity
+- [x] **Lead Status Updates**: Added 'Interested', 'Converted', 'Lost' to existing Pipeline/Contacted/Customer/Not Interested/Closed
+- [x] **Follow-up Modal** on Doctors, Medicals, Agencies pages:
+  - Notes (what happened), status update, next follow-up date/time
+  - Follow-up history display with open/closed indicators
+  - PhoneCall icon button in table actions
+- [x] **Enhanced Reminders Page**:
+  - Overdue follow-ups shown with red OVERDUE badge
+  - Dedicated "Overdue" tab with count badge
+  - Quick follow-up action from reminders (opens modal with entity history)
+  - Stats cards: Total Today, Overdue, Follow-ups, Birthdays, Anniversaries, Custom
+- [x] **Detail Modal Enhancement**: Follow-up history section in Doctor/Medical/Agency detail view
+- [x] **Auto-close Logic**: When new follow-up is added, previous open follow-up is auto-closed
+- [x] **Entity Updates**: Follow-up auto-updates entity's `last_contact_date`, `follow_up_date`, `lead_status`
+
+## Pending/Upcoming Tasks
+- [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
+- [ ] (P1) Stock/Inventory Management
+- [ ] (P1) Payment Tracking
+- [ ] (P2) Sales reports with charts
+- [ ] (P2) Data import/export
+- [ ] (P2) Sales target management
+- [ ] (P2) Refactor duplicated UI logic in Doctors/Medicals/Agencies into reusable components

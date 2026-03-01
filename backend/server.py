@@ -8034,26 +8034,34 @@ async def get_today_reminders(current_user: dict = Depends(get_current_user)):
             'phone': None
         })
     
-    # 2. Get doctors with follow-up due today
+    # 2. Get doctors with follow-up due today or overdue
     doctors_followup = await db.doctors.find({
-        'follow_up_date': today,
-        'lead_status': {'$nin': ['Not Interested', 'Closed']}
-    }, {'_id': 0}).to_list(100)
+        'follow_up_date': {'$lte': today, '$ne': None},
+        'lead_status': {'$nin': ['Not Interested', 'Closed', 'Converted', 'Lost']}
+    }, {'_id': 0}).to_list(200)
     
     for doc in doctors_followup:
+        is_overdue = doc.get('follow_up_date', '') < today
+        # Get last follow-up notes
+        last_fu = await db.followups.find_one(
+            {'entity_type': 'doctor', 'entity_id': doc['id']},
+            {'_id': 0, 'notes': 1, 'created_at': 1}
+        )
         reminders.append({
             'id': f"auto_followup_doctor_{doc['id']}",
-            'title': f"Follow-up: {doc['name']}",
-            'description': f"Follow-up due for {doc['name']} ({doc.get('customer_code', '')})",
+            'title': f"{'OVERDUE: ' if is_overdue else ''}Follow-up: {doc['name']}",
+            'description': last_fu.get('notes', f"Follow-up due for {doc['name']}") if last_fu else f"Follow-up due for {doc['name']} ({doc.get('customer_code', '')})",
             'reminder_type': 'follow_up',
-            'reminder_date': today,
+            'reminder_date': doc.get('follow_up_date', today),
             'reminder_time': None,
             'entity_type': 'doctor',
             'entity_id': doc['id'],
             'entity_name': doc['name'],
-            'priority': doc.get('priority', 'moderate'),
+            'priority': 'high' if is_overdue else doc.get('priority', 'moderate'),
             'is_completed': False,
             'is_auto_generated': True,
+            'is_overdue': is_overdue,
+            'lead_status': doc.get('lead_status'),
             'phone': doc.get('phone')
         })
     

@@ -8095,26 +8095,33 @@ async def get_today_reminders(current_user: dict = Depends(get_current_user)):
             'phone': med.get('phone')
         })
     
-    # 4. Get agencies with follow-up due today
+    # 4. Get agencies with follow-up due today or overdue
     agencies_followup = await db.agencies.find({
-        'follow_up_date': today,
-        'lead_status': {'$nin': ['Not Interested', 'Closed']}
-    }, {'_id': 0}).to_list(100)
+        'follow_up_date': {'$lte': today, '$ne': None},
+        'lead_status': {'$nin': ['Not Interested', 'Closed', 'Converted', 'Lost']}
+    }, {'_id': 0}).to_list(200)
     
     for agy in agencies_followup:
+        is_overdue = agy.get('follow_up_date', '') < today
+        last_fu = await db.followups.find_one(
+            {'entity_type': 'agency', 'entity_id': agy['id']},
+            {'_id': 0, 'notes': 1}
+        )
         reminders.append({
             'id': f"auto_followup_agency_{agy['id']}",
-            'title': f"Follow-up: {agy['name']}",
-            'description': f"Follow-up due for {agy['name']} ({agy.get('customer_code', '')})",
+            'title': f"{'OVERDUE: ' if is_overdue else ''}Follow-up: {agy['name']}",
+            'description': last_fu.get('notes', f"Follow-up due for {agy['name']}") if last_fu else f"Follow-up due for {agy['name']} ({agy.get('customer_code', '')})",
             'reminder_type': 'follow_up',
-            'reminder_date': today,
+            'reminder_date': agy.get('follow_up_date', today),
             'reminder_time': None,
             'entity_type': 'agency',
             'entity_id': agy['id'],
             'entity_name': agy['name'],
-            'priority': agy.get('priority', 'moderate'),
+            'priority': 'high' if is_overdue else agy.get('priority', 'moderate'),
             'is_completed': False,
             'is_auto_generated': True,
+            'is_overdue': is_overdue,
+            'lead_status': agy.get('lead_status'),
             'phone': agy.get('phone')
         })
     

@@ -436,7 +436,58 @@ export const Reminders = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center text-slate-400 py-12">
-                <Calendar className="w-16 h-16 mb-4" /><h3 className="text-lg font-medium">No Scheduled Reminders</h3>
+                <Calendar className="w-16 h-16 mb-4" /><h3 className="text-lg font-medium">No Upcoming Reminders</h3>
+              </div>
+            )}
+          </CardContent></Card>
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history" className="mt-4">
+          <Card><CardContent className="pt-6">
+            {loadingHistory ? (
+              <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+            ) : historyReminders.length > 0 ? (
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader><TableRow className="bg-slate-50">
+                    <TableHead className="w-[50px] text-center">#</TableHead>
+                    <TableHead className="w-[100px]">Date</TableHead>
+                    <TableHead className="w-[90px]">Type</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="w-[120px]">Entity</TableHead>
+                    <TableHead className="w-[90px]">Status</TableHead>
+                    <TableHead className="w-[80px] text-center">Actions</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {historyReminders.map((reminder, index) => {
+                      const typeInfo = getTypeInfo(reminder.reminder_type);
+                      return (
+                        <TableRow key={reminder.id} className="hover:bg-slate-50 opacity-70">
+                          <TableCell className="text-center text-slate-500">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{formatDate(reminder.reminder_date)}</TableCell>
+                          <TableCell><Badge className={typeInfo.color} variant="outline">{typeInfo.label}</Badge></TableCell>
+                          <TableCell><span>{reminder.title}</span>{reminder.description && <p className="text-xs text-slate-400">{reminder.description}</p>}</TableCell>
+                          <TableCell className="text-sm text-slate-600">{reminder.entity_name || '-'}</TableCell>
+                          <TableCell><Badge className="bg-green-100 text-green-700">Completed</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex justify-center gap-1">
+                              {!reminder.is_auto_generated && (
+                                <Button variant="ghost" size="sm" onClick={() => { setSelectedReminder(reminder); setShowDeleteModal(true); }}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center text-slate-400 py-12">
+                <Clock className="w-16 h-16 mb-4" /><h3 className="text-lg font-medium">No Completed Reminders</h3>
+                <p className="text-sm">Completed follow-ups and reminders will appear here</p>
               </div>
             )}
           </CardContent></Card>

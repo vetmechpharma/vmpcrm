@@ -8065,26 +8065,33 @@ async def get_today_reminders(current_user: dict = Depends(get_current_user)):
             'phone': doc.get('phone')
         })
     
-    # 3. Get medicals with follow-up due today
+    # 3. Get medicals with follow-up due today or overdue
     medicals_followup = await db.medicals.find({
-        'follow_up_date': today,
-        'lead_status': {'$nin': ['Not Interested', 'Closed']}
-    }, {'_id': 0}).to_list(100)
+        'follow_up_date': {'$lte': today, '$ne': None},
+        'lead_status': {'$nin': ['Not Interested', 'Closed', 'Converted', 'Lost']}
+    }, {'_id': 0}).to_list(200)
     
     for med in medicals_followup:
+        is_overdue = med.get('follow_up_date', '') < today
+        last_fu = await db.followups.find_one(
+            {'entity_type': 'medical', 'entity_id': med['id']},
+            {'_id': 0, 'notes': 1}
+        )
         reminders.append({
             'id': f"auto_followup_medical_{med['id']}",
-            'title': f"Follow-up: {med['name']}",
-            'description': f"Follow-up due for {med['name']} ({med.get('customer_code', '')})",
+            'title': f"{'OVERDUE: ' if is_overdue else ''}Follow-up: {med['name']}",
+            'description': last_fu.get('notes', f"Follow-up due for {med['name']}") if last_fu else f"Follow-up due for {med['name']} ({med.get('customer_code', '')})",
             'reminder_type': 'follow_up',
-            'reminder_date': today,
+            'reminder_date': med.get('follow_up_date', today),
             'reminder_time': None,
             'entity_type': 'medical',
             'entity_id': med['id'],
             'entity_name': med['name'],
-            'priority': med.get('priority', 'moderate'),
+            'priority': 'high' if is_overdue else med.get('priority', 'moderate'),
             'is_completed': False,
             'is_auto_generated': True,
+            'is_overdue': is_overdue,
+            'lead_status': med.get('lead_status'),
             'phone': med.get('phone')
         })
     

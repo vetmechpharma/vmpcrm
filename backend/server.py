@@ -2814,7 +2814,7 @@ async def delete_task(task_id: str, current_user: dict = Depends(get_current_use
 
 # ============== FOLLOW-UP REMINDERS ==============
 
-@api_router.get("/reminders")
+@api_router.get("/reminders/follow-up-leads")
 async def get_follow_up_reminders(current_user: dict = Depends(get_current_user)):
     """Get leads that need follow-up (based on 25 days rule or set follow-up date)"""
     today = datetime.now(timezone.utc).date()

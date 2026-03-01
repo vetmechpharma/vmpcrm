@@ -6,10 +6,13 @@ export function cn(...inputs) {
 }
 
 export const LEAD_STATUSES = [
-  { value: 'Customer', label: 'Customer', color: 'status-customer' },
-  { value: 'Contacted', label: 'Contacted', color: 'status-contacted' },
   { value: 'Pipeline', label: 'Pipeline', color: 'status-pipeline' },
+  { value: 'Contacted', label: 'Contacted', color: 'status-contacted' },
+  { value: 'Interested', label: 'Interested', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'Customer', label: 'Customer', color: 'status-customer' },
+  { value: 'Converted', label: 'Converted', color: 'bg-emerald-100 text-emerald-700' },
   { value: 'Not Interested', label: 'Not Interested', color: 'status-not-interested' },
+  { value: 'Lost', label: 'Lost', color: 'bg-red-100 text-red-700' },
   { value: 'Closed', label: 'Closed', color: 'status-closed' },
 ];
 

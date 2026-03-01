@@ -1157,6 +1157,29 @@ class ReminderResponse(BaseModel):
     is_auto_generated: bool = False
     created_at: datetime
 
+# ============== FOLLOWUP MODELS ==============
+
+class FollowUpCreate(BaseModel):
+    entity_type: str  # doctor, medical, agency
+    entity_id: str
+    notes: str
+    new_status: Optional[str] = None  # Update lead status
+    next_follow_up_date: Optional[str] = None  # YYYY-MM-DD
+    next_follow_up_time: Optional[str] = None  # HH:MM
+
+class FollowUpResponse(BaseModel):
+    id: str
+    entity_type: str
+    entity_id: str
+    entity_name: str
+    notes: str
+    new_status: Optional[str] = None
+    next_follow_up_date: Optional[str] = None
+    next_follow_up_time: Optional[str] = None
+    status: str  # open, closed
+    created_by: str
+    created_at: str
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:

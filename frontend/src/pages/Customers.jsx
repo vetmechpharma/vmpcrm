@@ -760,6 +760,16 @@ const Customers = () => {
                   </Button>
                 </div>
               )}
+
+              {/* Edit & Delete */}
+              <div className="flex gap-3 pt-4 border-t">
+                <Button variant="outline" className="flex-1" onClick={() => { setShowDetailModal(false); openEditModal(selectedCustomer); }}>
+                  <Edit2 className="w-4 h-4 mr-2" />Edit Customer
+                </Button>
+                <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => { setShowDetailModal(false); setShowDeleteModal(true); }}>
+                  <Trash2 className="w-4 h-4 mr-2" />Delete
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

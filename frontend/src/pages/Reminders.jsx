@@ -185,6 +185,19 @@ export const Reminders = () => {
   const anniversaries = todayReminders.reminders.filter(r => r.reminder_type === 'anniversary');
   const customs = todayReminders.reminders.filter(r => r.reminder_type === 'custom');
 
+  // Completed reminders for history
+  const [historyReminders, setHistoryReminders] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const r = await remindersAPI.getAll({ is_completed: true });
+      setHistoryReminders(r.data);
+    } catch (e) { console.error('Failed to fetch history'); }
+    finally { setLoadingHistory(false); }
+  };
+
   const ReminderRow = ({ reminder, index, showDate = false }) => {
     const typeInfo = getTypeInfo(reminder.reminder_type);
     const priorityInfo = getPriorityInfo(reminder.priority);

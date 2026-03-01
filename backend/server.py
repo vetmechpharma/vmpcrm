@@ -9349,15 +9349,19 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on app startup"""
-    global daily_reminder_task, backup_scheduler_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task
     daily_reminder_task = asyncio.create_task(send_daily_reminder_summary())
     logger.info("Daily reminder background task started")
     backup_scheduler_task = asyncio.create_task(run_scheduled_backups())
     logger.info("Backup scheduler task started")
+    greeting_task = asyncio.create_task(send_birthday_anniversary_greetings())
+    logger.info("Birthday/Anniversary greeting task started")
+    # Seed default templates
+    await seed_default_greeting_templates()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global daily_reminder_task, backup_scheduler_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task
     if daily_reminder_task:
         daily_reminder_task.cancel()
         try:
@@ -9372,4 +9376,11 @@ async def shutdown_db_client():
         except asyncio.CancelledError:
             pass
         logger.info("Backup scheduler task stopped")
+    if greeting_task:
+        greeting_task.cancel()
+        try:
+            await greeting_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Birthday/Anniversary greeting task stopped")
     client.close()

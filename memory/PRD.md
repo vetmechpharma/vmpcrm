@@ -782,7 +782,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Format**: Overdue Follow-ups, Today's Follow-ups, Birthdays (with entity type), Anniversaries, Custom reminders
 - [x] **Auto-detect birthdays/anniversaries**: When DOB/anniversary date added to Doctor/Medical/Agency, auto-shows in Reminders page on that date
 
-## Automated Birthday/Anniversary Greetings - COMPLETED Mar 1, 2026
+## Reminders Improvement & Portal Customers Edit/Delete - COMPLETED Mar 1, 2026
+- [x] **Reminders History tab**: Shows completed/closed reminders separately
+- [x] **Birthday/Anniversary**: No "Mark as Complete" button — handled by auto-greeting system
+- [x] **Follow-ups**: Only missed/not-updated follow-ups show as OVERDUE; updated ones auto-close
+- [x] **Portal Customers Edit**: Admin can edit customer name, phone, email, address, etc. via pencil icon
+- [x] **Portal Customers Delete**: Admin can delete customers with confirmation warning
+- [x] **Detail modal**: Edit and Delete buttons added at bottom of customer detail view
 - [x] **15 default greeting templates** seeded (8 birthday, 7 anniversary) with `{customer_name}` and `{company_name}` placeholders
 - [x] **Admin template management** page at `/admin/greeting-templates` with CRUD, active/inactive toggle, image URL support, preview
 - [x] **Background auto-send task** runs at 10 AM IST daily: picks random active template, sends via WhatsApp + Email

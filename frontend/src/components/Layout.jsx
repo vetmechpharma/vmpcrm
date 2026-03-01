@@ -41,6 +41,7 @@ const mainNavItems = [
   { path: '/admin/marketing', icon: Megaphone, label: 'Marketing', perm: 'marketing' },
   { path: '/admin/expenses', icon: Receipt, label: 'Expenses', perm: 'expenses' },
   { path: '/admin/reminders', icon: Bell, label: 'Reminders', perm: 'reminders' },
+  { path: '/admin/greeting-templates', icon: Gift, label: 'Greetings', perm: 'reminders' },
   { path: '/admin/pending-items', icon: Clock, label: 'Pending Items', perm: 'pending_items', showBadge: true },
   { path: '/admin/customers', icon: UserCheck, label: 'Portal Customers', perm: 'portal_customers' },
   { path: '/admin/support', icon: LifeBuoy, label: 'Support Tickets', perm: 'support' },

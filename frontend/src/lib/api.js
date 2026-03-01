@@ -105,6 +105,12 @@ export const remindersAPI = {
   sendWhatsAppSummary: () => api.post('/reminders/send-whatsapp-summary'),
 };
 
+// Followup APIs
+export const followupsAPI = {
+  create: (data) => api.post('/followups', data),
+  getHistory: (entityType, entityId) => api.get(`/followups/${entityType}/${entityId}`),
+};
+
 // SMTP Config APIs
 export const smtpAPI = {
   getConfig: () => api.get('/smtp-config'),

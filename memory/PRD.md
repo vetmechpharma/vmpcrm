@@ -782,6 +782,14 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Format**: Overdue Follow-ups, Today's Follow-ups, Birthdays (with entity type), Anniversaries, Custom reminders
 - [x] **Auto-detect birthdays/anniversaries**: When DOB/anniversary date added to Doctor/Medical/Agency, auto-shows in Reminders page on that date
 
+## Automated Birthday/Anniversary Greetings - COMPLETED Mar 1, 2026
+- [x] **15 default greeting templates** seeded (8 birthday, 7 anniversary) with `{customer_name}` and `{company_name}` placeholders
+- [x] **Admin template management** page at `/admin/greeting-templates` with CRUD, active/inactive toggle, image URL support, preview
+- [x] **Background auto-send task** runs at 10 AM IST daily: picks random active template, sends via WhatsApp + Email
+- [x] **Greeting logs** tracked in `greeting_logs` collection, viewable in "Sent Log" tab
+- [x] **Reminders page**: Birthday/anniversary items no longer have "Mark as Complete" button
+- [x] **Sidebar**: "Greetings" link added with Gift icon
+
 ## Pending/Upcoming Tasks
 - [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management

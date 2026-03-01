@@ -5074,6 +5074,60 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     return {"message": f"Customer {approval.status} successfully"}
 
 
+@api_router.put("/customers/{customer_id}")
+async def update_portal_customer(customer_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    """Update portal customer details (admin only)"""
+    body = await request.json()
+    customer = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Fields that can be updated
+    allowed_fields = ['name', 'email', 'phone', 'role', 'address', 'address_line_1',
+                      'address_line_2', 'state', 'district', 'pincode', 'delivery_station',
+                      'transport_id', 'gst_number', 'drug_license', 'proprietor_name']
+    update_data = {k: v for k, v in body.items() if k in allowed_fields}
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.portal_customers.update_one({'id': customer_id}, {'$set': update_data})
+
+    # Also update linked record in doctors/medicals/agencies if exists
+    linked_id = customer.get('linked_record_id')
+    if linked_id:
+        for coll_name in ['doctors', 'medicals', 'agencies']:
+            result = await db[coll_name].update_one({'id': linked_id}, {'$set': {k: v for k, v in update_data.items() if k in ['name', 'phone', 'email', 'address', 'address_line_1', 'address_line_2', 'state', 'district', 'pincode', 'delivery_station', 'transport_id']}})
+            if result.matched_count > 0:
+                break
+
+    updated = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0, 'password_hash': 0})
+    return updated
+
+
+@api_router.delete("/customers/{customer_id}")
+async def delete_portal_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a portal customer (admin only)"""
+    customer = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    # Delete the portal customer
+    await db.portal_customers.delete_one({'id': customer_id})
+
+    # Also unlink from doctors/medicals/agencies
+    linked_id = customer.get('linked_record_id')
+    if linked_id:
+        for coll_name in ['doctors', 'medicals', 'agencies']:
+            await db[coll_name].update_one(
+                {'id': linked_id},
+                {'$set': {'is_portal_customer': False, 'portal_customer_id': None}}
+            )
+
+    return {"message": f"Customer {customer['name']} deleted successfully"}
+
+
 @api_router.post("/customers/{customer_id}/send-new-password")
 async def send_new_password_to_customer(customer_id: str, current_user: dict = Depends(get_current_user)):
     """Generate and send new password to customer via WhatsApp (admin only)"""

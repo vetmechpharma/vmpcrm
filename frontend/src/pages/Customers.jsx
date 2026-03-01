@@ -840,6 +840,95 @@ const Customers = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Customer Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit Customer - {selectedCustomer?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label>Name *</Label>
+                <Input value={editFormData.name || ''} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} data-testid="edit-customer-name" />
+              </div>
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input value={editFormData.phone || ''} onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})} data-testid="edit-customer-phone" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={editFormData.email || ''} onChange={(e) => setEditFormData({...editFormData, email: e.target.value})} />
+              </div>
+              {(selectedCustomer?.role === 'medical' || selectedCustomer?.role === 'agency') && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Proprietor Name</Label>
+                    <Input value={editFormData.proprietor_name || ''} onChange={(e) => setEditFormData({...editFormData, proprietor_name: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>GST Number</Label>
+                    <Input value={editFormData.gst_number || ''} onChange={(e) => setEditFormData({...editFormData, gst_number: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Drug License</Label>
+                    <Input value={editFormData.drug_license || ''} onChange={(e) => setEditFormData({...editFormData, drug_license: e.target.value})} />
+                  </div>
+                </>
+              )}
+              <div className="col-span-2 pt-2 border-t"><h4 className="text-sm font-medium text-slate-700">Address</h4></div>
+              <div className="col-span-2 space-y-2">
+                <Label>Address Line 1</Label>
+                <Input value={editFormData.address_line_1 || ''} onChange={(e) => setEditFormData({...editFormData, address_line_1: e.target.value})} />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Address Line 2</Label>
+                <Input value={editFormData.address_line_2 || ''} onChange={(e) => setEditFormData({...editFormData, address_line_2: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>State</Label>
+                <Input value={editFormData.state || ''} onChange={(e) => setEditFormData({...editFormData, state: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>District</Label>
+                <Input value={editFormData.district || ''} onChange={(e) => setEditFormData({...editFormData, district: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Pincode</Label>
+                <Input value={editFormData.pincode || ''} onChange={(e) => setEditFormData({...editFormData, pincode: e.target.value})} maxLength={6} />
+              </div>
+              <div className="space-y-2">
+                <Label>Delivery Station</Label>
+                <Input value={editFormData.delivery_station || ''} onChange={(e) => setEditFormData({...editFormData, delivery_station: e.target.value})} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button onClick={handleEditCustomer} disabled={processing} data-testid="save-edit-customer-btn">
+              {processing && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Update Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Customer Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="text-red-600">Delete Customer</DialogTitle></DialogHeader>
+          <div className="py-4">
+            <p className="text-slate-600 mb-3">Are you sure you want to delete <strong>{selectedCustomer?.name}</strong>?</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-700"><strong>Warning:</strong> This will remove their portal access and cannot be undone.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+            <Button onClick={handleDeleteCustomer} disabled={deleting} className="bg-red-600 hover:bg-red-700" data-testid="confirm-delete-customer-btn">
+              {deleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Delete Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -241,10 +241,12 @@ export const Reminders = () => {
                 <PhoneCall className="w-4 h-4" />
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => handleMarkComplete(reminder)}
-              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50" title="Mark Complete">
-              <CheckCircle className="w-4 h-4" />
-            </Button>
+            {reminder.reminder_type !== 'birthday' && reminder.reminder_type !== 'anniversary' && (
+              <Button variant="ghost" size="sm" onClick={() => handleMarkComplete(reminder)}
+                className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50" title="Mark Complete">
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+            )}
             {!reminder.is_auto_generated && (
               <Button variant="ghost" size="sm" onClick={() => { setSelectedReminder(reminder); setShowDeleteModal(true); }}
                 className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50" title="Delete">

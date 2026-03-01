@@ -449,6 +449,15 @@ const Customers = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => openEditModal(customer)}
+                            title="Edit Customer"
+                            data-testid={`edit-customer-${customer.id}`}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
                           {(customer.status === 'pending' || customer.status === 'pending_approval') && (
                             <>
                               <Button 
@@ -495,6 +504,16 @@ const Customers = () => {
                               <CheckCircle className="w-4 h-4" />
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => { setSelectedCustomer(customer); setShowDeleteModal(true); }}
+                            title="Delete Customer"
+                            data-testid={`delete-customer-${customer.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>

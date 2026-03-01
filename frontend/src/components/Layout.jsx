@@ -20,6 +20,7 @@ import {
   Building,
   Receipt,
   Bell,
+  Gift,
   MessageSquare,
   UserCog,
   UserCheck,

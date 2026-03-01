@@ -150,7 +150,7 @@ export const Reminders = () => {
       });
       toast.success('Follow-up recorded');
       setShowFollowUpModal(false);
-      fetchData();
+      fetchData(); // Refresh reminders - updated follow-up will move out
     } catch (e) { toast.error('Failed to save follow-up'); }
     finally { setFollowUpSubmitting(false); }
   };

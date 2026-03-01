@@ -8365,8 +8365,9 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
     if not reminders:
         return {"message": "No reminders for today", "sent": False}
     
-    # Build message
+    # Build detailed message
     message_lines = [
+        f"🌅 *Good Morning!*",
         f"📅 *Today's Reminders ({today_data['date']})*",
         f"Total: {today_data['total_count']} reminder(s)",
         ""
@@ -8379,31 +8380,47 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
     custom = [r for r in reminders if r['reminder_type'] == 'custom']
     
     if followups:
-        message_lines.append("📞 *Follow-ups:*")
-        for r in followups[:5]:  # Limit to 5
-            message_lines.append(f"• {r['entity_name']}")
-        if len(followups) > 5:
-            message_lines.append(f"  +{len(followups) - 5} more...")
-        message_lines.append("")
+        overdue = [r for r in followups if r.get('is_overdue')]
+        today_fu = [r for r in followups if not r.get('is_overdue')]
+        if overdue:
+            message_lines.append(f"🚨 *Overdue Follow-ups ({len(overdue)}):*")
+            for r in overdue[:10]:
+                status_tag = f" [{r.get('lead_status', '')}]" if r.get('lead_status') else ''
+                message_lines.append(f"  • {r['entity_name']} - {r.get('phone', 'N/A')}{status_tag}")
+            if len(overdue) > 10:
+                message_lines.append(f"  +{len(overdue) - 10} more...")
+            message_lines.append("")
+        if today_fu:
+            message_lines.append(f"📞 *Follow-ups Today ({len(today_fu)}):*")
+            for r in today_fu[:10]:
+                status_tag = f" [{r.get('lead_status', '')}]" if r.get('lead_status') else ''
+                message_lines.append(f"  • {r['entity_name']} - {r.get('phone', 'N/A')}{status_tag}")
+            if len(today_fu) > 10:
+                message_lines.append(f"  +{len(today_fu) - 10} more...")
+            message_lines.append("")
     
     if birthdays:
-        message_lines.append("🎂 *Birthdays:*")
+        message_lines.append(f"🎂 *Birthdays ({len(birthdays)}):*")
         for r in birthdays:
-            message_lines.append(f"• {r['entity_name']}")
+            message_lines.append(f"  • {r['entity_name']} - {r.get('phone', 'N/A')} ({r.get('entity_type', '').title()})")
         message_lines.append("")
     
     if anniversaries:
-        message_lines.append("🎉 *Anniversaries:*")
+        message_lines.append(f"🎉 *Anniversaries ({len(anniversaries)}):*")
         for r in anniversaries:
-            message_lines.append(f"• {r['entity_name']}")
+            message_lines.append(f"  • {r['entity_name']} - {r.get('phone', 'N/A')} ({r.get('entity_type', '').title()})")
         message_lines.append("")
     
     if custom:
-        message_lines.append("📝 *Other:*")
-        for r in custom[:3]:
-            message_lines.append(f"• {r['title']}")
-        if len(custom) > 3:
-            message_lines.append(f"  +{len(custom) - 3} more...")
+        message_lines.append(f"📝 *Custom ({len(custom)}):*")
+        for r in custom[:5]:
+            name_part = f" - {r['entity_name']}" if r.get('entity_name') else ''
+            message_lines.append(f"  • {r['title']}{name_part}")
+        if len(custom) > 5:
+            message_lines.append(f"  +{len(custom) - 5} more...")
+    
+    message_lines.append("")
+    message_lines.append("Login to CRM to view details.")
     
     message = "\n".join(message_lines)
     

@@ -3607,6 +3607,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
                 try:
                     image_bytes = base64.b64decode(v)
                     update_data['image_webp'] = process_image_to_webp(image_bytes)
+                    update_data['has_image'] = True
                 except Exception as e:
                     logger.error(f"Image processing error: {str(e)}")
             elif k == 'item_code':

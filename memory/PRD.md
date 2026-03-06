@@ -804,6 +804,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Role-based pricing (Doctor/Medical/Agency) is now the primary source for rate, offer, special offer
 - [x] Backend legacy fields kept (defaults to 0/null) for backward compatibility
 
+## Customer Downloads & Catalogue System - COMPLETED Mar 6, 2026
+- [x] **Customer Price List Download**: Customers can download role-based PDF price lists (S.No, Code, Name, Composition, MRP, Rate, Offer, Special Offer) filtered by their role (Doctor/Medical/Agency)
+- [x] **Downloads page in Customer Portal**: New `/portal/downloads` page with sidebar navigation link
+- [x] **Catalogue Management in Admin Settings**: Admin can add catalogue entries (title, URL, description) that appear in customer downloads
+- [x] **New API endpoints**: GET /api/customer/pricelist/pdf, GET/PUT /api/catalogue-settings
+- [x] **New files**: CustomerDownloads.jsx, updated App.js routing, CustomerLayout nav, Settings.jsx, api.js
+
 ## Items Export & Subcategory Order - COMPLETED Mar 6, 2026
 - [x] **Export as PDF**: Items exported by main category (Large Animals / Poultry / Pets / All), grouped by subcategory, no images
   - Columns: #, Code, Item Name, Composition, MRP, GST%, Rate (D), Rate (M), Rate (A)

@@ -32,6 +32,7 @@ import CustomerOrders from './pages/CustomerOrders';
 import CustomerTasks from './pages/CustomerTasks';
 import CustomerSupport from './pages/CustomerSupport';
 import CustomerProfile from './pages/CustomerProfile';
+import CustomerDownloads from './pages/CustomerDownloads';
 import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
@@ -91,6 +92,7 @@ function AppRoutes() {
         <Route path="orders" element={<CustomerOrders />} />
         <Route path="tasks" element={<CustomerTasks />} />
         <Route path="support" element={<CustomerSupport />} />
+        <Route path="downloads" element={<CustomerDownloads />} />
         <Route path="profile" element={<CustomerProfile />} />
         <Route index element={<Navigate to="/portal/dashboard" replace />} />
       </Route>

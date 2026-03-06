@@ -292,6 +292,12 @@ export const publicAPI = {
   verifyOTP: (data) => axios.post(`${API_URL}/api/public/verify-otp`, data),
 };
 
+// Catalogue settings API
+export const catalogueAPI = {
+  get: () => api.get('/catalogue-settings'),
+  update: (catalogues) => api.put('/catalogue-settings', { catalogues }),
+};
+
 // Location APIs (public, no auth required)
 export const locationAPI = {
   getStates: () => axios.get(`${API_URL}/api/public/states`),

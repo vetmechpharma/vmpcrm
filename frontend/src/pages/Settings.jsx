@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { smtpAPI, whatsappAPI, fallbackOTPAPI } from '../lib/api';
+import { smtpAPI, whatsappAPI, fallbackOTPAPI, catalogueAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2, BookOpen, Link } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export const Settings = () => {
@@ -23,6 +23,10 @@ export const Settings = () => {
   const [fallbackOTPs, setFallbackOTPs] = useState([]);
   const [newOTP, setNewOTP] = useState('');
   const [addingOTP, setAddingOTP] = useState(false);
+  
+  // Catalogue state
+  const [catalogues, setCatalogues] = useState([]);
+  const [savingCatalogues, setSavingCatalogues] = useState(false);
   
   const [formData, setFormData] = useState({
     smtp_server: '',
@@ -45,10 +49,11 @@ export const Settings = () => {
 
   const fetchConfigs = async () => {
     try {
-      const [smtpRes, whatsappRes, fallbackRes] = await Promise.all([
+      const [smtpRes, whatsappRes, fallbackRes, catRes] = await Promise.all([
         smtpAPI.getConfig(),
         whatsappAPI.getConfig(),
-        fallbackOTPAPI.getAll()
+        fallbackOTPAPI.getAll(),
+        catalogueAPI.get()
       ]);
       
       if (smtpRes.data) {
@@ -74,6 +79,10 @@ export const Settings = () => {
 
       if (fallbackRes.data) {
         setFallbackOTPs(fallbackRes.data);
+      }
+
+      if (catRes.data?.catalogues) {
+        setCatalogues(catRes.data.catalogues);
       }
     } catch (error) {
       console.error('Failed to fetch configs:', error);
@@ -584,6 +593,73 @@ export const Settings = () => {
               <span className="font-medium">Mailgun</span>
               <span className="text-slate-500">smtp.mailgun.org:587</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Catalogue Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5" />
+            Catalogue Downloads
+          </CardTitle>
+          <CardDescription>
+            Add catalogue download links that will be available to portal customers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {catalogues.map((cat, idx) => (
+            <div key={idx} className="flex gap-2 items-start p-3 bg-slate-50 rounded-lg border" data-testid={`catalogue-entry-${idx}`}>
+              <div className="flex-1 space-y-2">
+                <Input
+                  placeholder="Catalogue title (e.g., Large Animals 2026)"
+                  value={cat.title || ''}
+                  onChange={(e) => {
+                    const updated = [...catalogues];
+                    updated[idx] = { ...updated[idx], title: e.target.value };
+                    setCatalogues(updated);
+                  }}
+                />
+                <Input
+                  placeholder="URL (e.g., https://drive.google.com/file/...)"
+                  value={cat.url || ''}
+                  onChange={(e) => {
+                    const updated = [...catalogues];
+                    updated[idx] = { ...updated[idx], url: e.target.value };
+                    setCatalogues(updated);
+                  }}
+                />
+                <Input
+                  placeholder="Description (optional)"
+                  value={cat.description || ''}
+                  onChange={(e) => {
+                    const updated = [...catalogues];
+                    updated[idx] = { ...updated[idx], description: e.target.value };
+                    setCatalogues(updated);
+                  }}
+                />
+              </div>
+              <Button variant="ghost" size="sm" className="text-red-500 mt-1" onClick={() => setCatalogues(catalogues.filter((_, i) => i !== idx))}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCatalogues([...catalogues, { title: '', url: '', description: '' }])} data-testid="add-catalogue-btn">
+              <Plus className="w-4 h-4 mr-1" /> Add Catalogue
+            </Button>
+            <Button size="sm" disabled={savingCatalogues} onClick={async () => {
+              setSavingCatalogues(true);
+              try {
+                await catalogueAPI.update(catalogues.filter(c => c.title && c.url));
+                toast.success('Catalogue settings saved');
+              } catch { toast.error('Failed to save'); }
+              finally { setSavingCatalogues(false); }
+            }} data-testid="save-catalogues-btn">
+              {savingCatalogues && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              Save Catalogues
+            </Button>
           </div>
         </CardContent>
       </Card>

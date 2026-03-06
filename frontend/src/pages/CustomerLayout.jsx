@@ -173,6 +173,7 @@ const CustomerLayout = () => {
             { path: '/portal/items', icon: 'Package', label: 'Products' },
             { path: '/portal/orders', icon: 'ShoppingBag', label: 'My Orders' },
             { path: '/portal/tasks', icon: 'ListTodo', label: 'Tasks' },
+            { path: '/portal/downloads', icon: 'Download', label: 'Downloads' },
             { path: '/portal/support', icon: 'LifeBuoy', label: 'Support' },
             { path: '/portal/profile', icon: 'User', label: 'Profile' },
           ].map((item) => {

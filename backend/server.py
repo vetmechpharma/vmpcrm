@@ -5003,6 +5003,128 @@ async def get_customer_items(
     
     return result
 
+# Customer price list download
+@api_router.get("/customer/pricelist/pdf")
+async def customer_pricelist_pdf(
+    main_category: Optional[str] = None,
+    customer: dict = Depends(get_current_customer)
+):
+    """Download role-based price list as PDF for customer"""
+    role = customer['role']
+    role_labels = {'doctor': 'Doctors', 'medical': 'Medicals', 'agency': 'Agencies'}
+    role_label = role_labels.get(role, 'Doctor')
+    
+    query = {}
+    if main_category:
+        query['main_categories'] = main_category
+    
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0}).sort('item_name', 1).to_list(5000)
+    
+    order_doc = await db.subcategory_order.find_one({}, {'_id': 0})
+    sub_order = order_doc.get('order', DEFAULT_SUBCATEGORY_ORDER) if order_doc else DEFAULT_SUBCATEGORY_ORDER
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    
+    grouped = {}
+    for item in items:
+        subs = item.get('subcategories', []) or ['Uncategorized']
+        for sub in subs:
+            grouped.setdefault(sub, []).append(item)
+    
+    def sort_key(s):
+        try: return sub_order.index(s)
+        except ValueError: return len(sub_order)
+    sorted_subs = sorted(grouped.keys(), key=sort_key)
+    
+    pdf = FPDF(orientation='L', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, f"{company_name} - Price List", ln=True, align='C')
+    pdf.set_font('Helvetica', '', 10)
+    subtitle = f"{main_category or 'All Categories'} | {role_label} Pricing"
+    pdf.cell(0, 6, subtitle, ln=True, align='C')
+    pdf.ln(3)
+    
+    col_widths = [10, 22, 55, 85, 18, 22, 35, 35]
+    headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
+    serial = 0
+    
+    for sub_name in sorted_subs:
+        sub_items = grouped[sub_name]
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_fill_color(41, 128, 185)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(sum(col_widths), 7, f"  {sub_name}", 1, 1, 'L', True)
+        
+        pdf.set_font('Helvetica', 'B', 8)
+        pdf.set_fill_color(52, 73, 94)
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 7, h, 1, 0, 'C', True)
+        pdf.ln()
+        pdf.set_text_color(0, 0, 0)
+        
+        pdf.set_font('Helvetica', '', 7)
+        for item in sub_items:
+            serial += 1
+            row_h = 6
+            pdf.set_fill_color(245, 245, 245) if serial % 2 == 0 else pdf.set_fill_color(255, 255, 255)
+            fill = serial % 2 == 0
+            
+            if role == 'doctor':
+                rate = item.get('rate_doctors') or item.get('rate', 0) or 0
+                offer = item.get('offer_doctors') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+            elif role == 'medical':
+                rate = item.get('rate_medicals') or item.get('rate', 0) or 0
+                offer = item.get('offer_medicals') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_medicals') or item.get('special_offer', '') or ''
+            else:
+                rate = item.get('rate_agencies') or item.get('rate', 0) or 0
+                offer = item.get('offer_agencies') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_agencies') or item.get('special_offer', '') or ''
+            
+            pdf.cell(col_widths[0], row_h, str(serial), 1, 0, 'C', fill)
+            pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:12], 1, 0, 'C', fill)
+            pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:32], 1, 0, 'L', fill)
+            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:55], 1, 0, 'L', fill)
+            pdf.cell(col_widths[4], row_h, f"{item.get('mrp', 0):.0f}", 1, 0, 'R', fill)
+            pdf.cell(col_widths[5], row_h, f"{rate:.0f}" if rate else '', 1, 0, 'R', fill)
+            pdf.cell(col_widths[6], row_h, str(offer)[:20], 1, 0, 'L', fill)
+            pdf.cell(col_widths[7], row_h, str(sp_offer)[:20], 1, 0, 'L', fill)
+            pdf.ln()
+    
+    pdf.set_font('Helvetica', 'I', 8)
+    pdf.cell(0, 8, f"Total items: {serial}", ln=True, align='R')
+    
+    pdf_output = pdf.output()
+    filename = f"pricelist_{main_category or 'all'}_{role}.pdf".replace(' ', '_').lower()
+    return Response(
+        content=bytes(pdf_output),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+# Catalogue settings endpoints
+@api_router.get("/catalogue-settings")
+async def get_catalogue_settings():
+    """Get catalogue download links"""
+    doc = await db.catalogue_settings.find_one({}, {'_id': 0})
+    if not doc:
+        return {"catalogues": []}
+    return {"catalogues": doc.get('catalogues', [])}
+
+@api_router.put("/catalogue-settings")
+async def update_catalogue_settings(data: dict, current_user: dict = Depends(get_current_user)):
+    """Update catalogue download links (admin only)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    catalogues = data.get('catalogues', [])
+    await db.catalogue_settings.update_one({}, {'$set': {'catalogues': catalogues}}, upsert=True)
+    return {"message": "Catalogue settings updated", "catalogues": catalogues}
+
 @api_router.get("/customer/orders")
 async def get_customer_orders(customer: dict = Depends(get_current_customer)):
     """Get order history for logged-in customer"""

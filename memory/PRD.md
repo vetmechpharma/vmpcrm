@@ -796,6 +796,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Reminders page**: Birthday/anniversary items no longer have "Mark as Complete" button
 - [x] **Sidebar**: "Greetings" link added with Gift icon
 
+## Items Rate Column Removal - COMPLETED Mar 6, 2026
+- [x] Removed default "Rate" field from Items form (role-wise rates already available for Doctors/Medicals/Agencies)
+- [x] Item list sidebar now shows only MRP (was showing Rate + MRP)
+- [x] Validation updated: only MRP required (was MRP + Rate)
+- [x] Role-based pricing placeholders updated to "Enter rate" instead of "Same as default"
+- [x] Backend `rate` field kept as legacy (defaults to 0) for backward compatibility
+
 ## Pending/Upcoming Tasks
 - [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management

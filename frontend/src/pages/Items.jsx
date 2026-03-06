@@ -56,7 +56,6 @@ export const Items = () => {
     offer: '',
     special_offer: '',
     mrp: '',
-    rate: '',
     gst: '',
     custom_fields: [],
     image_base64: null,
@@ -144,7 +143,6 @@ export const Items = () => {
       offer: item.offer || '',
       special_offer: item.special_offer || '',
       mrp: item.mrp.toString(),
-      rate: item.rate.toString(),
       gst: item.gst.toString(),
       custom_fields: item.custom_fields || [],
       image_base64: null,
@@ -190,7 +188,6 @@ export const Items = () => {
           offer: selectedItem.offer || '',
           special_offer: selectedItem.special_offer || '',
           mrp: selectedItem.mrp.toString(),
-          rate: selectedItem.rate.toString(),
           gst: selectedItem.gst.toString(),
           custom_fields: selectedItem.custom_fields || [],
           image_base64: null,
@@ -269,8 +266,8 @@ export const Items = () => {
       toast.error('Item name is required');
       return;
     }
-    if (!formData.mrp || !formData.rate) {
-      toast.error('MRP and Rate are required');
+    if (!formData.mrp) {
+      toast.error('MRP is required');
       return;
     }
 
@@ -285,7 +282,7 @@ export const Items = () => {
         offer: formData.offer || null,
         special_offer: formData.special_offer || null,
         mrp: parseFloat(formData.mrp),
-        rate: parseFloat(formData.rate),
+        rate: 0,
         gst: parseFloat(formData.gst) || 0,
         custom_fields: formData.custom_fields,
         // Role-based pricing
@@ -501,8 +498,7 @@ export const Items = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-slate-900">₹{item.rate}</p>
-                        <p className="text-xs text-slate-400">MRP: ₹{item.mrp}</p>
+                        <p className="font-semibold text-slate-900">MRP: ₹{item.mrp}</p>
                       </div>
                     </div>
                   </div>
@@ -764,19 +760,6 @@ export const Items = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rate">Rate (₹) *</Label>
-                    <Input
-                      id="rate"
-                      type="number"
-                      step="0.01"
-                      value={formData.rate}
-                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
-                      placeholder="0.00"
-                      disabled={!isFormMode}
-                      data-testid="item-rate-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
                     <Label htmlFor="gst">GST (%)</Label>
                     <Input
                       id="gst"
@@ -826,7 +809,7 @@ export const Items = () => {
                     <Label className="text-base font-semibold">Customer Portal Pricing</Label>
                     <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">Optional</span>
                   </div>
-                  <p className="text-sm text-slate-500 mb-4">Set different prices and offers for each customer type. If left empty, the default rate/offer above will be used.</p>
+                  <p className="text-sm text-slate-500 mb-4">Set different prices and offers for each customer type.</p>
                   
                   {/* Doctors Pricing */}
                   <div className="p-4 border border-blue-200 rounded-lg bg-blue-50/50 mb-4">
@@ -842,7 +825,7 @@ export const Items = () => {
                           step="0.01"
                           value={formData.rate_doctors}
                           onChange={(e) => setFormData({ ...formData, rate_doctors: e.target.value })}
-                          placeholder={formData.rate || "Same as default"}
+                          placeholder="Enter rate"
                           disabled={!isFormMode}
                           data-testid="rate-doctors-input"
                         />
@@ -852,7 +835,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_doctors}
                           onChange={(e) => setFormData({ ...formData, offer_doctors: e.target.value })}
-                          placeholder={formData.offer || "Same as default"}
+                          placeholder={formData.offer || "Enter offer"}
                           disabled={!isFormMode}
                         />
                       </div>
@@ -861,7 +844,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_doctors}
                           onChange={(e) => setFormData({ ...formData, special_offer_doctors: e.target.value })}
-                          placeholder={formData.special_offer || "Same as default"}
+                          placeholder={formData.special_offer || "Enter special offer"}
                           disabled={!isFormMode}
                         />
                       </div>
@@ -882,7 +865,7 @@ export const Items = () => {
                           step="0.01"
                           value={formData.rate_medicals}
                           onChange={(e) => setFormData({ ...formData, rate_medicals: e.target.value })}
-                          placeholder={formData.rate || "Same as default"}
+                          placeholder="Enter rate"
                           disabled={!isFormMode}
                           data-testid="rate-medicals-input"
                         />
@@ -892,7 +875,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_medicals}
                           onChange={(e) => setFormData({ ...formData, offer_medicals: e.target.value })}
-                          placeholder={formData.offer || "Same as default"}
+                          placeholder={formData.offer || "Enter offer"}
                           disabled={!isFormMode}
                         />
                       </div>
@@ -901,7 +884,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_medicals}
                           onChange={(e) => setFormData({ ...formData, special_offer_medicals: e.target.value })}
-                          placeholder={formData.special_offer || "Same as default"}
+                          placeholder={formData.special_offer || "Enter special offer"}
                           disabled={!isFormMode}
                         />
                       </div>
@@ -922,7 +905,7 @@ export const Items = () => {
                           step="0.01"
                           value={formData.rate_agencies}
                           onChange={(e) => setFormData({ ...formData, rate_agencies: e.target.value })}
-                          placeholder={formData.rate || "Same as default"}
+                          placeholder="Enter rate"
                           disabled={!isFormMode}
                           data-testid="rate-agencies-input"
                         />
@@ -932,7 +915,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_agencies}
                           onChange={(e) => setFormData({ ...formData, offer_agencies: e.target.value })}
-                          placeholder={formData.offer || "Same as default"}
+                          placeholder={formData.offer || "Enter offer"}
                           disabled={!isFormMode}
                         />
                       </div>
@@ -941,7 +924,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_agencies}
                           onChange={(e) => setFormData({ ...formData, special_offer_agencies: e.target.value })}
-                          placeholder={formData.special_offer || "Same as default"}
+                          placeholder={formData.special_offer || "Enter special offer"}
                           disabled={!isFormMode}
                         />
                       </div>

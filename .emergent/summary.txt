@@ -1,89 +1,83 @@
 <analysis>**original_problem_statement:**
 The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers, products, and a complex ordering system.
 
-**Recent Feature Requests (Current Session):**
-*   **Order Management:**
-    *   Fix broken customer cart and order submission flow.
-    *   Resolve incorrect order status filtering on the customer portal.
-    *   Display detailed transport and invoice information on order details pages (for both active and completed orders).
-    *   Add the ability for admins to delete orders.
-*   **Task Management:** Fix a bug where tasks updated in the admin panel were not refreshing on the customer portal.
-*   **Product Display:** Show the 'composition' of each item on the customer portal's product listing.
-*   **Customer Authentication:** Implement an OTP-based login option for the customer portal, in addition to the existing password login.
-*   **PWA:** Convert the customer-facing portal into an installable Progressive Web App (PWA).
-*   **UI/UX Redesign:**
-    *   Redesign the entire admin panel to match the Cuba admin template design provided by the user (including dashboard, login page, tables, cards, and buttons).
-*   **User Privileges:**
-    *   Implement a fine-grained user privilege system.
-    *   Create a restricted Accountant role ('CA' / 'Admin@123') with read-only access to the Expenses module.
+Recent feature requests include:
+*   **Lead & Reminder Management:** Improve the lead follow-up system for Doctors, Medicals, and Agencies. Follow-ups should appear on a redesigned Reminders page, which should correctly separate Today, Overdue, Upcoming, and History.
+*   **Automated Greetings:** Automatically send birthday and anniversary greetings via Email and WhatsApp using a pool of editable templates.
+*   **User Management:** Add functionality for admins to edit and delete portal customers.
+*   **Bug Fixes:** Address various issues, including a broken Send to Admin WhatsApp message function and UI bugs on the Reminders page.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application with a FastAPI backend, React frontend, and MongoDB.
--   **Admin Panel ():** Features a complete Cuba themed redesign. It includes a comprehensive dashboard, management modules for customers, products, orders (with delete functionality), expenses, etc. It now supports a role-based privilege system that dynamically adjusts the UI (e.g., sidebar menus, action buttons) based on the user's permissions.
--   **Customer Portal ():** A PWA-enabled portal for customers. It supports registration, login (password & OTP), password reset, product browsing, a fully functional cart and ordering system, order history with status tracking, and task management.
--   **Authentication:** JWT-based auth for both admin and customers. The customer portal now supports dual login methods: password and WhatsApp OTP.
--   **Backend:** A monolithic  containing all API logic, including new endpoints for customer order submission, OTP login, and order deletion. Endpoints are now protected by permission checks.
+A full-stack CRM application using FastAPI, React, and MongoDB.
+*   **Admin Panel ():** Features a Cuba themed design with role-based access control. It includes modules for managing customers (with new edit/delete functions), products, orders, and a new page for managing greeting templates.
+*   **Customer Portal ():** A PWA-enabled portal for customers with password and OTP login.
+*   **Backend:** A monolithic  file containing all API logic. It now includes new endpoints and background tasks for an advanced follow-up system and automated greetings.
+*   **Lead Management:** A complete follow-up system is implemented for Doctors, Medicals, and Agencies, allowing users to schedule and track follow-ups, which are reflected on the Reminders page.
 
 **Last working item**:
--   **Last item agent was working**: Creating a read-only 'Accountant' user role. The agent successfully created the user  (password: ), implemented the permission checks to restrict their access to only the Dashboard and a read-only Expenses page, and verified the flow. A minor UI glitch was noticed where an empty Settings section appears in the sidebar for this user.
--   **Status**: USER VERIFICATION PENDING
--   **Agent Testing Done**: Y
--   **Which testing method agent to use?**: manual testing by curl
+-   **Last item agent was working**: Fixing multiple critical bugs on the Reminders page. The user reported that the Todays Reminders" tab was incorrectly showing overdue items, while the "Upcoming" and "History" tabs were not rendering any data. The agent found and fixed the root cause on the backend—a duplicate API route in `server.py` that returned data in the wrong format. The agent was in the middle of rewriting the `frontend/src/pages/admin/Reminders.jsx` component to fix the frontend rendering logic.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: frontend testing agent
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0):** Minor UI Glitch: Empty Settings section in the sidebar for restricted users.
+-   **Issue 1 (P0): Reminders page UI is broken.**
+    -   **Attempted fixes:** The agent identified and fixed the backend root cause by renaming a conflicting, old API route in `server.py` (`/api/reminders` -> `/api/reminders_old_followups`). A rewrite of `frontend/src/pages/admin/Reminders.jsx` was started but not completed.
     -   **Next debug checklist:**
-        1.  Edit .
-        2.  Wrap the Settings  component in a condition that checks if the user has any settings-related permissions (e.g., ).
-    -   **Why fix this issue and what will be achieved with the fix?**: Improves UX by hiding empty, non-functional UI elements for restricted-access users like the new Accountant role.
+        1.  Complete the rewrite of `frontend/src/pages/admin/Reminders.jsx`.
+        2.  Ensure each tab (Today, Overdue, Upcoming, History) correctly filters and displays its specific data.
+        3.  Verify that data fields (`title`, `reminder_date`) render correctly in the "Upcoming" and "History" tabs.
+        4.  Confirm the "Todays Reminders tab exclusively shows items for the current day.
+    -   **Why fix this issue and what will be achieved with the fix?**: The Reminders page is a core CRM function and is currently unusable. This fix will restore its functionality.
     -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
+    -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 2 (P1):** OTP delivery via WhatsApp is failing.
-    -   **Attempted fixes:** The agent identified and fixed an incorrect function call in the backend. However, the third-party WhatsApp API (BotMasterSender) is now returning a  error, indicating a configuration problem (e.g., invalid credentials, incorrect setup) outside the agent's control. The OTP generation and verification logic itself is working (verified via logs).
+-   **Issue 2 (P1): OTP delivery via WhatsApp is failing.**
+    -   **Attempted fixes:** This is a carry-over issue. The previous agent determined the problem is a  from the external  API, likely due to a configuration error on the user's end.
     -   **Next debug checklist:**
-        1.  Inform the user about the 400 error from the BotMasterSender API.
-        2.  Explain that this is likely a configuration issue with their WhatsApp API account credentials or setup.
-        3.  Ask the user to verify their credentials and configuration for the BotMasterSender service.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is blocking the primary delivery method for the OTP login feature.
+        1.  Inform the user that the error is from the external WhatsApp service.
+        2.  Advise them to verify their API credentials and account setup for the  service.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is blocking the customer OTP login feature.
     -   **Status**: BLOCKED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Backend
     -   **Blocked on other issue**: User action (verifying 3rd party API credentials).
 
 **In progress Task List**:
--   None.
+-   **Task 1 (P0): Complete the rewrite of the Reminders page frontend.**
+    -   **Where to resume:** The agent was about to execute a  command for . This command should be executed, followed by thorough testing.
+    -   **What will be achieved with this?**: A fully functional Reminders page that correctly separates today's, overdue, upcoming, and historical reminders, with all action buttons working as intended.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   (P0) **Refactor :** This monolithic file is over 8,000 lines and is a critical technical debt. It MUST be broken down into a modular structure (e.g., routers, models, services) to improve maintainability and stability.
-    -   (P1) **Stock/Inventory Management:** Implement tracking of item quantities, manage stock levels, and set up low-stock alerts.
-    -   (P1) **Payment Tracking:** Enhance payment tracking against orders and manage pending dues for customers.
+    -   (P0) **Refactor :** This monolithic file is now over 8000 lines and poses a significant maintenance risk. It must be broken down into a modular structure (e.g., routers, models, services).
+    -   (P1) **Stock/Inventory Management:** Implement item quantity tracking, manage stock levels, and set up low-stock alerts.
+    -   (P1) **Payment Tracking:** Enhance payment tracking against orders and manage customer dues.
 -   **Future Tasks:**
-    -   (P2) Sales reports with charts and top performers.
-    -   (P2) Data import/export functionality for other modules.
+    -   (P2) Sales reports with charts.
+    -   (P2) Data import/export functionality.
     -   (P2) Sales target management.
 
 **Completed work in this session**
--   **Customer Cart & Order Submission:** Fixed the entire customer ordering flow, from adding items to the cart to submitting the order and verifying it in the admin panel.
--   **Admin Panel Redesign:** Overhauled the entire admin panel UI/UX to match the Cuba admin template, including the login page, dashboard, sidebar, cards, tables, and buttons.
--   **User Privileges & Roles:** Implemented a comprehensive permission system. The UI now dynamically adapts to the user's role. Created a restricted 'Accountant' role.
--   **Order Deletion:** Added functionality for admins with the correct permissions to delete orders.
--   **OTP Login & PWA:** Implemented OTP-based login for the customer portal and converted the portal into an installable Progressive Web App.
--   **Bug Fix (Task Sync):** Resolved an issue where admin updates to tasks were not reflecting on the customer portal by fixing data linkage and adding auto-refresh.
--   **UI Enhancements:**
-    -   Added product 'composition' to the customer item view.
-    -   Added detailed transport and invoice information to the customer's order history.
-    -   Fixed order status filtering on the customer portal and added a Cancelled tab with dynamic counts.
+-   **Lead Follow-up System:** Implemented a full-featured follow-up system for Doctors, Medicals, and Agencies with a dedicated history, backend APIs, and integration into the Reminders page.
+-   **Automated Birthday/Anniversary Greetings:** Created a system to automatically send greetings via WhatsApp/Email using a random template from a new, admin-manageable template library.
+-   **Portal Customer Management:** Added Edit and Delete functionality for portal customers in the admin panel.
+-   **Bug Fixes:**
+    -   Resolved a  on the Send to Admin message feature by correcting the API key and request format.
+    -   Fixed a JSX syntax error in  that was causing build failures.
+-   **Verification:** Confirmed that the OTP login flow correctly blocks and notifies unregistered users.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Monolithic  file**: Remains a critical, high-priority (P0) refactoring task.
--   **Issue 2: Duplicated UI logic**: The , , and  files still contain duplicated UI and logic that should be refactored into reusable components.
+-   **Issue 1: Monolithic  file (CRITICAL, P0)**: This high-priority refactoring task remains pending.
+-   **Issue 2: Duplicated UI logic**: The , , and  files contain significant duplicated code for the follow-up system, which should be refactored into a reusable component.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -92,79 +86,77 @@ A full-stack CRM application with a FastAPI backend, React frontend, and MongoDB
 
 
 **Key Technical Concepts**
--   **Backend:** FastAPI, Pydantic, Motor, JWT, Asyncio, .
--   **Frontend:** React, TailwindCSS, Shadcn/UI, , .
--   **Theming:** Heavy use of CSS variables (, etc.) in  to apply the Cuba theme globally.
--   **PWA:** Service Workers, , and the  event for creating an installable web app.
--   **State Management:** React Context () was extended to manage user permissions.
+-   **Background Tasks ():** Used for automated daily greetings and enhanced reminder summaries.
+-   **API Debugging:** Resolved a critical bug caused by a duplicate, conflicting API route in FastAPI.
 
 **key DB schema**
--   **users:** The user document now contains a  object (e.g., ).
--   **orders:** The order document now includes additional fields for shipping and invoicing: , , , , , .
+-   ** (New):** 
+-   ** (New):** 
+-   **, , :** Modified to include  and .
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   **/app/backend/server.py**: Modified to add new endpoints and permission checks.
--   **/app/frontend/src/pages/admin/Dashboard.jsx**: Completely rewritten for the new theme.
--   **/app/frontend/src/pages/portal/CustomerOrders.jsx**: Completely rewritten to implement cart/order flow and subsequent UI updates.
--   **/app/frontend/src/pages/admin/Login.jsx**: Completely rewritten for the new theme.
--   **/app/frontend/src/pages/CustomerLogin.jsx**: Completely rewritten to support OTP login.
--   **/app/frontend/src/components/layout/Layout.jsx**: Completely rewritten for the new theme and permission-based rendering.
--   **/app/frontend/src/context/AuthContext.js**: Modified to add  helper.
--   **/app/frontend/src/styles/index.css**: Modified with global CSS variables for theming.
--   **/app/frontend/public/manifest.json**: New file for PWA.
--   **/app/frontend/public/service-worker.js**: New file for PWA.
+-   **/app/backend/server.py**: Main file for all backend logic, heavily modified.
+-   **/app/frontend/src/pages/admin/Reminders.jsx**: Currently being rewritten to fix major bugs.
+-   **/app/frontend/src/pages/admin/Customers.jsx**: Modified for edit/delete functionality.
+-   **/app/frontend/src/pages/admin/GreetingTemplates.jsx**: New page for template management.
+-   **/app/frontend/src/pages/admin/Doctors.jsx**: Modified to add follow-up feature.
+-   **/app/frontend/src/pages/admin/Medicals.jsx**: Modified to add follow-up feature.
+-   **/app/frontend/src/pages/admin/Agencies.jsx**: Modified to add follow-up feature.
 
 **Areas that need refactoring**:
--   ** (CRITICAL)**: Top priority. The monolithic structure is unsustainable.
--   **, , **: These pages share similar layouts and logic that should be extracted into reusable components to align with the new Cuba design system.
+-   ** (CRITICAL)**: Top priority (P0). The monolithic structure is unsustainable.
+-   **, , **: These pages share nearly identical follow-up logic that should be extracted into a single reusable component.
 
 **key api endpoints**
--   : (New) Creates an order from the customer's cart.
--   : (New) Sends a login OTP to a customer's registered number.
--   : (New) Validates an OTP and returns a JWT token.
--   : (New) Deletes an order (requires permission).
--   : Modified to include the user's  object in the response.
--   : Modified to handle updates to the new  structure.
+-   : (New) Add a follow-up.
+-    (+ CRUD): (New) Manage greeting templates.
+-   : (New) Edit a portal customer.
+-   : (New) Delete a portal customer.
+-   : (New) Get completed reminders.
+-   : (Fixed) Corrected API key and request format.
+-   : (Renamed) Old, conflicting route was renamed to fix a bug.
 
 **Critical Info for New Agent**
--   **User Privileges are Active:** The admin panel is now driven by a permissions system. UI elements (sidebar links, buttons) are conditionally rendered using the  hook. Backend endpoints are also protected. Always consider permissions when adding or modifying admin features.
--   **Cuba Design System:** All new admin UI development must conform to the Cuba theme. Utilize the global CSS variables in  and the styled Shadcn components.
--   **Monolithic Backend:** Be extremely careful when editing . The file is very large, and changes can have unintended side effects. The top priority after fixing any critical bugs is to plan and execute its refactoring.
+-   **The Reminders page is the top priority.** The backend fix is complete, but the frontend () requires a full rewrite to resolve user-reported bugs. The last agent action was preparing the  call for this rewrite.
+-   **Code duplication has increased.** The new follow-up system was copied across three separate files (, , ). This should be refactored into a reusable component after the critical bugs are resolved.
+-   The monolithic  is the largest source of technical debt and needs to be broken down into a modern router-based structure.
 
 **documents and test reports created in this job**
--    (updated)
--   
+-   /app/memory/PRD.md
+-   /app/test_reports/iteration_21.json
+-   /app/test_reports/iteration_22.json
+-   /app/test_reports/iteration_23.json
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. : Request to create a read-only Accountant user role. **Status: COMPLETED** (pending minor UI tweak)
-9.  : Request to add order deletion and a user permission system. **Status: COMPLETED**
-8.  : Request to redesign the entire admin panel using the Cuba theme. **Status: COMPLETED**
-7.  : Request to redesign the admin login page. **Status: COMPLETED**
-6.  : Initial request for an admin panel redesign (later superseded by the Cuba theme). **Status: COMPLETED**
-5.  : Request to show transport details on active order cards. **Status: COMPLETED**
-4.  : Request to add detailed shipping/invoice info to the order details modal. **Status: COMPLETED**
-3.  : Request for OTP login and PWA functionality. **Status: COMPLETED**
-2.  : Request to show product composition. **Status: COMPLETED**
-1.  : Bug report about tasks not syncing between admin and customer panels. **Status: COMPLETED**
+10. : **(IN PROGRESS)** Bug report with screenshots for the Reminders page.
+9.  : **(PARTIALLY COMPLETED)** Request to improve reminders and add customer management. Bugs remain in the reminder implementation.
+8.  : **(COMPLETED)** Request to ensure only registered users can get an OTP. Verified as already working.
+7.  : **(COMPLETED)** Bug report for the Send to Admin button.
+6.  : **(COMPLETED)** Request to automate birthday/anniversary greetings.
+5.  : **(COMPLETED)** Request to improve the WhatsApp reminder template.
+4.  : **(COMPLETED)** Detailed request for a lead follow-up system.
+3.  : **(COMPLETED)** Initial request to improve the follow-up system.
+2.  : User approval.
+1.  : Agent's internal thought.
 
 **Project Health Check:**
--   **Broken**: WhatsApp OTP delivery is non-functional due to a suspected third-party API configuration issue.
+-   **Broken**: The Reminders page is non-functional due to major UI bugs. OTP delivery via WhatsApp is likely still broken due to an external configuration issue.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **Custom SMTP:** For emails.
--   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(Currently experiencing issues)**.
+-   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(Currently experiencing  issues)**.
 -   **openpyxl:** For reading  files.
--   **apscheduler:** For scheduling database backups.
+-   **apscheduler:** For scheduling background tasks.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (for the initial order flow fix).
+-   **Testing agent used after significant changes:** YES
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None.
--   **Known regressions:** None.
+-   **Test files created:** None
+-   **Known regressions:** The Reminders page functionality has severely regressed.
 
 **Credentials to test flow:**
 -   **Admin Email:** 
@@ -175,4 +167,5 @@ A full-stack CRM application with a FastAPI backend, React frontend, and MongoDB
 -   **Accountant Password:** 
 
 **What agent forgot to execute**
--   The critical refactoring of the monolithic  file has been consistently deferred to prioritize feature requests and bug fixes. It remains the most significant piece of technical debt.</analysis>
+-   The critical refactoring of the monolithic  file continues to be deferred.
+-   When implementing the follow-up feature, the agent duplicated a large amount of code across , , and  instead of creating a reusable component, worsening the technical debt.</analysis>

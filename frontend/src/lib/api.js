@@ -158,8 +158,8 @@ export const itemsAPI = {
     });
   },
   // Export
-  exportPDF: (mainCategory) => api.get('/items/export/pdf', { params: mainCategory ? { main_category: mainCategory } : {}, responseType: 'blob' }),
-  exportExcel: (mainCategory) => api.get('/items/export/excel', { params: mainCategory ? { main_category: mainCategory } : {}, responseType: 'blob' }),
+  exportPDF: (mainCategory, role) => api.get('/items/export/pdf', { params: { ...(mainCategory ? { main_category: mainCategory } : {}), ...(role ? { role } : {}) }, responseType: 'blob' }),
+  exportExcel: (mainCategory, role) => api.get('/items/export/excel', { params: { ...(mainCategory ? { main_category: mainCategory } : {}), ...(role ? { role } : {}) }, responseType: 'blob' }),
   // Subcategory order
   getSubcategoryOrder: () => api.get('/subcategory-order'),
   updateSubcategoryOrder: (order) => api.put('/subcategory-order', { order }),

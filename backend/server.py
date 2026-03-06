@@ -3706,9 +3706,10 @@ async def update_subcategory_order(data: dict, current_user: dict = Depends(get_
 @api_router.get("/items/export/pdf")
 async def export_items_pdf(
     main_category: Optional[str] = None,
+    role: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Export items as PDF grouped by subcategory"""
+    """Export items as PDF grouped by subcategory, role-based pricing"""
     query = {}
     if main_category:
         query['main_categories'] = main_category
@@ -3734,7 +3735,6 @@ async def export_items_pdf(
                 grouped[sub] = []
             grouped[sub].append(item)
     
-    # Sort subcategories by custom order
     def sort_key(sub_name):
         try:
             return sub_order.index(sub_name)
@@ -3743,13 +3743,25 @@ async def export_items_pdf(
     
     sorted_subs = sorted(grouped.keys(), key=sort_key)
     
+    # Role label mapping
+    role_labels = {'doctor': 'Doctors', 'medical': 'Medicals', 'agency': 'Agencies'}
+    role_label = role_labels.get(role, 'All Roles')
+    
     # Create PDF
     pdf = FPDF(orientation='L', format='A4')
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    title = f"{company_name} - Items"
+    title = company_name
+    subtitle_parts = []
     if main_category:
-        title += f" ({main_category})"
+        subtitle_parts.append(main_category)
+    if role:
+        subtitle_parts.append(f"Pricing: {role_label}")
+    subtitle = ' | '.join(subtitle_parts) if subtitle_parts else 'All Items'
+    
+    # Column config based on role
+    col_widths = [10, 22, 55, 85, 18, 22, 35, 35]
+    headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
     
     for sub_name in sorted_subs:
         sub_items = grouped[sub_name]
@@ -3758,14 +3770,15 @@ async def export_items_pdf(
         # Header
         pdf.set_font('Helvetica', 'B', 14)
         pdf.cell(0, 10, title, ln=True, align='C')
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(0, 6, subtitle, ln=True, align='C')
         pdf.set_font('Helvetica', 'B', 11)
-        pdf.cell(0, 8, f"Subcategory: {sub_name}", ln=True, align='C')
-        pdf.ln(3)
+        pdf.set_text_color(41, 128, 185)
+        pdf.cell(0, 8, sub_name, ln=True, align='C')
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(2)
         
         # Table header
-        col_widths = [12, 22, 55, 80, 18, 18, 12, 25, 25, 25]
-        headers = ['#', 'Code', 'Item Name', 'Composition', 'MRP', 'GST%', '', 'Rate (D)', 'Rate (M)', 'Rate (A)']
-        
         pdf.set_font('Helvetica', 'B', 8)
         pdf.set_fill_color(52, 73, 94)
         pdf.set_text_color(255, 255, 255)
@@ -3781,20 +3794,32 @@ async def export_items_pdf(
             pdf.set_fill_color(245, 245, 245) if idx % 2 == 0 else pdf.set_fill_color(255, 255, 255)
             fill = idx % 2 == 0
             
-            rate_d = item.get('rate_doctors') or item.get('rate', 0) or 0
-            rate_m = item.get('rate_medicals') or item.get('rate', 0) or 0
-            rate_a = item.get('rate_agencies') or item.get('rate', 0) or 0
+            # Get role-specific pricing
+            if role == 'doctor':
+                rate = item.get('rate_doctors') or item.get('rate', 0) or 0
+                offer = item.get('offer_doctors') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+            elif role == 'medical':
+                rate = item.get('rate_medicals') or item.get('rate', 0) or 0
+                offer = item.get('offer_medicals') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_medicals') or item.get('special_offer', '') or ''
+            elif role == 'agency':
+                rate = item.get('rate_agencies') or item.get('rate', 0) or 0
+                offer = item.get('offer_agencies') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_agencies') or item.get('special_offer', '') or ''
+            else:
+                rate = item.get('rate_doctors') or item.get('rate', 0) or 0
+                offer = item.get('offer_doctors') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
             
             pdf.cell(col_widths[0], row_h, str(idx), 1, 0, 'C', fill)
-            pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:10], 1, 0, 'C', fill)
-            pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:30], 1, 0, 'L', fill)
-            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:50], 1, 0, 'L', fill)
+            pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:12], 1, 0, 'C', fill)
+            pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:32], 1, 0, 'L', fill)
+            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:55], 1, 0, 'L', fill)
             pdf.cell(col_widths[4], row_h, f"{item.get('mrp', 0):.0f}", 1, 0, 'R', fill)
-            pdf.cell(col_widths[5], row_h, f"{item.get('gst', 0):.0f}%", 1, 0, 'C', fill)
-            pdf.cell(col_widths[6], row_h, '', 1, 0, 'C', fill)
-            pdf.cell(col_widths[7], row_h, f"{rate_d:.0f}", 1, 0, 'R', fill)
-            pdf.cell(col_widths[8], row_h, f"{rate_m:.0f}", 1, 0, 'R', fill)
-            pdf.cell(col_widths[9], row_h, f"{rate_a:.0f}", 1, 0, 'R', fill)
+            pdf.cell(col_widths[5], row_h, f"{rate:.0f}" if rate else '', 1, 0, 'R', fill)
+            pdf.cell(col_widths[6], row_h, str(offer)[:20], 1, 0, 'L', fill)
+            pdf.cell(col_widths[7], row_h, str(sp_offer)[:20], 1, 0, 'L', fill)
             pdf.ln()
         
         # Count
@@ -3802,7 +3827,7 @@ async def export_items_pdf(
         pdf.cell(0, 6, f"Total items: {len(sub_items)}", ln=True, align='R')
     
     pdf_output = pdf.output()
-    filename = f"items_{main_category or 'all'}.pdf".replace(' ', '_').lower()
+    filename = f"items_{main_category or 'all'}_{role or 'all'}.pdf".replace(' ', '_').lower()
     
     return Response(
         content=bytes(pdf_output),
@@ -3813,9 +3838,10 @@ async def export_items_pdf(
 @api_router.get("/items/export/excel")
 async def export_items_excel(
     main_category: Optional[str] = None,
+    role: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Export items as Excel grouped by subcategory"""
+    """Export items as Excel grouped by subcategory, role-based pricing"""
     query = {}
     if main_category:
         query['main_categories'] = main_category
@@ -3845,6 +3871,9 @@ async def export_items_excel(
     
     sorted_subs = sorted(grouped.keys(), key=sort_key)
     
+    role_labels = {'doctor': 'Doctors', 'medical': 'Medicals', 'agency': 'Agencies'}
+    role_label = role_labels.get(role, 'All')
+    
     # Create Excel
     wb = Workbook()
     wb.remove(wb.active)
@@ -3858,9 +3887,12 @@ async def export_items_excel(
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     
-    title = main_category or "All Items"
-    ws = wb.create_sheet(title[:31])
+    sheet_name = f"{main_category or 'All'} - {role_label}"[:31]
+    ws = wb.create_sheet(sheet_name)
     row_num = 1
+    
+    col_headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
+    col_count = len(col_headers)
     
     for sub_name in sorted_subs:
         sub_items = grouped[sub_name]
@@ -3869,14 +3901,13 @@ async def export_items_excel(
         cell = ws.cell(row=row_num, column=1, value=sub_name)
         cell.font = sub_font
         cell.fill = sub_fill
-        for c in range(1, 11):
+        for c in range(1, col_count + 1):
             ws.cell(row=row_num, column=c).fill = sub_fill
             ws.cell(row=row_num, column=c).border = thin_border
         row_num += 1
         
         # Column headers
-        headers = ['#', 'Item Code', 'Item Name', 'Composition', 'MRP', 'GST%', 'Rate (Doctors)', 'Rate (Medicals)', 'Rate (Agencies)', 'Offer (Doctors)']
-        for col, h in enumerate(headers, 1):
+        for col, h in enumerate(col_headers, 1):
             cell = ws.cell(row=row_num, column=col, value=h)
             cell.font = header_font
             cell.fill = header_fill
@@ -3886,14 +3917,26 @@ async def export_items_excel(
         
         # Data rows
         for idx, item in enumerate(sub_items, 1):
-            rate_d = item.get('rate_doctors') or item.get('rate', 0) or 0
-            rate_m = item.get('rate_medicals') or item.get('rate', 0) or 0
-            rate_a = item.get('rate_agencies') or item.get('rate', 0) or 0
-            offer_d = item.get('offer_doctors') or item.get('offer', '') or ''
+            if role == 'doctor':
+                rate = item.get('rate_doctors') or item.get('rate', 0) or 0
+                offer = item.get('offer_doctors') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+            elif role == 'medical':
+                rate = item.get('rate_medicals') or item.get('rate', 0) or 0
+                offer = item.get('offer_medicals') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_medicals') or item.get('special_offer', '') or ''
+            elif role == 'agency':
+                rate = item.get('rate_agencies') or item.get('rate', 0) or 0
+                offer = item.get('offer_agencies') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_agencies') or item.get('special_offer', '') or ''
+            else:
+                rate = item.get('rate_doctors') or item.get('rate', 0) or 0
+                offer = item.get('offer_doctors') or item.get('offer', '') or ''
+                sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
             
             values = [idx, item.get('item_code', ''), item.get('item_name', ''),
                       item.get('composition', '') or '', item.get('mrp', 0),
-                      item.get('gst', 0), rate_d, rate_m, rate_a, offer_d]
+                      rate, offer, sp_offer]
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=row_num, column=col, value=val)
                 cell.border = thin_border
@@ -3902,14 +3945,14 @@ async def export_items_excel(
         row_num += 1  # Gap between subcategories
     
     # Column widths
-    for col, w in enumerate([5, 14, 28, 40, 10, 8, 14, 14, 14, 20], 1):
+    for col, w in enumerate([6, 14, 28, 45, 10, 10, 22, 22], 1):
         ws.column_dimensions[chr(64 + col)].width = w
     
     output = BytesIO()
     wb.save(output)
     output.seek(0)
     
-    filename = f"items_{main_category or 'all'}.xlsx".replace(' ', '_').lower()
+    filename = f"items_{main_category or 'all'}_{role or 'all'}.xlsx".replace(' ', '_').lower()
     return Response(
         content=output.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

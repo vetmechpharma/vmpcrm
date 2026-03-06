@@ -54,6 +54,7 @@ export const Items = () => {
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportRole, setExportRole] = useState('doctor');
 
   // Subcategory order state
   const [showSubOrderModal, setShowSubOrderModal] = useState(false);
@@ -429,12 +430,12 @@ export const Items = () => {
     setExporting(true);
     try {
       const fn = format === 'pdf' ? itemsAPI.exportPDF : itemsAPI.exportExcel;
-      const res = await fn(mainCategory);
+      const res = await fn(mainCategory, exportRole);
       const blob = new Blob([res.data], { type: res.headers['content-type'] });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `items_${(mainCategory || 'all').replace(/\s/g, '_').toLowerCase()}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.download = `items_${(mainCategory || 'all').replace(/\s/g, '_').toLowerCase()}_${exportRole}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success(`${format.toUpperCase()} exported`);
@@ -1181,7 +1182,21 @@ export const Items = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-4">
-            <p className="text-sm text-slate-500">Export items grouped by subcategory (ordered by your custom sort). No images included.</p>
+            <p className="text-sm text-slate-500">Export items grouped by subcategory. Columns: S.No, Item Code, Name, Composition, MRP, Rate, Offer, Special Offer.</p>
+            
+            {/* Role selector */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border">
+              <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Pricing for:</span>
+              <div className="flex gap-1 flex-1">
+                {[{val: 'doctor', label: 'Doctors'}, {val: 'medical', label: 'Medicals'}, {val: 'agency', label: 'Agencies'}].map(r => (
+                  <Button key={r.val} size="sm" variant={exportRole === r.val ? 'default' : 'outline'} className="flex-1 text-xs" onClick={() => setExportRole(r.val)} data-testid={`role-${r.val}`}>
+                    {r.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
             {['Large Animals', 'Poultry', 'Pets'].map(cat => (
               <div key={cat} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
                 <span className="font-medium text-slate-700">{cat}</span>

@@ -1550,30 +1550,25 @@ async def generate_item_code() -> str:
                 pass
     return "ITM-0001"
 
-def process_image_to_webp(image_data: bytes, max_size_kb: int = 25, target_size: tuple = (100, 100)) -> str:
+def process_image_to_webp(image_data: bytes, max_size_kb: int = 100, target_size: tuple = (400, 400)) -> str:
     """
-    Process image: resize to 100x100, convert to WebP, compress to under 25KB
+    Process image: resize to 400x400, convert to WebP, compress to under 100KB
     Returns base64 encoded WebP image
     """
     try:
-        # Open image
         img = Image.open(BytesIO(image_data))
         
-        # Convert to RGB if necessary (for PNG with transparency)
         if img.mode in ('RGBA', 'P'):
             img = img.convert('RGB')
         
-        # Resize to target size (100x100) maintaining aspect ratio and crop
         img.thumbnail(target_size, Image.Resampling.LANCZOS)
         
-        # Create a new image with exact target size and paste resized image centered
         new_img = Image.new('RGB', target_size, (255, 255, 255))
         offset = ((target_size[0] - img.size[0]) // 2, (target_size[1] - img.size[1]) // 2)
         new_img.paste(img, offset)
         
-        # Compress to WebP with quality adjustment to meet size requirement
-        quality = 85
-        while quality > 10:
+        quality = 90
+        while quality > 20:
             buffer = BytesIO()
             new_img.save(buffer, format='WEBP', quality=quality, optimize=True)
             size_kb = buffer.tell() / 1024
@@ -1582,11 +1577,10 @@ def process_image_to_webp(image_data: bytes, max_size_kb: int = 25, target_size:
                 buffer.seek(0)
                 return base64.b64encode(buffer.read()).decode('utf-8')
             
-            quality -= 10
+            quality -= 5
         
-        # Final attempt with lowest quality
         buffer = BytesIO()
-        new_img.save(buffer, format='WEBP', quality=10, optimize=True)
+        new_img.save(buffer, format='WEBP', quality=20, optimize=True)
         buffer.seek(0)
         return base64.b64encode(buffer.read()).decode('utf-8')
         

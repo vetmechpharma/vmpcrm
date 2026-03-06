@@ -3759,42 +3759,49 @@ async def export_items_pdf(
         subtitle_parts.append(f"Pricing: {role_label}")
     subtitle = ' | '.join(subtitle_parts) if subtitle_parts else 'All Items'
     
-    # Column config based on role
+    # Column config
     col_widths = [10, 22, 55, 85, 18, 22, 35, 35]
     headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
     
+    # Single continuous document
+    pdf = FPDF(orientation='L', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    # Title header
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, title, ln=True, align='C')
+    pdf.set_font('Helvetica', '', 10)
+    pdf.cell(0, 6, subtitle, ln=True, align='C')
+    pdf.ln(3)
+    
+    serial = 0
+    
     for sub_name in sorted_subs:
         sub_items = grouped[sub_name]
-        pdf.add_page()
         
-        # Header
-        pdf.set_font('Helvetica', 'B', 14)
-        pdf.cell(0, 10, title, ln=True, align='C')
-        pdf.set_font('Helvetica', '', 10)
-        pdf.cell(0, 6, subtitle, ln=True, align='C')
-        pdf.set_font('Helvetica', 'B', 11)
-        pdf.set_text_color(41, 128, 185)
-        pdf.cell(0, 8, sub_name, ln=True, align='C')
-        pdf.set_text_color(0, 0, 0)
-        pdf.ln(2)
+        # Subcategory header row
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_fill_color(41, 128, 185)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(sum(col_widths), 7, f"  {sub_name}", 1, 1, 'L', True)
         
         # Table header
         pdf.set_font('Helvetica', 'B', 8)
         pdf.set_fill_color(52, 73, 94)
-        pdf.set_text_color(255, 255, 255)
         for i, h in enumerate(headers):
             pdf.cell(col_widths[i], 7, h, 1, 0, 'C', True)
         pdf.ln()
+        pdf.set_text_color(0, 0, 0)
         
         # Table rows
         pdf.set_font('Helvetica', '', 7)
-        pdf.set_text_color(0, 0, 0)
-        for idx, item in enumerate(sub_items, 1):
+        for item in sub_items:
+            serial += 1
             row_h = 6
-            pdf.set_fill_color(245, 245, 245) if idx % 2 == 0 else pdf.set_fill_color(255, 255, 255)
-            fill = idx % 2 == 0
+            pdf.set_fill_color(245, 245, 245) if serial % 2 == 0 else pdf.set_fill_color(255, 255, 255)
+            fill = serial % 2 == 0
             
-            # Get role-specific pricing
             if role == 'doctor':
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
@@ -3812,7 +3819,7 @@ async def export_items_pdf(
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
             
-            pdf.cell(col_widths[0], row_h, str(idx), 1, 0, 'C', fill)
+            pdf.cell(col_widths[0], row_h, str(serial), 1, 0, 'C', fill)
             pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:12], 1, 0, 'C', fill)
             pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:32], 1, 0, 'L', fill)
             pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:55], 1, 0, 'L', fill)
@@ -3821,10 +3828,10 @@ async def export_items_pdf(
             pdf.cell(col_widths[6], row_h, str(offer)[:20], 1, 0, 'L', fill)
             pdf.cell(col_widths[7], row_h, str(sp_offer)[:20], 1, 0, 'L', fill)
             pdf.ln()
-        
-        # Count
-        pdf.set_font('Helvetica', 'I', 7)
-        pdf.cell(0, 6, f"Total items: {len(sub_items)}", ln=True, align='R')
+    
+    # Total count at end
+    pdf.set_font('Helvetica', 'I', 8)
+    pdf.cell(0, 8, f"Total items: {serial}", ln=True, align='R')
     
     pdf_output = pdf.output()
     filename = f"items_{main_category or 'all'}_{role or 'all'}.pdf".replace(' ', '_').lower()
@@ -3893,11 +3900,12 @@ async def export_items_excel(
     
     col_headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
     col_count = len(col_headers)
+    serial = 0
     
     for sub_name in sorted_subs:
         sub_items = grouped[sub_name]
         
-        # Subcategory header
+        # Subcategory header row
         cell = ws.cell(row=row_num, column=1, value=sub_name)
         cell.font = sub_font
         cell.fill = sub_fill
@@ -3906,17 +3914,9 @@ async def export_items_excel(
             ws.cell(row=row_num, column=c).border = thin_border
         row_num += 1
         
-        # Column headers
-        for col, h in enumerate(col_headers, 1):
-            cell = ws.cell(row=row_num, column=col, value=h)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal='center')
-            cell.border = thin_border
-        row_num += 1
-        
-        # Data rows
-        for idx, item in enumerate(sub_items, 1):
+        # Data rows (continuous serial)
+        for item in sub_items:
+            serial += 1
             if role == 'doctor':
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
@@ -3934,15 +3934,13 @@ async def export_items_excel(
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
             
-            values = [idx, item.get('item_code', ''), item.get('item_name', ''),
+            values = [serial, item.get('item_code', ''), item.get('item_name', ''),
                       item.get('composition', '') or '', item.get('mrp', 0),
                       rate, offer, sp_offer]
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=row_num, column=col, value=val)
                 cell.border = thin_border
             row_num += 1
-        
-        row_num += 1  # Gap between subcategories
     
     # Column widths
     for col, w in enumerate([6, 14, 28, 45, 10, 10, 22, 22], 1):

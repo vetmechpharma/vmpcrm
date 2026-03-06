@@ -53,8 +53,6 @@ export const Items = () => {
     main_categories: [],
     subcategories: [],
     composition: '',
-    offer: '',
-    special_offer: '',
     mrp: '',
     gst: '',
     custom_fields: [],
@@ -140,8 +138,6 @@ export const Items = () => {
       main_categories: item.main_categories || [],
       subcategories: item.subcategories || [],
       composition: item.composition || '',
-      offer: item.offer || '',
-      special_offer: item.special_offer || '',
       mrp: item.mrp.toString(),
       gst: item.gst.toString(),
       custom_fields: item.custom_fields || [],
@@ -185,8 +181,6 @@ export const Items = () => {
           item_code: selectedItem.item_code || '',
           category: selectedItem.category || '',
           composition: selectedItem.composition || '',
-          offer: selectedItem.offer || '',
-          special_offer: selectedItem.special_offer || '',
           mrp: selectedItem.mrp.toString(),
           gst: selectedItem.gst.toString(),
           custom_fields: selectedItem.custom_fields || [],
@@ -279,8 +273,8 @@ export const Items = () => {
         main_categories: formData.main_categories || [],
         subcategories: formData.subcategories || [],
         composition: formData.composition || null,
-        offer: formData.offer || null,
-        special_offer: formData.special_offer || null,
+        offer: null,
+        special_offer: null,
         mrp: parseFloat(formData.mrp),
         rate: 0,
         gst: parseFloat(formData.gst) || 0,
@@ -772,33 +766,6 @@ export const Items = () => {
                       data-testid="item-gst-input"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="offer">Offer</Label>
-                    <Input
-                      id="offer"
-                      value={formData.offer}
-                      onChange={(e) => setFormData({ ...formData, offer: e.target.value })}
-                      placeholder="e.g., 10% off, Buy 2 Get 1"
-                      disabled={!isFormMode}
-                      data-testid="item-offer-input"
-                    />
-                  </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <Label htmlFor="special_offer" className="flex items-center gap-2">
-                      Special Offer
-                      <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-full">HOT</span>
-                    </Label>
-                    <Input
-                      id="special_offer"
-                      value={formData.special_offer}
-                      onChange={(e) => setFormData({ ...formData, special_offer: e.target.value })}
-                      placeholder="e.g., Buy 20 pcs at Rs.50/-"
-                      disabled={!isFormMode}
-                      data-testid="item-special-offer-input"
-                      className="border-orange-200 focus:border-orange-400"
-                    />
-                    <p className="text-xs text-slate-500">Bulk/quantity-based special pricing</p>
-                  </div>
                 </div>
 
                 <Separator />
@@ -835,7 +802,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_doctors}
                           onChange={(e) => setFormData({ ...formData, offer_doctors: e.target.value })}
-                          placeholder={formData.offer || "Enter offer"}
+                          placeholder="Enter offer"
                           disabled={!isFormMode}
                         />
                       </div>
@@ -844,7 +811,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_doctors}
                           onChange={(e) => setFormData({ ...formData, special_offer_doctors: e.target.value })}
-                          placeholder={formData.special_offer || "Enter special offer"}
+                          placeholder="Enter special offer"
                           disabled={!isFormMode}
                         />
                       </div>
@@ -875,7 +842,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_medicals}
                           onChange={(e) => setFormData({ ...formData, offer_medicals: e.target.value })}
-                          placeholder={formData.offer || "Enter offer"}
+                          placeholder="Enter offer"
                           disabled={!isFormMode}
                         />
                       </div>
@@ -884,7 +851,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_medicals}
                           onChange={(e) => setFormData({ ...formData, special_offer_medicals: e.target.value })}
-                          placeholder={formData.special_offer || "Enter special offer"}
+                          placeholder="Enter special offer"
                           disabled={!isFormMode}
                         />
                       </div>
@@ -915,7 +882,7 @@ export const Items = () => {
                         <Input
                           value={formData.offer_agencies}
                           onChange={(e) => setFormData({ ...formData, offer_agencies: e.target.value })}
-                          placeholder={formData.offer || "Enter offer"}
+                          placeholder="Enter offer"
                           disabled={!isFormMode}
                         />
                       </div>
@@ -924,7 +891,7 @@ export const Items = () => {
                         <Input
                           value={formData.special_offer_agencies}
                           onChange={(e) => setFormData({ ...formData, special_offer_agencies: e.target.value })}
-                          placeholder={formData.special_offer || "Enter special offer"}
+                          placeholder="Enter special offer"
                           disabled={!isFormMode}
                         />
                       </div>

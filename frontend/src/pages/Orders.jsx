@@ -1746,17 +1746,11 @@ export const Orders = () => {
                     <th className="border border-gray-300 px-2 py-1 text-center text-sm">Qty</th>
                     <th className="border border-gray-300 px-2 py-1 text-right text-sm">Rate (₹)</th>
                     <th className="border border-gray-300 px-2 py-1 text-right text-sm">MRP (₹)</th>
-                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedOrder?.items?.map((item, index) => {
-                    // Calculate base quantity for amount (handle "10+5" format)
-                    const qtyStr = String(item.quantity || '0');
-                    const qtyParts = qtyStr.split('+').map(p => parseInt(p.trim()) || 0);
-                    const baseQty = qtyParts[0] || 0;
                     const rate = parseFloat(item.rate) || 0;
-                    const amount = baseQty * rate;
                     
                     return (
                       <tr key={index}>
@@ -1766,7 +1760,6 @@ export const Orders = () => {
                         <td className="border border-gray-300 px-2 py-1 text-sm text-center font-medium">{item.quantity}</td>
                         <td className="border border-gray-300 px-2 py-1 text-sm text-right">{rate.toFixed(2)}</td>
                         <td className="border border-gray-300 px-2 py-1 text-sm text-right">{item.mrp ? parseFloat(item.mrp).toFixed(2) : '-'}</td>
-                        <td className="border border-gray-300 px-2 py-1 text-sm text-right font-medium">{amount.toFixed(2)}</td>
                       </tr>
                     );
                   })}
@@ -1781,16 +1774,7 @@ export const Orders = () => {
                         return sum + (qtyParts[0] || 0) + (qtyParts[1] || 0);
                       }, 0)}
                     </td>
-                    <td colSpan={2} className="border border-gray-300 px-2 py-1 text-sm text-right font-bold">Grand Total:</td>
-                    <td className="border border-gray-300 px-2 py-1 text-sm text-right font-bold">
-                      ₹{selectedOrder?.items?.reduce((sum, item) => {
-                        const qtyStr = String(item.quantity || '0');
-                        const qtyParts = qtyStr.split('+').map(p => parseInt(p.trim()) || 0);
-                        const baseQty = qtyParts[0] || 0;
-                        const rate = parseFloat(item.rate) || 0;
-                        return sum + (baseQty * rate);
-                      }, 0).toFixed(2)}
-                    </td>
+                    <td colSpan={2} className="border border-gray-300 px-2 py-1"></td>
                   </tr>
                 </tfoot>
               </table>

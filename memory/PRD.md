@@ -804,6 +804,13 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Role-based pricing (Doctor/Medical/Agency) is now the primary source for rate, offer, special offer
 - [x] Backend legacy fields kept (defaults to 0/null) for backward compatibility
 
+## Items Excel Import Update - COMPLETED Mar 6, 2026
+- [x] Updated Excel template headers: Removed Rate/Offer/Special Offer, added role-based columns (Rate Doctors, Offer Doctors, Special Offer Doctors, Rate Medicals, Offer Medicals, Special Offer Medicals, Rate Agencies, Offer Agencies, Special Offer Agencies)
+- [x] Updated import processing to parse and store role-based pricing fields
+- [x] Backward compatible: legacy Rate/Offer/Special Offer columns still accepted as fallback
+- [x] Required columns: Item Name, MRP only (Rate no longer required)
+- [x] New items also get `has_image` flag set correctly
+
 ## Pending/Upcoming Tasks
 - [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management

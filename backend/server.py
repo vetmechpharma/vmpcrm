@@ -3691,7 +3691,10 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
     # Define headers
     headers = [
         "Item Code*", "Item Name*", "Main Categories", "Subcategories", 
-        "Composition", "MRP*", "Rate*", "GST %", "Offer", "Special Offer"
+        "Composition", "MRP*", "GST %",
+        "Rate Doctors", "Offer Doctors", "Special Offer Doctors",
+        "Rate Medicals", "Offer Medicals", "Special Offer Medicals",
+        "Rate Agencies", "Offer Agencies", "Special Offer Agencies"
     ]
     
     # Style for headers
@@ -3712,9 +3715,9 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
     
     # Add sample data rows
     sample_data = [
-        ["ITM-0001", "Paracetamol 500mg", "Large Animals, Poultry", "Injection, Powder", "Paracetamol IP 500mg", "50.00", "35.00", "12", "Buy 10 Get 1 Free", "Limited Offer"],
-        ["ITM-0002", "Vitamin D3 1000IU", "Pets", "Liquids", "Cholecalciferol 1000IU", "250.00", "180.00", "5", "", ""],
-        ["", "Sample Item 3", "Large Animals", "Bolus", "Sample composition", "100.00", "75.00", "18", "", ""],
+        ["ITM-0001", "Paracetamol 500mg", "Large Animals, Poultry", "Injection, Powder", "Paracetamol IP 500mg", "50.00", "12", "35.00", "Buy 10 Get 1 Free", "", "32.00", "", "", "30.00", "", ""],
+        ["ITM-0002", "Vitamin D3 1000IU", "Pets", "Liquids", "Cholecalciferol 1000IU", "250.00", "5", "180.00", "", "", "175.00", "", "", "170.00", "", ""],
+        ["", "Sample Item 3", "Large Animals", "Bolus", "Sample composition", "100.00", "18", "75.00", "", "", "70.00", "", "", "65.00", "", ""],
     ]
     
     for row_num, row_data in enumerate(sample_data, 2):
@@ -3731,15 +3734,15 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
         ["- Item Code: Unique code (leave empty for auto-generation)"],
         ["- Item Name: Product name (required)"],
         ["- MRP: Maximum Retail Price (required, number)"],
-        ["- Rate: Selling rate (required, number)"],
         [""],
         ["Optional Fields:"],
         ["- Main Categories: Comma-separated (e.g., 'Large Animals, Poultry, Pets')"],
         ["- Subcategories: Comma-separated (e.g., 'Injection, Powder, Liquids')"],
         ["- Composition: Product composition text"],
         ["- GST %: GST percentage (number, default 0)"],
-        ["- Offer: Offer text (e.g., 'Buy 10 Get 1 Free')"],
-        ["- Special Offer: Special offer text"],
+        ["- Rate Doctors / Offer Doctors / Special Offer Doctors: Pricing for Doctor customers"],
+        ["- Rate Medicals / Offer Medicals / Special Offer Medicals: Pricing for Medical Store customers"],
+        ["- Rate Agencies / Offer Agencies / Special Offer Agencies: Pricing for Agency customers"],
         [""],
         ["Notes:"],
         ["- Images can be added manually after import"],
@@ -3754,9 +3757,10 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
             cell.font = Font(bold=True, size=14)
     
     # Adjust column widths
-    column_widths = [15, 25, 30, 30, 35, 12, 12, 10, 25, 25]
+    column_widths = [15, 25, 30, 30, 35, 12, 10, 14, 20, 20, 14, 20, 20, 14, 20, 20]
     for i, width in enumerate(column_widths, 1):
-        ws.column_dimensions[chr(64 + i)].width = width
+        col_letter = chr(64 + i) if i <= 26 else chr(64 + (i - 1) // 26) + chr(64 + (i - 1) % 26 + 1)
+        ws.column_dimensions[col_letter].width = width
     
     # Save to bytes
     output = BytesIO()
@@ -3790,8 +3794,18 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
             'Subcategories': 'subcategories',
             'Composition': 'composition',
             'MRP': 'mrp',
-            'Rate': 'rate',
             'GST %': 'gst',
+            'Rate Doctors': 'rate_doctors',
+            'Offer Doctors': 'offer_doctors',
+            'Special Offer Doctors': 'special_offer_doctors',
+            'Rate Medicals': 'rate_medicals',
+            'Offer Medicals': 'offer_medicals',
+            'Special Offer Medicals': 'special_offer_medicals',
+            'Rate Agencies': 'rate_agencies',
+            'Offer Agencies': 'offer_agencies',
+            'Special Offer Agencies': 'special_offer_agencies',
+            # Legacy support
+            'Rate': 'rate',
             'Offer': 'offer',
             'Special Offer': 'special_offer'
         }
@@ -3800,7 +3814,7 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
         df = df.rename(columns=column_mapping)
         
         # Validate required columns
-        required_cols = ['item_name', 'mrp', 'rate']
+        required_cols = ['item_name', 'mrp']
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
             raise HTTPException(status_code=400, detail=f"Missing required columns: {', '.join(missing_cols)}")
@@ -3843,13 +3857,34 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                 
                 # Parse numeric fields
                 mrp = float(row.get('mrp', 0)) if pd.notna(row.get('mrp')) else 0
-                rate = float(row.get('rate', 0)) if pd.notna(row.get('rate')) else 0
                 gst = float(row.get('gst', 0)) if pd.notna(row.get('gst')) else 0
+                
+                # Parse role-based pricing
+                rate_doctors = float(row.get('rate_doctors', 0)) if pd.notna(row.get('rate_doctors')) else None
+                offer_doctors = str(row.get('offer_doctors', '')) if pd.notna(row.get('offer_doctors')) else ''
+                special_offer_doctors = str(row.get('special_offer_doctors', '')) if pd.notna(row.get('special_offer_doctors')) else ''
+                rate_medicals = float(row.get('rate_medicals', 0)) if pd.notna(row.get('rate_medicals')) else None
+                offer_medicals = str(row.get('offer_medicals', '')) if pd.notna(row.get('offer_medicals')) else ''
+                special_offer_medicals = str(row.get('special_offer_medicals', '')) if pd.notna(row.get('special_offer_medicals')) else ''
+                rate_agencies = float(row.get('rate_agencies', 0)) if pd.notna(row.get('rate_agencies')) else None
+                offer_agencies = str(row.get('offer_agencies', '')) if pd.notna(row.get('offer_agencies')) else ''
+                special_offer_agencies = str(row.get('special_offer_agencies', '')) if pd.notna(row.get('special_offer_agencies')) else ''
+                
+                # Legacy fallback: if old Rate/Offer/Special Offer columns exist, use as defaults
+                legacy_rate = float(row.get('rate', 0)) if pd.notna(row.get('rate')) else 0
+                legacy_offer = str(row.get('offer', '')) if pd.notna(row.get('offer')) else ''
+                legacy_special_offer = str(row.get('special_offer', '')) if pd.notna(row.get('special_offer')) else ''
+                
+                # Apply legacy fallback to role-based if not set
+                if rate_doctors is None:
+                    rate_doctors = legacy_rate or 0
+                if rate_medicals is None:
+                    rate_medicals = legacy_rate or 0
+                if rate_agencies is None:
+                    rate_agencies = legacy_rate or 0
                 
                 # Parse text fields
                 composition = str(row.get('composition', '')) if pd.notna(row.get('composition')) else ''
-                offer = str(row.get('offer', '')) if pd.notna(row.get('offer')) else ''
-                special_offer = str(row.get('special_offer', '')) if pd.notna(row.get('special_offer')) else ''
                 
                 # Check if item with same code exists
                 existing_item = None
@@ -3864,10 +3899,19 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                         'subcategories': subcategories,
                         'composition': composition,
                         'mrp': mrp,
-                        'rate': rate,
+                        'rate': 0,
                         'gst': gst,
-                        'offer': offer,
-                        'special_offer': special_offer,
+                        'offer': legacy_offer,
+                        'special_offer': legacy_special_offer,
+                        'rate_doctors': rate_doctors,
+                        'offer_doctors': offer_doctors or legacy_offer,
+                        'special_offer_doctors': special_offer_doctors or legacy_special_offer,
+                        'rate_medicals': rate_medicals,
+                        'offer_medicals': offer_medicals or legacy_offer,
+                        'special_offer_medicals': special_offer_medicals or legacy_special_offer,
+                        'rate_agencies': rate_agencies,
+                        'offer_agencies': offer_agencies or legacy_offer,
+                        'special_offer_agencies': special_offer_agencies or legacy_special_offer,
                         'updated_at': now.isoformat()
                     }
                     await db.items.update_one({'item_code': item_code}, {'$set': update_data})
@@ -3886,11 +3930,21 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                         'subcategories': subcategories,
                         'composition': composition,
                         'mrp': mrp,
-                        'rate': rate,
+                        'rate': 0,
                         'gst': gst,
-                        'offer': offer,
-                        'special_offer': special_offer,
-                        'image_base64': default_image,  # Use company logo as default
+                        'offer': legacy_offer,
+                        'special_offer': legacy_special_offer,
+                        'rate_doctors': rate_doctors,
+                        'offer_doctors': offer_doctors or legacy_offer,
+                        'special_offer_doctors': special_offer_doctors or legacy_special_offer,
+                        'rate_medicals': rate_medicals,
+                        'offer_medicals': offer_medicals or legacy_offer,
+                        'special_offer_medicals': special_offer_medicals or legacy_special_offer,
+                        'rate_agencies': rate_agencies,
+                        'offer_agencies': offer_agencies or legacy_offer,
+                        'special_offer_agencies': special_offer_agencies or legacy_special_offer,
+                        'has_image': default_image is not None,
+                        'image_webp': default_image,
                         'custom_fields': [],
                         'created_at': now.isoformat(),
                         'updated_at': now.isoformat()

@@ -804,6 +804,16 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Role-based pricing (Doctor/Medical/Agency) is now the primary source for rate, offer, special offer
 - [x] Backend legacy fields kept (defaults to 0/null) for backward compatibility
 
+## Items Export & Subcategory Order - COMPLETED Mar 6, 2026
+- [x] **Export as PDF**: Items exported by main category (Large Animals / Poultry / Pets / All), grouped by subcategory, no images
+  - Columns: #, Code, Item Name, Composition, MRP, GST%, Rate (D), Rate (M), Rate (A)
+  - Subcategories ordered by custom sort order
+- [x] **Export as Excel**: Same grouping as PDF, professional formatting with styled headers
+- [x] **Subcategory Order Management**: Admin can reorder subcategories (1-13) using up/down arrows, saved to DB
+- [x] **Default subcategory order**: Injection, Dry Injections, Hormones, Schedule X Drugs, Liquids, Bolus, Powder, Feed Supplements, Shampoo/Soap, Spray/Ointments, Tablets, Syrups, Vaccines
+- [x] **Missing subcategories added**: Dry Injections, Hormones, Schedule X Drugs, Shampoo/Soap, Spray/Ointments now in default list
+- [x] **New API endpoints**: GET/PUT /api/subcategory-order, GET /api/items/export/pdf, GET /api/items/export/excel
+
 ## Items Excel Import Update - COMPLETED Mar 6, 2026
 - [x] Updated Excel template headers: Removed Rate/Offer/Special Offer, added role-based columns (Rate Doctors, Offer Doctors, Special Offer Doctors, Rate Medicals, Offer Medicals, Special Offer Medicals, Rate Agencies, Offer Agencies, Special Offer Agencies)
 - [x] Updated import processing to parse and store role-based pricing fields

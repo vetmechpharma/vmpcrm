@@ -22,7 +22,12 @@ import {
   Download,
   FileSpreadsheet,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  FileText,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Settings2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { formatDate } from '../lib/utils';
@@ -45,6 +50,15 @@ export const Items = () => {
   const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+
+  // Export state
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Subcategory order state
+  const [showSubOrderModal, setShowSubOrderModal] = useState(false);
+  const [subcategoryOrder, setSubcategoryOrder] = useState([]);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,7 +95,7 @@ export const Items = () => {
   const [showNewSubcategory, setShowNewSubcategory] = useState(false);
   
   // Default subcategories
-  const defaultSubcategories = ['Injection', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Tablets', 'Syrups', 'Vaccines'];
+  const defaultSubcategories = ['Injection', 'Dry Injections', 'Hormones', 'Schedule X Drugs', 'Liquids', 'Bolus', 'Powder', 'Feed Supplements', 'Shampoo / Soap', 'Spray / Ointments', 'Tablets', 'Syrups', 'Vaccines'];
 
   useEffect(() => {
     fetchItems();
@@ -410,6 +424,50 @@ export const Items = () => {
     }
   };
 
+  // Export handlers
+  const handleExport = async (format, mainCategory) => {
+    setExporting(true);
+    try {
+      const fn = format === 'pdf' ? itemsAPI.exportPDF : itemsAPI.exportExcel;
+      const res = await fn(mainCategory);
+      const blob = new Blob([res.data], { type: res.headers['content-type'] });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `items_${(mainCategory || 'all').replace(/\s/g, '_').toLowerCase()}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success(`${format.toUpperCase()} exported`);
+    } catch (e) { toast.error('Export failed'); }
+    finally { setExporting(false); }
+  };
+
+  // Subcategory order handlers
+  const fetchSubcategoryOrder = async () => {
+    try {
+      const res = await itemsAPI.getSubcategoryOrder();
+      setSubcategoryOrder(res.data.order || []);
+    } catch { setSubcategoryOrder([...defaultSubcategories]); }
+  };
+
+  const moveSubcategory = (index, direction) => {
+    const newOrder = [...subcategoryOrder];
+    const target = index + direction;
+    if (target < 0 || target >= newOrder.length) return;
+    [newOrder[index], newOrder[target]] = [newOrder[target], newOrder[index]];
+    setSubcategoryOrder(newOrder);
+  };
+
+  const saveSubcategoryOrder = async () => {
+    setSavingOrder(true);
+    try {
+      await itemsAPI.updateSubcategoryOrder(subcategoryOrder);
+      toast.success('Subcategory order saved');
+      setShowSubOrderModal(false);
+    } catch { toast.error('Failed to save order'); }
+    finally { setSavingOrder(false); }
+  };
+
   const isFormMode = isEditing || isCreating;
 
   return (
@@ -420,7 +478,15 @@ export const Items = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Items / Products</h1>
           <p className="text-slate-500 mt-1">Manage your product inventory</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setShowExportModal(true)} data-testid="export-items-btn">
+            <FileText className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" onClick={() => { fetchSubcategoryOrder(); setShowSubOrderModal(true); }} data-testid="subcat-order-btn">
+            <Settings2 className="w-4 h-4 mr-2" />
+            Subcategory Order
+          </Button>
           <Button variant="outline" onClick={() => setShowImportModal(true)} data-testid="import-items-btn">
             <FileSpreadsheet className="w-4 h-4 mr-2" />
             Import Excel
@@ -1101,6 +1167,82 @@ export const Items = () => {
                 {importing ? 'Importing...' : 'Start Import'}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Modal */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Export Items
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-slate-500">Export items grouped by subcategory (ordered by your custom sort). No images included.</p>
+            {['Large Animals', 'Poultry', 'Pets'].map(cat => (
+              <div key={cat} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                <span className="font-medium text-slate-700">{cat}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleExport('pdf', cat)} disabled={exporting} data-testid={`export-pdf-${cat.toLowerCase().replace(/\s/g,'-')}`}>
+                    {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                    <span className="ml-1">PDF</span>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleExport('excel', cat)} disabled={exporting} data-testid={`export-excel-${cat.toLowerCase().replace(/\s/g,'-')}`}>
+                    {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />}
+                    <span className="ml-1">Excel</span>
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Separator />
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <span className="font-medium text-blue-700">All Categories</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => handleExport('pdf', null)} disabled={exporting}>
+                  <FileText className="w-3 h-3 mr-1" />PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleExport('excel', null)} disabled={exporting}>
+                  <FileSpreadsheet className="w-3 h-3 mr-1" />Excel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subcategory Order Modal */}
+      <Dialog open={showSubOrderModal} onOpenChange={setShowSubOrderModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="w-5 h-5" />
+              Subcategory Display Order
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-500">Set the order in which subcategories appear in exports. Use arrows to reorder.</p>
+          <div className="space-y-1 max-h-[400px] overflow-y-auto py-2">
+            {subcategoryOrder.map((sub, idx) => (
+              <div key={sub} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border" data-testid={`subcat-item-${idx}`}>
+                <span className="w-6 h-6 rounded bg-slate-200 text-slate-600 text-xs flex items-center justify-center font-bold">{idx + 1}</span>
+                <GripVertical className="w-4 h-4 text-slate-400" />
+                <span className="flex-1 text-sm font-medium">{sub}</span>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveSubcategory(idx, -1)} disabled={idx === 0}>
+                  <ArrowUp className="w-3 h-3" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveSubcategory(idx, 1)} disabled={idx === subcategoryOrder.length - 1}>
+                  <ArrowDown className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubOrderModal(false)}>Cancel</Button>
+            <Button onClick={saveSubcategoryOrder} disabled={savingOrder} data-testid="save-subcat-order-btn">
+              {savingOrder && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save Order
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -28,6 +28,7 @@ from contextlib import asynccontextmanager
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from fpdf import FPDF
 from india_locations import get_all_states, get_districts_by_state
 
 ROOT_DIR = Path(__file__).parent
@@ -3678,6 +3679,242 @@ async def delete_item(item_id: str, current_user: dict = Depends(get_current_use
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted successfully"}
+
+# ============== SUBCATEGORY ORDER & ITEM EXPORT ==============
+
+DEFAULT_SUBCATEGORY_ORDER = [
+    'Injection', 'Dry Injections', 'Hormones', 'Schedule X Drugs',
+    'Liquids', 'Bolus', 'Powder', 'Feed Supplements',
+    'Shampoo / Soap', 'Spray / Ointments', 'Tablets', 'Syrups', 'Vaccines'
+]
+
+@api_router.get("/subcategory-order")
+async def get_subcategory_order(current_user: dict = Depends(get_current_user)):
+    """Get subcategory display order"""
+    doc = await db.subcategory_order.find_one({}, {'_id': 0})
+    if not doc:
+        return {"order": DEFAULT_SUBCATEGORY_ORDER}
+    return {"order": doc.get('order', DEFAULT_SUBCATEGORY_ORDER)}
+
+@api_router.put("/subcategory-order")
+async def update_subcategory_order(data: dict, current_user: dict = Depends(get_current_user)):
+    """Update subcategory display order"""
+    order = data.get('order', [])
+    await db.subcategory_order.update_one({}, {'$set': {'order': order}}, upsert=True)
+    return {"message": "Subcategory order updated", "order": order}
+
+@api_router.get("/items/export/pdf")
+async def export_items_pdf(
+    main_category: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export items as PDF grouped by subcategory"""
+    query = {}
+    if main_category:
+        query['main_categories'] = main_category
+    
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0}).sort('item_name', 1).to_list(5000)
+    
+    # Get subcategory order
+    order_doc = await db.subcategory_order.find_one({}, {'_id': 0})
+    sub_order = order_doc.get('order', DEFAULT_SUBCATEGORY_ORDER) if order_doc else DEFAULT_SUBCATEGORY_ORDER
+    
+    # Get company settings
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    
+    # Group items by subcategory
+    grouped = {}
+    for item in items:
+        subs = item.get('subcategories', [])
+        if not subs:
+            subs = ['Uncategorized']
+        for sub in subs:
+            if sub not in grouped:
+                grouped[sub] = []
+            grouped[sub].append(item)
+    
+    # Sort subcategories by custom order
+    def sort_key(sub_name):
+        try:
+            return sub_order.index(sub_name)
+        except ValueError:
+            return len(sub_order)
+    
+    sorted_subs = sorted(grouped.keys(), key=sort_key)
+    
+    # Create PDF
+    pdf = FPDF(orientation='L', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    title = f"{company_name} - Items"
+    if main_category:
+        title += f" ({main_category})"
+    
+    for sub_name in sorted_subs:
+        sub_items = grouped[sub_name]
+        pdf.add_page()
+        
+        # Header
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.cell(0, 10, title, ln=True, align='C')
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.cell(0, 8, f"Subcategory: {sub_name}", ln=True, align='C')
+        pdf.ln(3)
+        
+        # Table header
+        col_widths = [12, 22, 55, 80, 18, 18, 12, 25, 25, 25]
+        headers = ['#', 'Code', 'Item Name', 'Composition', 'MRP', 'GST%', '', 'Rate (D)', 'Rate (M)', 'Rate (A)']
+        
+        pdf.set_font('Helvetica', 'B', 8)
+        pdf.set_fill_color(52, 73, 94)
+        pdf.set_text_color(255, 255, 255)
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 7, h, 1, 0, 'C', True)
+        pdf.ln()
+        
+        # Table rows
+        pdf.set_font('Helvetica', '', 7)
+        pdf.set_text_color(0, 0, 0)
+        for idx, item in enumerate(sub_items, 1):
+            row_h = 6
+            pdf.set_fill_color(245, 245, 245) if idx % 2 == 0 else pdf.set_fill_color(255, 255, 255)
+            fill = idx % 2 == 0
+            
+            rate_d = item.get('rate_doctors') or item.get('rate', 0) or 0
+            rate_m = item.get('rate_medicals') or item.get('rate', 0) or 0
+            rate_a = item.get('rate_agencies') or item.get('rate', 0) or 0
+            
+            pdf.cell(col_widths[0], row_h, str(idx), 1, 0, 'C', fill)
+            pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:10], 1, 0, 'C', fill)
+            pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:30], 1, 0, 'L', fill)
+            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:50], 1, 0, 'L', fill)
+            pdf.cell(col_widths[4], row_h, f"{item.get('mrp', 0):.0f}", 1, 0, 'R', fill)
+            pdf.cell(col_widths[5], row_h, f"{item.get('gst', 0):.0f}%", 1, 0, 'C', fill)
+            pdf.cell(col_widths[6], row_h, '', 1, 0, 'C', fill)
+            pdf.cell(col_widths[7], row_h, f"{rate_d:.0f}", 1, 0, 'R', fill)
+            pdf.cell(col_widths[8], row_h, f"{rate_m:.0f}", 1, 0, 'R', fill)
+            pdf.cell(col_widths[9], row_h, f"{rate_a:.0f}", 1, 0, 'R', fill)
+            pdf.ln()
+        
+        # Count
+        pdf.set_font('Helvetica', 'I', 7)
+        pdf.cell(0, 6, f"Total items: {len(sub_items)}", ln=True, align='R')
+    
+    pdf_output = pdf.output()
+    filename = f"items_{main_category or 'all'}.pdf".replace(' ', '_').lower()
+    
+    return Response(
+        content=bytes(pdf_output),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/items/export/excel")
+async def export_items_excel(
+    main_category: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export items as Excel grouped by subcategory"""
+    query = {}
+    if main_category:
+        query['main_categories'] = main_category
+    
+    items = await db.items.find(query, {'_id': 0, 'image_webp': 0}).sort('item_name', 1).to_list(5000)
+    
+    # Get subcategory order
+    order_doc = await db.subcategory_order.find_one({}, {'_id': 0})
+    sub_order = order_doc.get('order', DEFAULT_SUBCATEGORY_ORDER) if order_doc else DEFAULT_SUBCATEGORY_ORDER
+    
+    # Group items by subcategory
+    grouped = {}
+    for item in items:
+        subs = item.get('subcategories', [])
+        if not subs:
+            subs = ['Uncategorized']
+        for sub in subs:
+            if sub not in grouped:
+                grouped[sub] = []
+            grouped[sub].append(item)
+    
+    def sort_key(sub_name):
+        try:
+            return sub_order.index(sub_name)
+        except ValueError:
+            return len(sub_order)
+    
+    sorted_subs = sorted(grouped.keys(), key=sort_key)
+    
+    # Create Excel
+    wb = Workbook()
+    wb.remove(wb.active)
+    
+    header_fill = PatternFill(start_color="34495E", end_color="34495E", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=9)
+    sub_fill = PatternFill(start_color="2980B9", end_color="2980B9", fill_type="solid")
+    sub_font = Font(color="FFFFFF", bold=True, size=10)
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    title = main_category or "All Items"
+    ws = wb.create_sheet(title[:31])
+    row_num = 1
+    
+    for sub_name in sorted_subs:
+        sub_items = grouped[sub_name]
+        
+        # Subcategory header
+        cell = ws.cell(row=row_num, column=1, value=sub_name)
+        cell.font = sub_font
+        cell.fill = sub_fill
+        for c in range(1, 11):
+            ws.cell(row=row_num, column=c).fill = sub_fill
+            ws.cell(row=row_num, column=c).border = thin_border
+        row_num += 1
+        
+        # Column headers
+        headers = ['#', 'Item Code', 'Item Name', 'Composition', 'MRP', 'GST%', 'Rate (Doctors)', 'Rate (Medicals)', 'Rate (Agencies)', 'Offer (Doctors)']
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=row_num, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+        row_num += 1
+        
+        # Data rows
+        for idx, item in enumerate(sub_items, 1):
+            rate_d = item.get('rate_doctors') or item.get('rate', 0) or 0
+            rate_m = item.get('rate_medicals') or item.get('rate', 0) or 0
+            rate_a = item.get('rate_agencies') or item.get('rate', 0) or 0
+            offer_d = item.get('offer_doctors') or item.get('offer', '') or ''
+            
+            values = [idx, item.get('item_code', ''), item.get('item_name', ''),
+                      item.get('composition', '') or '', item.get('mrp', 0),
+                      item.get('gst', 0), rate_d, rate_m, rate_a, offer_d]
+            for col, val in enumerate(values, 1):
+                cell = ws.cell(row=row_num, column=col, value=val)
+                cell.border = thin_border
+            row_num += 1
+        
+        row_num += 1  # Gap between subcategories
+    
+    # Column widths
+    for col, w in enumerate([5, 14, 28, 40, 10, 8, 14, 14, 14, 20], 1):
+        ws.column_dimensions[chr(64 + col)].width = w
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f"items_{main_category or 'all'}.xlsx".replace(' ', '_').lower()
+    return Response(
+        content=output.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 # ============== BULK IMPORT ENDPOINTS ==============
 

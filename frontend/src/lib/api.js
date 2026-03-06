@@ -157,6 +157,12 @@ export const itemsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  // Export
+  exportPDF: (mainCategory) => api.get('/items/export/pdf', { params: mainCategory ? { main_category: mainCategory } : {}, responseType: 'blob' }),
+  exportExcel: (mainCategory) => api.get('/items/export/excel', { params: mainCategory ? { main_category: mainCategory } : {}, responseType: 'blob' }),
+  // Subcategory order
+  getSubcategoryOrder: () => api.get('/subcategory-order'),
+  updateSubcategoryOrder: (order) => api.put('/subcategory-order', { order }),
 };
 
 // Company Settings APIs

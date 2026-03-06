@@ -836,6 +836,7 @@ class ItemCreate(BaseModel):
     special_offer: Optional[str] = None
     custom_fields: Optional[List[CustomField]] = []
     image_base64: Optional[str] = None  # Base64 encoded image
+    out_of_stock: Optional[bool] = False
 
 class ItemUpdate(BaseModel):
     item_name: Optional[str] = None
@@ -863,6 +864,7 @@ class ItemUpdate(BaseModel):
     special_offer: Optional[str] = None
     custom_fields: Optional[List[CustomField]] = None
     image_base64: Optional[str] = None
+    out_of_stock: Optional[bool] = None
 
 class ItemResponse(BaseModel):
     id: str
@@ -3674,6 +3676,15 @@ async def delete_item(item_id: str, current_user: dict = Depends(get_current_use
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Item deleted successfully"}
 
+@api_router.patch("/items/{item_id}/stock")
+async def toggle_item_stock(item_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Toggle out_of_stock status for an item"""
+    out_of_stock = data.get('out_of_stock', False)
+    result = await db.items.update_one({'id': item_id}, {'$set': {'out_of_stock': out_of_stock}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": "Stock status updated", "out_of_stock": out_of_stock}
+
 # ============== SUBCATEGORY ORDER & ITEM EXPORT ==============
 
 DEFAULT_SUBCATEGORY_ORDER = [
@@ -4960,7 +4971,7 @@ async def get_customer_items(
     customer: dict = Depends(get_current_customer)
 ):
     """Get items with role-based pricing for logged-in customer"""
-    query = {}
+    query = {'out_of_stock': {'$ne': True}}
     if main_category:
         query['main_categories'] = main_category
     if subcategory:

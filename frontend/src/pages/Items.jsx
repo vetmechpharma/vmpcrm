@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
@@ -469,6 +470,17 @@ export const Items = () => {
     finally { setSavingOrder(false); }
   };
 
+  const toggleOutOfStock = async (e, item) => {
+    e.stopPropagation();
+    const newVal = !item.out_of_stock;
+    try {
+      await itemsAPI.toggleStock(item.id, newVal);
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, out_of_stock: newVal } : i));
+      if (selectedItem?.id === item.id) setSelectedItem(prev => ({ ...prev, out_of_stock: newVal }));
+      toast.success(newVal ? 'Marked as Out of Stock' : 'Marked as In Stock');
+    } catch { toast.error('Failed to update stock status'); }
+  };
+
   const isFormMode = isEditing || isCreating;
 
   return (
@@ -532,10 +544,18 @@ export const Items = () => {
                     onClick={() => handleSelectItem(item)}
                     className={`p-3 cursor-pointer transition-colors hover:bg-slate-50 ${
                       selectedItem?.id === item.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
-                    }`}
+                    } ${item.out_of_stock ? 'opacity-60' : ''}`}
                     data-testid={`item-row-${item.id}`}
                   >
                     <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={!item.out_of_stock}
+                        onCheckedChange={() => toggleOutOfStock({ stopPropagation: () => {} }, item)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-shrink-0"
+                        data-testid={`stock-toggle-${item.id}`}
+                        title={item.out_of_stock ? 'Out of Stock — click to mark In Stock' : 'In Stock — click to mark Out of Stock'}
+                      />
                       {item.image_url ? (
                         <img 
                           src={`${API_URL}${item.image_url}`} 
@@ -560,6 +580,7 @@ export const Items = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-slate-900">MRP: ₹{item.mrp}</p>
+                        {item.out_of_stock && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">Out of Stock</span>}
                       </div>
                     </div>
                   </div>

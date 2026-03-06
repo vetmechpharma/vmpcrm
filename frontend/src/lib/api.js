@@ -147,6 +147,7 @@ export const itemsAPI = {
   update: (id, data) => api.put(`/items/${id}`, data),
   delete: (id) => api.delete(`/items/${id}`),
   deleteImage: (id) => api.delete(`/items/${id}/image`),
+  toggleStock: (id, outOfStock) => api.patch(`/items/${id}/stock`, { out_of_stock: outOfStock }),
   getCategories: () => api.get('/item-categories'),
   // Bulk import
   getImportTemplate: () => api.get('/items/import/template', { responseType: 'blob' }),

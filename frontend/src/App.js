@@ -14,6 +14,7 @@ import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
 import { CompanySettings } from './pages/CompanySettings';
 import { Orders } from './pages/Orders';
+import { Payments } from './pages/Payments';
 import { PendingItems } from './pages/PendingItems';
 import { Reminders } from './pages/Reminders';
 import { GreetingTemplates } from './pages/GreetingTemplates';
@@ -33,6 +34,7 @@ import CustomerTasks from './pages/CustomerTasks';
 import CustomerSupport from './pages/CustomerSupport';
 import CustomerProfile from './pages/CustomerProfile';
 import CustomerDownloads from './pages/CustomerDownloads';
+import CustomerLedger from './pages/CustomerLedger';
 import ForgotPassword from './pages/ForgotPassword';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
@@ -93,6 +95,7 @@ function AppRoutes() {
         <Route path="tasks" element={<CustomerTasks />} />
         <Route path="support" element={<CustomerSupport />} />
         <Route path="downloads" element={<CustomerDownloads />} />
+        <Route path="ledger" element={<CustomerLedger />} />
         <Route path="profile" element={<CustomerProfile />} />
         <Route index element={<Navigate to="/portal/dashboard" replace />} />
       </Route>
@@ -164,6 +167,14 @@ function AppRoutes() {
         element={
           <AdminProtectedRoute>
             <Orders />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/payments" 
+        element={
+          <AdminProtectedRoute>
+            <Payments />
           </AdminProtectedRoute>
         } 
       />

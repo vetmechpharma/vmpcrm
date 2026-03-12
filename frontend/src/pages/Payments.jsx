@@ -1,0 +1,467 @@
+import { useState, useEffect, useCallback } from 'react';
+import { paymentsAPI, doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Separator } from '../components/ui/separator';
+import { toast } from 'sonner';
+import {
+  IndianRupee, Plus, Search, Trash2, Loader2, FileText, Download,
+  Users, ArrowUpDown, Filter, Calendar, CreditCard, Wallet, BookOpen
+} from 'lucide-react';
+
+const PAYMENT_MODES = ['Cash', 'UPI', 'GPay', 'Netbanking', 'Cheque', 'Credit'];
+
+export const Payments = () => {
+  const [activeTab, setActiveTab] = useState('outstanding');
+  const [outstanding, setOutstanding] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState('');
+  const [search, setSearch] = useState('');
+
+  // Payment form
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [payForm, setPayForm] = useState({ customer_id: '', customer_name: '', customer_type: 'doctor', customer_phone: '', amount: '', mode: 'Cash', date: new Date().toISOString().slice(0, 10), notes: '', invoice_number: '' });
+  const [saving, setSaving] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [searchingCustomer, setSearchingCustomer] = useState(false);
+
+  // Ledger
+  const [showLedger, setShowLedger] = useState(false);
+  const [ledger, setLedger] = useState(null);
+  const [ledgerCustomer, setLedgerCustomer] = useState(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const fetchOutstanding = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = filterType ? { customer_type: filterType } : {};
+      const res = await paymentsAPI.getOutstanding(params);
+      setOutstanding(res.data);
+    } catch { toast.error('Failed to load outstanding'); }
+    finally { setLoading(false); }
+  }, [filterType]);
+
+  const fetchPayments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {};
+      if (filterType) params.customer_type = filterType;
+      if (dateFrom) params.from_date = dateFrom;
+      if (dateTo) params.to_date = dateTo;
+      const res = await paymentsAPI.getAll(params);
+      setPayments(res.data);
+    } catch { toast.error('Failed to load payments'); }
+    finally { setLoading(false); }
+  }, [filterType, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (activeTab === 'outstanding') fetchOutstanding();
+    else if (activeTab === 'payments') fetchPayments();
+  }, [activeTab, fetchOutstanding, fetchPayments]);
+
+  const searchCustomers = async (q) => {
+    setCustomerSearch(q);
+    if (q.length < 2) { setCustomerResults([]); return; }
+    setSearchingCustomer(true);
+    try {
+      const [docs, meds, ags] = await Promise.all([
+        doctorsAPI.getAll().then(r => r.data.map(d => ({ ...d, type: 'doctor' }))),
+        medicalsAPI.getAll().then(r => r.data.map(m => ({ ...m, type: 'medical' }))),
+        agenciesAPI.getAll().then(r => r.data.map(a => ({ ...a, type: 'agency' }))),
+      ]);
+      const all = [...docs, ...meds, ...ags];
+      const filtered = all.filter(c =>
+        c.name.toLowerCase().includes(q.toLowerCase()) ||
+        c.phone?.includes(q) ||
+        c.customer_code?.toLowerCase().includes(q.toLowerCase())
+      );
+      setCustomerResults(filtered.slice(0, 10));
+    } catch { /* empty */ }
+    finally { setSearchingCustomer(false); }
+  };
+
+  const selectCustomer = (c) => {
+    setPayForm(prev => ({
+      ...prev,
+      customer_id: c.id,
+      customer_name: c.name,
+      customer_type: c.type,
+      customer_phone: c.phone || '',
+    }));
+    setCustomerSearch(c.name);
+    setCustomerResults([]);
+  };
+
+  const savePayment = async () => {
+    if (!payForm.customer_id || !payForm.amount) {
+      toast.error('Select customer and enter amount');
+      return;
+    }
+    setSaving(true);
+    try {
+      await paymentsAPI.create({ ...payForm, amount: parseFloat(payForm.amount) });
+      toast.success('Payment recorded');
+      setShowPayForm(false);
+      setPayForm({ customer_id: '', customer_name: '', customer_type: 'doctor', customer_phone: '', amount: '', mode: 'Cash', date: new Date().toISOString().slice(0, 10), notes: '', invoice_number: '' });
+      setCustomerSearch('');
+      if (activeTab === 'outstanding') fetchOutstanding();
+      else fetchPayments();
+    } catch { toast.error('Failed to save payment'); }
+    finally { setSaving(false); }
+  };
+
+  const deletePayment = async (id) => {
+    if (!window.confirm('Delete this payment?')) return;
+    try {
+      await paymentsAPI.delete(id);
+      toast.success('Payment deleted');
+      fetchPayments();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const openLedger = async (customerId, customerType, customerName) => {
+    setLedgerCustomer({ id: customerId, type: customerType, name: customerName });
+    setShowLedger(true);
+    setLedgerLoading(true);
+    try {
+      const params = {};
+      if (dateFrom) params.from_date = dateFrom;
+      if (dateTo) params.to_date = dateTo;
+      const res = await paymentsAPI.getLedger(customerType, customerId, params);
+      setLedger(res.data);
+    } catch { toast.error('Failed to load ledger'); }
+    finally { setLedgerLoading(false); }
+  };
+
+  const refreshLedger = async () => {
+    if (!ledgerCustomer) return;
+    setLedgerLoading(true);
+    try {
+      const params = {};
+      if (dateFrom) params.from_date = dateFrom;
+      if (dateTo) params.to_date = dateTo;
+      const res = await paymentsAPI.getLedger(ledgerCustomer.type, ledgerCustomer.id, params);
+      setLedger(res.data);
+    } catch { toast.error('Failed to refresh'); }
+    finally { setLedgerLoading(false); }
+  };
+
+  const exportLedgerPDF = async () => {
+    if (!ledgerCustomer) return;
+    try {
+      const params = {};
+      if (dateFrom) params.from_date = dateFrom;
+      if (dateTo) params.to_date = dateTo;
+      const res = await paymentsAPI.exportLedgerPDF(ledgerCustomer.type, ledgerCustomer.id, params);
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ledger_${ledgerCustomer.name.replace(/\s/g, '_')}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Ledger PDF downloaded');
+    } catch { toast.error('Export failed'); }
+  };
+
+  const filteredOutstanding = outstanding.filter(o =>
+    !search || o.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+    o.customer_code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const typeLabel = (t) => ({ doctor: 'Doctor', medical: 'Medical', agency: 'Agency' }[t] || t);
+  const typeBg = (t) => ({ doctor: 'bg-blue-100 text-blue-700', medical: 'bg-emerald-100 text-emerald-700', agency: 'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100');
+
+  return (
+    <div className="space-y-4" data-testid="payments-page">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Payments & Ledger</h1>
+          <p className="text-sm text-slate-500">Track payments, outstanding dues, and customer ledgers</p>
+        </div>
+        <Button onClick={() => setShowPayForm(true)} data-testid="add-payment-btn">
+          <Plus className="w-4 h-4 mr-2" /> Record Payment
+        </Button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+        {[{ key: 'outstanding', label: 'Outstanding', icon: IndianRupee },
+          { key: 'payments', label: 'Payment History', icon: CreditCard }].map(tab => (
+          <Button key={tab.key} variant={activeTab === tab.key ? 'default' : 'ghost'} size="sm"
+            onClick={() => setActiveTab(tab.key)} data-testid={`tab-${tab.key}`}>
+            <tab.icon className="w-4 h-4 mr-1" />{tab.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 bg-slate-50 p-1 rounded-lg border">
+          {['', 'doctor', 'medical', 'agency'].map(t => (
+            <Button key={t} variant={filterType === t ? 'default' : 'ghost'} size="sm"
+              onClick={() => setFilterType(t)} className="text-xs">
+              {t ? typeLabel(t) : 'All'}
+            </Button>
+          ))}
+        </div>
+        {activeTab === 'outstanding' && (
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input placeholder="Search customer..." value={search} onChange={(e) => setSearch(e.target.value)}
+              className="pl-10" data-testid="search-outstanding" />
+          </div>
+        )}
+        {activeTab === 'payments' && (
+          <div className="flex gap-2 items-center">
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-36" />
+            <span className="text-sm text-slate-400">to</span>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+      ) : activeTab === 'outstanding' ? (
+        <div className="space-y-2">
+          {/* Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {['doctor', 'medical', 'agency'].map(t => {
+              const total = outstanding.filter(o => o.customer_type === t).reduce((s, o) => s + o.outstanding, 0);
+              return (
+                <Card key={t} className="p-3">
+                  <div className="flex justify-between items-center">
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${typeBg(t)}`}>{typeLabel(t)}s</span>
+                    <span className="font-bold text-lg text-slate-900">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Outstanding list */}
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b">
+                  <th className="text-left p-3 font-medium">Customer</th>
+                  <th className="text-center p-3 font-medium">Type</th>
+                  <th className="text-right p-3 font-medium">Invoiced</th>
+                  <th className="text-right p-3 font-medium">Paid</th>
+                  <th className="text-right p-3 font-medium">Outstanding</th>
+                  <th className="text-center p-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOutstanding.map(o => (
+                  <tr key={o.customer_id} className="border-b hover:bg-slate-50" data-testid={`outstanding-${o.customer_id}`}>
+                    <td className="p-3">
+                      <p className="font-medium">{o.customer_name}</p>
+                      <p className="text-xs text-slate-400">{o.customer_code}</p>
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className={`text-xs px-2 py-0.5 rounded ${typeBg(o.customer_type)}`}>{typeLabel(o.customer_type)}</span>
+                    </td>
+                    <td className="p-3 text-right">₹{(o.opening_balance + o.total_invoiced).toLocaleString('en-IN')}</td>
+                    <td className="p-3 text-right text-emerald-600">₹{o.total_paid.toLocaleString('en-IN')}</td>
+                    <td className="p-3 text-right font-bold text-red-600">₹{o.outstanding.toLocaleString('en-IN')}</td>
+                    <td className="p-3 text-center">
+                      <div className="flex gap-1 justify-center">
+                        <Button variant="outline" size="sm" onClick={() => openLedger(o.customer_id, o.customer_type, o.customer_name)} data-testid={`ledger-${o.customer_id}`}>
+                          <BookOpen className="w-3 h-3 mr-1" />Ledger
+                        </Button>
+                        <Button size="sm" onClick={() => {
+                          setPayForm(prev => ({ ...prev, customer_id: o.customer_id, customer_name: o.customer_name, customer_type: o.customer_type, customer_phone: o.customer_phone }));
+                          setCustomerSearch(o.customer_name);
+                          setShowPayForm(true);
+                        }}>
+                          <Plus className="w-3 h-3 mr-1" />Pay
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredOutstanding.length === 0 && (
+              <p className="text-center py-8 text-slate-400">No outstanding dues</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Payment History */
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="text-left p-3 font-medium">Date</th>
+                <th className="text-left p-3 font-medium">Customer</th>
+                <th className="text-center p-3 font-medium">Mode</th>
+                <th className="text-right p-3 font-medium">Amount</th>
+                <th className="text-left p-3 font-medium">Notes</th>
+                <th className="text-center p-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map(p => (
+                <tr key={p.id} className="border-b hover:bg-slate-50" data-testid={`payment-${p.id}`}>
+                  <td className="p-3">{p.date}</td>
+                  <td className="p-3">
+                    <p className="font-medium">{p.customer_name}</p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${typeBg(p.customer_type)}`}>{typeLabel(p.customer_type)}</span>
+                  </td>
+                  <td className="p-3 text-center"><span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">{p.mode}</span></td>
+                  <td className="p-3 text-right font-bold text-emerald-600">₹{parseFloat(p.amount).toLocaleString('en-IN')}</td>
+                  <td className="p-3 text-slate-500 text-xs">{p.notes || '-'}</td>
+                  <td className="p-3 text-center">
+                    <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deletePayment(p.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {payments.length === 0 && <p className="text-center py-8 text-slate-400">No payments recorded</p>}
+        </div>
+      )}
+
+      {/* Record Payment Dialog */}
+      <Dialog open={showPayForm} onOpenChange={setShowPayForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5" />Record Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Customer search */}
+            <div className="space-y-2">
+              <Label>Customer *</Label>
+              <div className="relative">
+                <Input value={customerSearch} onChange={e => searchCustomers(e.target.value)}
+                  placeholder="Search by name, phone, code..." data-testid="payment-customer-search" />
+                {searchingCustomer && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" />}
+                {customerResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {customerResults.map(c => (
+                      <div key={c.id} className="p-2 hover:bg-slate-50 cursor-pointer flex justify-between items-center"
+                        onClick={() => selectCustomer(c)}>
+                        <div>
+                          <p className="text-sm font-medium">{c.name}</p>
+                          <p className="text-xs text-slate-400">{c.phone} | {c.customer_code}</p>
+                        </div>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${typeBg(c.type)}`}>{typeLabel(c.type)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {payForm.customer_name && (
+                <p className="text-xs text-emerald-600">Selected: {payForm.customer_name} ({typeLabel(payForm.customer_type)})</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Date *</Label>
+                <Input type="date" value={payForm.date} onChange={e => setPayForm(p => ({ ...p, date: e.target.value }))} data-testid="payment-date" />
+              </div>
+              <div className="space-y-2">
+                <Label>Amount (₹) *</Label>
+                <Input type="number" value={payForm.amount} onChange={e => setPayForm(p => ({ ...p, amount: e.target.value }))}
+                  placeholder="0.00" data-testid="payment-amount" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Payment Mode</Label>
+              <div className="flex gap-1 flex-wrap">
+                {PAYMENT_MODES.map(m => (
+                  <Button key={m} variant={payForm.mode === m ? 'default' : 'outline'} size="sm" className="text-xs"
+                    onClick={() => setPayForm(p => ({ ...p, mode: m }))} data-testid={`mode-${m.toLowerCase()}`}>{m}</Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Input value={payForm.notes} onChange={e => setPayForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g., Against Inv# 1234" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPayForm(false)}>Cancel</Button>
+            <Button onClick={savePayment} disabled={saving} data-testid="save-payment-btn">
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ledger Dialog */}
+      <Dialog open={showLedger} onOpenChange={setShowLedger}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              Ledger: {ledgerCustomer?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex gap-2 items-center mb-3">
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-36" />
+            <span className="text-sm text-slate-400">to</span>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />
+            <Button size="sm" variant="outline" onClick={refreshLedger}><Filter className="w-3 h-3 mr-1" />Filter</Button>
+            <Button size="sm" variant="outline" onClick={exportLedgerPDF}><Download className="w-3 h-3 mr-1" />PDF</Button>
+          </div>
+
+          {ledgerLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          ) : ledger ? (
+            <div>
+              <table className="w-full text-sm border">
+                <thead>
+                  <tr className="bg-slate-100">
+                    <th className="p-2 text-left border">Date</th>
+                    <th className="p-2 text-left border">Description</th>
+                    <th className="p-2 text-right border">Debit (₹)</th>
+                    <th className="p-2 text-right border">Credit (₹)</th>
+                    <th className="p-2 text-right border">Balance (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.entries.map((e, i) => (
+                    <tr key={i} className={`border ${e.type === 'opening_balance' ? 'bg-amber-50' : e.type === 'payment' ? 'bg-emerald-50' : ''}`}>
+                      <td className="p-2 border text-xs">{e.date || '-'}</td>
+                      <td className="p-2 border text-xs">{e.description}</td>
+                      <td className="p-2 border text-right text-xs">{e.debit ? e.debit.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}</td>
+                      <td className="p-2 border text-right text-xs text-emerald-600">{e.credit ? e.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : ''}</td>
+                      <td className="p-2 border text-right text-xs font-medium">{e.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-800 text-white font-bold">
+                    <td colSpan={2} className="p-2 border text-right">TOTALS</td>
+                    <td className="p-2 border text-right">{ledger.total_debit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-2 border text-right">{ledger.total_credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-2 border text-right">{ledger.closing_balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Payments;

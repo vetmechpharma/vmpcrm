@@ -508,6 +508,7 @@ class DoctorCreate(BaseModel):
     phone: str
     lead_status: str = "Pipeline"
     dob: Optional[str] = None
+    opening_balance: Optional[float] = 0
 
 class DoctorUpdate(BaseModel):
     name: Optional[str] = None
@@ -524,9 +525,10 @@ class DoctorUpdate(BaseModel):
     phone: Optional[str] = None
     lead_status: Optional[str] = None
     dob: Optional[str] = None
-    priority: Optional[str] = None  # low, moderate, high
+    priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
+    opening_balance: Optional[float] = None
 
 class DoctorResponse(BaseModel):
     id: str
@@ -541,7 +543,7 @@ class DoctorResponse(BaseModel):
     pincode: Optional[str] = None
     delivery_station: Optional[str] = None
     transport_id: Optional[str] = None
-    transport_name: Optional[str] = None  # Populated from transport lookup
+    transport_name: Optional[str] = None
     email: str
     phone: str
     lead_status: str
@@ -549,8 +551,9 @@ class DoctorResponse(BaseModel):
     priority: Optional[str] = None
     last_contact_date: Optional[str] = None
     follow_up_date: Optional[str] = None
-    is_portal_customer: Optional[bool] = False  # Flag for portal customers
-    portal_customer_id: Optional[str] = None  # Link to portal_customers
+    is_portal_customer: Optional[bool] = False
+    portal_customer_id: Optional[str] = None
+    opening_balance: Optional[float] = 0
     created_at: datetime
     updated_at: datetime
 
@@ -585,6 +588,7 @@ class MedicalCreate(BaseModel):
     lead_status: str = "Pipeline"
     birthday: Optional[str] = None  # Format: YYYY-MM-DD
     anniversary: Optional[str] = None  # Format: YYYY-MM-DD
+    opening_balance: Optional[float] = 0
 
 class MedicalUpdate(BaseModel):
     name: Optional[str] = None
@@ -608,6 +612,7 @@ class MedicalUpdate(BaseModel):
     follow_up_date: Optional[str] = None
     birthday: Optional[str] = None
     anniversary: Optional[str] = None
+    opening_balance: Optional[float] = None
 
 class MedicalResponse(BaseModel):
     id: str
@@ -636,6 +641,7 @@ class MedicalResponse(BaseModel):
     anniversary: Optional[str] = None
     is_portal_customer: Optional[bool] = False  # Flag for portal customers
     portal_customer_id: Optional[str] = None  # Link to portal_customers
+    opening_balance: Optional[float] = 0
     created_at: datetime
     updated_at: datetime
 
@@ -670,6 +676,7 @@ class AgencyCreate(BaseModel):
     lead_status: str = "Pipeline"
     birthday: Optional[str] = None
     anniversary: Optional[str] = None
+    opening_balance: Optional[float] = 0
 
 class AgencyUpdate(BaseModel):
     name: Optional[str] = None
@@ -693,6 +700,7 @@ class AgencyUpdate(BaseModel):
     follow_up_date: Optional[str] = None
     birthday: Optional[str] = None
     anniversary: Optional[str] = None
+    opening_balance: Optional[float] = None
 
 class AgencyResponse(BaseModel):
     id: str
@@ -709,7 +717,7 @@ class AgencyResponse(BaseModel):
     pincode: Optional[str] = None
     delivery_station: Optional[str] = None
     transport_id: Optional[str] = None
-    transport_name: Optional[str] = None  # Populated from transport lookup
+    transport_name: Optional[str] = None
     email: Optional[str] = None
     phone: str
     alternate_phone: Optional[str] = None
@@ -719,8 +727,9 @@ class AgencyResponse(BaseModel):
     follow_up_date: Optional[str] = None
     birthday: Optional[str] = None
     anniversary: Optional[str] = None
-    is_portal_customer: Optional[bool] = False  # Flag for portal customers
-    portal_customer_id: Optional[str] = None  # Link to portal_customers
+    is_portal_customer: Optional[bool] = False
+    portal_customer_id: Optional[str] = None
+    opening_balance: Optional[float] = 0
     created_at: datetime
     updated_at: datetime
 
@@ -3962,6 +3971,286 @@ async def export_items_excel(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+# ============== PAYMENT TRACKING ==============
+
+@api_router.post("/payments")
+async def create_payment(data: dict, current_user: dict = Depends(get_current_user)):
+    """Record a payment receipt"""
+    now = datetime.now(timezone.utc)
+    payment = {
+        'id': str(uuid.uuid4()),
+        'customer_id': data['customer_id'],
+        'customer_name': data.get('customer_name', ''),
+        'customer_type': data.get('customer_type', 'doctor'),
+        'customer_phone': data.get('customer_phone', ''),
+        'amount': float(data['amount']),
+        'mode': data.get('mode', 'Cash'),
+        'date': data.get('date', now.strftime('%Y-%m-%d')),
+        'notes': data.get('notes', ''),
+        'order_id': data.get('order_id'),
+        'invoice_number': data.get('invoice_number'),
+        'created_by': current_user.get('name', current_user.get('email', '')),
+        'created_at': now.isoformat()
+    }
+    await db.payments.insert_one(payment)
+    payment.pop('_id', None)
+    return payment
+
+@api_router.get("/payments")
+async def get_payments(
+    customer_id: Optional[str] = None,
+    customer_type: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all payments with optional filters"""
+    query = {}
+    if customer_id:
+        query['customer_id'] = customer_id
+    if customer_type:
+        query['customer_type'] = customer_type
+    if from_date or to_date:
+        date_q = {}
+        if from_date:
+            date_q['$gte'] = from_date
+        if to_date:
+            date_q['$lte'] = to_date
+        query['date'] = date_q
+    
+    payments = await db.payments.find(query, {'_id': 0}).sort('date', -1).to_list(5000)
+    return payments
+
+@api_router.delete("/payments/{payment_id}")
+async def delete_payment(payment_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.payments.delete_one({'id': payment_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return {"message": "Payment deleted"}
+
+@api_router.get("/ledger/{customer_type}/{customer_id}")
+async def get_customer_ledger(
+    customer_type: str,
+    customer_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get ledger for a customer - opening balance + invoices + payments"""
+    collection = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}.get(customer_type)
+    if not collection:
+        raise HTTPException(status_code=400, detail="Invalid customer type")
+    
+    customer = await db[collection].find_one({'id': customer_id}, {'_id': 0, 'image_webp': 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    opening_balance = customer.get('opening_balance', 0) or 0
+    
+    # Get orders (invoices) for this customer
+    order_query = {'doctor_id': customer_id}
+    if from_date or to_date:
+        date_q = {}
+        if from_date:
+            date_q['$gte'] = from_date
+        if to_date:
+            date_q['$lte'] = to_date + 'T23:59:59'
+        order_query['created_at'] = date_q
+    
+    orders = await db.orders.find(order_query, {'_id': 0, 'items': 0}).sort('created_at', 1).to_list(5000)
+    
+    # Get payments for this customer
+    pay_query = {'customer_id': customer_id}
+    if from_date or to_date:
+        date_q = {}
+        if from_date:
+            date_q['$gte'] = from_date
+        if to_date:
+            date_q['$lte'] = to_date
+        pay_query['date'] = date_q
+    
+    payments = await db.payments.find(pay_query, {'_id': 0}).sort('date', 1).to_list(5000)
+    
+    # Build ledger entries
+    entries = []
+    
+    # Opening balance entry
+    entries.append({
+        'type': 'opening_balance',
+        'date': customer.get('created_at', '')[:10] if isinstance(customer.get('created_at', ''), str) else '',
+        'description': 'Opening Balance',
+        'debit': opening_balance if opening_balance > 0 else 0,
+        'credit': abs(opening_balance) if opening_balance < 0 else 0,
+    })
+    
+    # Invoice entries from dispatched orders
+    for order in orders:
+        inv_value = order.get('invoice_value')
+        if inv_value and float(inv_value) > 0:
+            entries.append({
+                'type': 'invoice',
+                'date': order.get('invoice_date') or (order.get('created_at', '')[:10] if isinstance(order.get('created_at', ''), str) else str(order.get('created_at', ''))[:10]),
+                'description': f"Inv# {order.get('invoice_number', 'N/A')} (Order: {order.get('order_number', '')})",
+                'invoice_number': order.get('invoice_number', ''),
+                'order_number': order.get('order_number', ''),
+                'debit': float(inv_value),
+                'credit': 0,
+            })
+    
+    # Payment entries
+    for pay in payments:
+        entries.append({
+            'type': 'payment',
+            'date': pay.get('date', ''),
+            'description': f"Payment ({pay.get('mode', 'Cash')})" + (f" - {pay.get('notes')}" if pay.get('notes') else ''),
+            'payment_id': pay.get('id'),
+            'debit': 0,
+            'credit': float(pay.get('amount', 0)),
+        })
+    
+    # Sort by date
+    entries.sort(key=lambda x: x.get('date', '') or '')
+    
+    # Calculate running balance
+    balance = 0
+    for entry in entries:
+        balance += entry['debit'] - entry['credit']
+        entry['balance'] = balance
+    
+    total_debit = sum(e['debit'] for e in entries)
+    total_credit = sum(e['credit'] for e in entries)
+    
+    return {
+        'customer': {
+            'id': customer_id,
+            'name': customer.get('name', ''),
+            'phone': customer.get('phone', ''),
+            'type': customer_type,
+            'opening_balance': opening_balance,
+        },
+        'entries': entries,
+        'total_debit': total_debit,
+        'total_credit': total_credit,
+        'closing_balance': total_debit - total_credit,
+    }
+
+@api_router.get("/outstanding")
+async def get_outstanding(
+    customer_type: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get outstanding amounts for all customers"""
+    types_to_check = [customer_type] if customer_type else ['doctor', 'medical', 'agency']
+    collection_map = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}
+    
+    results = []
+    for ctype in types_to_check:
+        collection = collection_map[ctype]
+        customers = await db[collection].find({}, {'_id': 0, 'id': 1, 'name': 1, 'phone': 1, 'opening_balance': 1, 'customer_code': 1}).to_list(5000)
+        
+        for cust in customers:
+            cust_id = cust['id']
+            opening_bal = cust.get('opening_balance', 0) or 0
+            
+            # Total invoices
+            pipeline = [
+                {'$match': {'doctor_id': cust_id, 'invoice_value': {'$ne': None}}},
+                {'$group': {'_id': None, 'total': {'$sum': {'$toDouble': '$invoice_value'}}}}
+            ]
+            inv_result = await db.orders.aggregate(pipeline).to_list(1)
+            total_invoiced = inv_result[0]['total'] if inv_result else 0
+            
+            # Total payments
+            pipeline2 = [
+                {'$match': {'customer_id': cust_id}},
+                {'$group': {'_id': None, 'total': {'$sum': '$amount'}}}
+            ]
+            pay_result = await db.payments.aggregate(pipeline2).to_list(1)
+            total_paid = pay_result[0]['total'] if pay_result else 0
+            
+            outstanding = opening_bal + total_invoiced - total_paid
+            
+            if outstanding != 0:
+                results.append({
+                    'customer_id': cust_id,
+                    'customer_code': cust.get('customer_code', ''),
+                    'customer_name': cust['name'],
+                    'customer_phone': cust.get('phone', ''),
+                    'customer_type': ctype,
+                    'opening_balance': opening_bal,
+                    'total_invoiced': total_invoiced,
+                    'total_paid': total_paid,
+                    'outstanding': outstanding,
+                })
+    
+    results.sort(key=lambda x: x['outstanding'], reverse=True)
+    return results
+
+@api_router.get("/ledger/export/pdf/{customer_type}/{customer_id}")
+async def export_ledger_pdf(
+    customer_type: str,
+    customer_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export customer ledger as PDF"""
+    ledger = await get_customer_ledger(customer_type, customer_id, from_date, to_date, current_user)
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    
+    pdf = FPDF(orientation='P', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.cell(0, 10, company_name, ln=True, align='C')
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.cell(0, 7, 'LEDGER STATEMENT', ln=True, align='C')
+    pdf.set_font('Helvetica', '', 9)
+    cust = ledger['customer']
+    pdf.cell(0, 6, f"Customer: {cust['name']} | Phone: {cust['phone']} | Type: {cust['type'].title()}", ln=True, align='C')
+    if from_date or to_date:
+        pdf.cell(0, 5, f"Period: {from_date or 'Start'} to {to_date or 'Present'}", ln=True, align='C')
+    pdf.ln(3)
+    
+    col_w = [25, 75, 30, 30, 30]
+    headers = ['Date', 'Description', 'Debit', 'Credit', 'Balance']
+    
+    pdf.set_font('Helvetica', 'B', 8)
+    pdf.set_fill_color(52, 73, 94)
+    pdf.set_text_color(255, 255, 255)
+    for i, h in enumerate(headers):
+        pdf.cell(col_w[i], 7, h, 1, 0, 'C', True)
+    pdf.ln()
+    pdf.set_text_color(0, 0, 0)
+    
+    pdf.set_font('Helvetica', '', 7)
+    for idx, entry in enumerate(ledger['entries']):
+        fill = idx % 2 == 0
+        pdf.set_fill_color(245, 245, 245) if fill else pdf.set_fill_color(255, 255, 255)
+        pdf.cell(col_w[0], 6, entry.get('date', '')[:10], 1, 0, 'C', fill)
+        pdf.cell(col_w[1], 6, entry.get('description', '')[:45], 1, 0, 'L', fill)
+        pdf.cell(col_w[2], 6, f"{entry['debit']:.2f}" if entry['debit'] else '', 1, 0, 'R', fill)
+        pdf.cell(col_w[3], 6, f"{entry['credit']:.2f}" if entry['credit'] else '', 1, 0, 'R', fill)
+        pdf.cell(col_w[4], 6, f"{entry['balance']:.2f}", 1, 0, 'R', fill)
+        pdf.ln()
+    
+    # Totals
+    pdf.set_font('Helvetica', 'B', 8)
+    pdf.set_fill_color(52, 73, 94)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(col_w[0] + col_w[1], 7, 'TOTALS', 1, 0, 'R', True)
+    pdf.cell(col_w[2], 7, f"{ledger['total_debit']:.2f}", 1, 0, 'R', True)
+    pdf.cell(col_w[3], 7, f"{ledger['total_credit']:.2f}", 1, 0, 'R', True)
+    pdf.cell(col_w[4], 7, f"{ledger['closing_balance']:.2f}", 1, 0, 'R', True)
+    pdf.ln()
+    
+    pdf_output = pdf.output()
+    return Response(content=bytes(pdf_output), media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=ledger_{cust['name'].replace(' ','_')}.pdf"})
+
 # ============== BULK IMPORT ENDPOINTS ==============
 
 @api_router.get("/items/import/template")
@@ -5135,6 +5424,73 @@ async def update_catalogue_settings(data: dict, current_user: dict = Depends(get
     catalogues = data.get('catalogues', [])
     await db.catalogue_settings.update_one({}, {'$set': {'catalogues': catalogues}}, upsert=True)
     return {"message": "Catalogue settings updated", "catalogues": catalogues}
+
+@api_router.get("/customer/ledger")
+async def get_customer_own_ledger(
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    customer: dict = Depends(get_current_customer)
+):
+    """Get ledger for the logged-in customer (portal)"""
+    cust_id = customer.get('doctor_id') or customer.get('medical_id') or customer.get('agency_id')
+    cust_type = customer.get('role', 'doctor')
+    if not cust_id:
+        raise HTTPException(status_code=400, detail="Customer not linked to entity")
+    
+    collection = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}.get(cust_type)
+    cust_doc = await db[collection].find_one({'id': cust_id}, {'_id': 0, 'image_webp': 0}) if collection else None
+    if not cust_doc:
+        raise HTTPException(status_code=404, detail="Customer entity not found")
+    
+    opening_balance = cust_doc.get('opening_balance', 0) or 0
+    
+    order_query = {'doctor_id': cust_id}
+    if from_date or to_date:
+        date_q = {}
+        if from_date: date_q['$gte'] = from_date
+        if to_date: date_q['$lte'] = to_date + 'T23:59:59'
+        order_query['created_at'] = date_q
+    
+    orders = await db.orders.find(order_query, {'_id': 0, 'items': 0}).sort('created_at', 1).to_list(5000)
+    
+    pay_query = {'customer_id': cust_id}
+    if from_date or to_date:
+        date_q = {}
+        if from_date: date_q['$gte'] = from_date
+        if to_date: date_q['$lte'] = to_date
+        pay_query['date'] = date_q
+    payments = await db.payments.find(pay_query, {'_id': 0}).sort('date', 1).to_list(5000)
+    
+    entries = [{'type': 'opening_balance', 'date': '', 'description': 'Opening Balance',
+                'debit': opening_balance if opening_balance > 0 else 0,
+                'credit': abs(opening_balance) if opening_balance < 0 else 0}]
+    
+    for order in orders:
+        inv_value = order.get('invoice_value')
+        if inv_value and float(inv_value) > 0:
+            entries.append({'type': 'invoice',
+                'date': order.get('invoice_date') or str(order.get('created_at', ''))[:10],
+                'description': f"Inv# {order.get('invoice_number', 'N/A')} (Order: {order.get('order_number', '')})",
+                'debit': float(inv_value), 'credit': 0})
+    
+    for pay in payments:
+        entries.append({'type': 'payment',
+            'date': pay.get('date', ''),
+            'description': f"Payment ({pay.get('mode', 'Cash')})",
+            'debit': 0, 'credit': float(pay.get('amount', 0))})
+    
+    entries.sort(key=lambda x: x.get('date', '') or '')
+    balance = 0
+    for entry in entries:
+        balance += entry['debit'] - entry['credit']
+        entry['balance'] = balance
+    
+    return {
+        'entries': entries,
+        'total_debit': sum(e['debit'] for e in entries),
+        'total_credit': sum(e['credit'] for e in entries),
+        'closing_balance': balance,
+    }
 
 @api_router.get("/customer/orders")
 async def get_customer_orders(customer: dict = Depends(get_current_customer)):

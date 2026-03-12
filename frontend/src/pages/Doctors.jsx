@@ -274,7 +274,7 @@ export const Doctors = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', reg_no: '', address: '', address_line_1: '', address_line_2: '', state: '', district: '', pincode: '', delivery_station: '', transport_id: '', email: '', phone: '', lead_status: 'Pipeline', dob: '', priority: 'moderate', follow_up_date: '' });
+    setFormData({ name: '', reg_no: '', address: '', address_line_1: '', address_line_2: '', state: '', district: '', pincode: '', delivery_station: '', transport_id: '', email: '', phone: '', lead_status: 'Pipeline', dob: '', priority: 'moderate', follow_up_date: '', opening_balance: '' });
     setDistricts([]);
   };
 
@@ -548,6 +548,7 @@ export const Doctors = () => {
               </div>
               <div className="col-span-2 pt-2 border-t"><h4 className="text-sm font-medium text-slate-700 mb-3">Other Details</h4></div>
               <div className="space-y-2"><Label>Date of Birth</Label><Input type="date" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} /></div>
+              <div className="space-y-2"><Label>Opening Balance (₹)</Label><Input type="number" step="0.01" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: e.target.value})} placeholder="0.00" /></div>
               <div className="space-y-2"><Label>Lead Status</Label>
                 <Select value={formData.lead_status} onValueChange={(v) => setFormData({...formData, lead_status: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{LEAD_STATUSES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}</SelectContent></Select>
               </div>

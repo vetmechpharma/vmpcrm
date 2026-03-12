@@ -58,7 +58,7 @@ export const Agencies = () => {
     address: '', address_line_1: '', address_line_2: '', state: '', district: '',
     pincode: '', delivery_station: '', transport_id: '', email: '', phone: '',
     alternate_phone: '', lead_status: 'Pipeline', priority: 'moderate',
-    follow_up_date: '', birthday: '', anniversary: '',
+    follow_up_date: '', birthday: '', anniversary: '', opening_balance: '',
   });
 
   const [states, setStates] = useState([]);
@@ -217,7 +217,7 @@ export const Agencies = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', proprietor_name: '', gst_number: '', drug_license: '', address: '', address_line_1: '', address_line_2: '', state: '', district: '', pincode: '', delivery_station: '', transport_id: '', email: '', phone: '', alternate_phone: '', lead_status: 'Pipeline', priority: 'moderate', follow_up_date: '', birthday: '', anniversary: '' });
+    setFormData({ name: '', proprietor_name: '', gst_number: '', drug_license: '', address: '', address_line_1: '', address_line_2: '', state: '', district: '', pincode: '', delivery_station: '', transport_id: '', email: '', phone: '', alternate_phone: '', lead_status: 'Pipeline', priority: 'moderate', follow_up_date: '', birthday: '', anniversary: '', opening_balance: '' });
     setDistricts([]);
   };
 
@@ -421,6 +421,7 @@ export const Agencies = () => {
               <div className="space-y-2"><Label>Priority</Label><Select value={formData.priority} onValueChange={(v) => setFormData({...formData, priority: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PRIORITIES.map((p) => (<SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>))}</SelectContent></Select></div>
               <div className="space-y-2"><Label>Follow-up Date</Label><Input type="date" value={formData.follow_up_date} onChange={(e) => setFormData({...formData, follow_up_date: e.target.value})} /></div>
               <div className="space-y-2"><Label>Birthday</Label><Input type="date" value={formData.birthday} onChange={(e) => setFormData({...formData, birthday: e.target.value})} /></div>
+              <div className="space-y-2"><Label>Opening Balance (₹)</Label><Input type="number" step="0.01" value={formData.opening_balance} onChange={(e) => setFormData({...formData, opening_balance: e.target.value})} placeholder="0.00" /></div>
               <div className="space-y-2"><Label>Anniversary</Label><Input type="date" value={formData.anniversary} onChange={(e) => setFormData({...formData, anniversary: e.target.value})} /></div>
             </div>
           </div>

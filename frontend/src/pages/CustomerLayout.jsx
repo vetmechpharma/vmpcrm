@@ -8,6 +8,7 @@ import {
   Store,
   Building2,
   Download,
+  BookOpen,
   X
 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
@@ -174,6 +175,7 @@ const CustomerLayout = () => {
             { path: '/portal/orders', icon: 'ShoppingBag', label: 'My Orders' },
             { path: '/portal/tasks', icon: 'ListTodo', label: 'Tasks' },
             { path: '/portal/downloads', icon: 'Download', label: 'Downloads' },
+            { path: '/portal/ledger', icon: 'BookOpen', label: 'Ledger' },
             { path: '/portal/support', icon: 'LifeBuoy', label: 'Support' },
             { path: '/portal/profile', icon: 'User', label: 'Profile' },
           ].map((item) => {

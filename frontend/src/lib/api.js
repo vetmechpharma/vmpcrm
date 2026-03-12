@@ -299,6 +299,16 @@ export const catalogueAPI = {
   update: (catalogues) => api.put('/catalogue-settings', { catalogues }),
 };
 
+// Payment & Ledger APIs
+export const paymentsAPI = {
+  create: (data) => api.post('/payments', data),
+  getAll: (params) => api.get('/payments', { params }),
+  delete: (id) => api.delete(`/payments/${id}`),
+  getLedger: (customerType, customerId, params) => api.get(`/ledger/${customerType}/${customerId}`, { params }),
+  getOutstanding: (params) => api.get('/outstanding', { params }),
+  exportLedgerPDF: (customerType, customerId, params) => api.get(`/ledger/export/pdf/${customerType}/${customerId}`, { params, responseType: 'blob' }),
+};
+
 // Location APIs (public, no auth required)
 export const locationAPI = {
   getStates: () => axios.get(`${API_URL}/api/public/states`),

@@ -842,10 +842,17 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] New items also get `has_image` flag set correctly
 
 ## Pending/Upcoming Tasks
-- [ ] (P0) Refactor monolithic `server.py` (~9000+ lines) into modular routers
-- [ ] (P1) Stock/Inventory Management
-- [ ] (P1) Payment Tracking
+- [ ] (P0) Refactor monolithic `server.py` (~10400+ lines) into modular routers
+- [ ] (P1) Stock/Inventory Management (quantity tracking, low-stock alerts)
+- [ ] (P1) Refactor duplicated Follow-up UI in Doctors/Medicals/Agencies into reusable components
 - [ ] (P2) Sales reports with charts
 - [ ] (P2) Data import/export
 - [ ] (P2) Sales target management
-- [ ] (P2) Refactor duplicated UI logic in Doctors/Medicals/Agencies into reusable components
+
+## Ledger Balance Display & WhatsApp Sharing - COMPLETED Mar 12, 2026
+- [x] **Outstanding Balance on Detail Pages**: Doctors, Medicals, and Agencies detail modals now show outstanding balance prominently in bold red text (₹ amount) at the top
+- [x] **WhatsApp Ledger Sharing**: New button in Payments ledger dialog to send full ledger statement via WhatsApp
+- [x] **New API**: POST /api/ledger/{customer_type}/{customer_id}/whatsapp - sends formatted ledger statement via WhatsApp with entry details and closing balance
+- [x] **Frontend**: Added `sendLedgerWhatsApp` to paymentsAPI, outstanding balance map fetching on Doctors/Medicals/Agencies pages
+- [x] **Reminders Page**: Verified fully functional (Today/Overdue/Upcoming/History tabs, Add Reminder, Follow-up actions)
+- [x] **Testing**: 100% backend (12/12), 100% frontend pass rate

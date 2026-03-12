@@ -804,6 +804,19 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] Role-based pricing (Doctor/Medical/Agency) is now the primary source for rate, offer, special offer
 - [x] Backend legacy fields kept (defaults to 0/null) for backward compatibility
 
+## Payment Tracking System - COMPLETED Mar 12, 2026
+- [x] **Payment Recording**: Record partial/full payments with customer search, amount, date, mode (Cash/UPI/GPay/Netbanking/Cheque/Credit), notes
+- [x] **Outstanding Dashboard**: View all customers with outstanding dues, filterable by Doctor/Medical/Agency, with summary cards
+- [x] **Customer Ledger**: Opening balance + invoices (from dispatched orders) + payments with running balance, date-range filter
+- [x] **Ledger PDF Export**: Download ledger statement as PDF
+- [x] **Opening Balance**: Added to Doctors, Medicals, Agencies create/edit forms
+- [x] **Payment History**: View all payments with date filter, delete option
+- [x] **Customer Portal Ledger**: Customers can view their own ledger at /portal/ledger (requires entity linking)
+- [x] **Admin Sidebar**: Payments link added to admin navigation
+- [x] **New pages**: Payments.jsx (admin), CustomerLedger.jsx (portal)
+- [x] **APIs**: POST/GET/DELETE /api/payments, GET /api/outstanding, GET /api/ledger/{type}/{id}, GET /api/ledger/export/pdf/{type}/{id}, GET /api/customer/ledger
+- [x] **Testing**: 96% backend (23/24), 100% frontend pass rate
+
 ## Customer Downloads & Catalogue System - COMPLETED Mar 6, 2026
 - [x] **Customer Price List Download**: Customers can download role-based PDF price lists (S.No, Code, Name, Composition, MRP, Rate, Offer, Special Offer) filtered by their role (Doctor/Medical/Agency)
 - [x] **Downloads page in Customer Portal**: New `/portal/downloads` page with sidebar navigation link

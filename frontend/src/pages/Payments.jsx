@@ -9,7 +9,8 @@ import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import {
   IndianRupee, Plus, Search, Trash2, Loader2, FileText, Download,
-  Users, ArrowUpDown, Filter, Calendar, CreditCard, Wallet, BookOpen
+  Users, ArrowUpDown, Filter, Calendar, CreditCard, Wallet, BookOpen,
+  Edit2, MessageCircle, Send
 } from 'lucide-react';
 
 const PAYMENT_MODES = ['Cash', 'UPI', 'GPay', 'Netbanking', 'Cheque', 'Credit'];
@@ -26,9 +27,13 @@ export const Payments = () => {
   const [showPayForm, setShowPayForm] = useState(false);
   const [payForm, setPayForm] = useState({ customer_id: '', customer_name: '', customer_type: 'doctor', customer_phone: '', amount: '', mode: 'Cash', date: new Date().toISOString().slice(0, 10), notes: '', invoice_number: '' });
   const [saving, setSaving] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
   const [searchingCustomer, setSearchingCustomer] = useState(false);
+  const [filterMode, setFilterMode] = useState('');
+  const [paySearch, setPaySearch] = useState('');
+  const [sendingWA, setSendingWA] = useState(null);
 
   // Ledger
   const [showLedger, setShowLedger] = useState(false);
@@ -106,15 +111,56 @@ export const Payments = () => {
     }
     setSaving(true);
     try {
-      await paymentsAPI.create({ ...payForm, amount: parseFloat(payForm.amount) });
-      toast.success('Payment recorded');
+      let result;
+      if (editingPayment) {
+        result = await paymentsAPI.update(editingPayment.id, { amount: parseFloat(payForm.amount), mode: payForm.mode, date: payForm.date, notes: payForm.notes });
+        toast.success('Payment updated');
+      } else {
+        result = await paymentsAPI.create({ ...payForm, amount: parseFloat(payForm.amount) });
+        toast.success('Payment recorded');
+      }
       setShowPayForm(false);
+      setEditingPayment(null);
       setPayForm({ customer_id: '', customer_name: '', customer_type: 'doctor', customer_phone: '', amount: '', mode: 'Cash', date: new Date().toISOString().slice(0, 10), notes: '', invoice_number: '' });
       setCustomerSearch('');
       if (activeTab === 'outstanding') fetchOutstanding();
       else fetchPayments();
+      
+      // Auto-send WhatsApp for new payments
+      if (!editingPayment && result?.data?.id) {
+        sendWhatsAppReceipt(result.data.id);
+      }
     } catch { toast.error('Failed to save payment'); }
     finally { setSaving(false); }
+  };
+
+  const editPayment = (p) => {
+    setEditingPayment(p);
+    setPayForm({
+      customer_id: p.customer_id,
+      customer_name: p.customer_name,
+      customer_type: p.customer_type,
+      customer_phone: p.customer_phone || '',
+      amount: String(p.amount),
+      mode: p.mode || 'Cash',
+      date: p.date || new Date().toISOString().slice(0, 10),
+      notes: p.notes || '',
+      invoice_number: p.invoice_number || '',
+    });
+    setCustomerSearch(p.customer_name);
+    setShowPayForm(true);
+  };
+
+  const sendWhatsAppReceipt = async (paymentId) => {
+    setSendingWA(paymentId);
+    try {
+      const res = await paymentsAPI.sendWhatsApp(paymentId);
+      toast.success(`Receipt sent via WhatsApp (Balance: ₹${res.data.balance?.toLocaleString('en-IN')})`);
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'WhatsApp send failed';
+      toast.error(msg);
+    }
+    finally { setSendingWA(null); }
   };
 
   const deletePayment = async (id) => {
@@ -220,11 +266,26 @@ export const Payments = () => {
           </div>
         )}
         {activeTab === 'payments' && (
-          <div className="flex gap-2 items-center">
-            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-36" />
-            <span className="text-sm text-slate-400">to</span>
-            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />
-          </div>
+          <>
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input placeholder="Search by name..." value={paySearch} onChange={(e) => setPaySearch(e.target.value)}
+                className="pl-10" data-testid="search-payments" />
+            </div>
+            <div className="flex gap-1 bg-slate-50 p-1 rounded-lg border">
+              {['', ...PAYMENT_MODES].map(m => (
+                <Button key={m} variant={filterMode === m ? 'default' : 'ghost'} size="sm"
+                  onClick={() => setFilterMode(m)} className="text-xs" data-testid={`filter-mode-${m || 'all'}`}>
+                  {m || 'All Modes'}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-36" />
+              <span className="text-sm text-slate-400">to</span>
+              <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />
+            </div>
+          </>
         )}
       </div>
 
@@ -312,7 +373,10 @@ export const Payments = () => {
               </tr>
             </thead>
             <tbody>
-              {payments.map(p => (
+              {payments
+                .filter(p => !filterMode || p.mode === filterMode)
+                .filter(p => !paySearch || p.customer_name?.toLowerCase().includes(paySearch.toLowerCase()))
+                .map(p => (
                 <tr key={p.id} className="border-b hover:bg-slate-50" data-testid={`payment-${p.id}`}>
                   <td className="p-3">{p.date}</td>
                   <td className="p-3">
@@ -321,11 +385,20 @@ export const Payments = () => {
                   </td>
                   <td className="p-3 text-center"><span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">{p.mode}</span></td>
                   <td className="p-3 text-right font-bold text-emerald-600">₹{parseFloat(p.amount).toLocaleString('en-IN')}</td>
-                  <td className="p-3 text-slate-500 text-xs">{p.notes || '-'}</td>
+                  <td className="p-3 text-slate-500 text-xs max-w-[150px] truncate">{p.notes || '-'}</td>
                   <td className="p-3 text-center">
-                    <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deletePayment(p.id)}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    <div className="flex gap-1 justify-center">
+                      <Button variant="ghost" size="sm" title="Edit" onClick={() => editPayment(p)} data-testid={`edit-payment-${p.id}`}>
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="Send WhatsApp Receipt" className="text-green-600"
+                        onClick={() => sendWhatsAppReceipt(p.id)} disabled={sendingWA === p.id} data-testid={`wa-payment-${p.id}`}>
+                        {sendingWA === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageCircle className="w-3 h-3" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="text-red-500" title="Delete" onClick={() => deletePayment(p.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -336,10 +409,10 @@ export const Payments = () => {
       )}
 
       {/* Record Payment Dialog */}
-      <Dialog open={showPayForm} onOpenChange={setShowPayForm}>
+      <Dialog open={showPayForm} onOpenChange={(open) => { setShowPayForm(open); if (!open) setEditingPayment(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5" />Record Payment</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5" />{editingPayment ? 'Edit Payment' : 'Record Payment'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {/* Customer search */}
@@ -397,9 +470,14 @@ export const Payments = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayForm(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowPayForm(false); setEditingPayment(null); }}>Cancel</Button>
+            {editingPayment && (
+              <Button variant="outline" className="text-green-600" onClick={() => { savePayment().then(() => sendWhatsAppReceipt(editingPayment.id)); }} disabled={saving}>
+                <MessageCircle className="w-4 h-4 mr-1" />Save & Send WhatsApp
+              </Button>
+            )}
             <Button onClick={savePayment} disabled={saving} data-testid="save-payment-btn">
-              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save Payment
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{editingPayment ? 'Update' : 'Save'} Payment
             </Button>
           </DialogFooter>
         </DialogContent>

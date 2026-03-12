@@ -4028,6 +4028,102 @@ async def delete_payment(payment_id: str, current_user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Payment not found")
     return {"message": "Payment deleted"}
 
+@api_router.put("/payments/{payment_id}")
+async def update_payment(payment_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update a payment record"""
+    update_fields = {}
+    for key in ['amount', 'mode', 'date', 'notes', 'invoice_number']:
+        if key in data:
+            update_fields[key] = float(data[key]) if key == 'amount' else data[key]
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    result = await db.payments.update_one({'id': payment_id}, {'$set': update_fields})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    payment = await db.payments.find_one({'id': payment_id}, {'_id': 0})
+    return payment
+
+@api_router.post("/payments/{payment_id}/whatsapp")
+async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = Depends(get_current_user)):
+    """Send payment receipt via WhatsApp with ledger balance"""
+    payment = await db.payments.find_one({'id': payment_id}, {'_id': 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    cust_id = payment['customer_id']
+    cust_type = payment.get('customer_type', 'doctor')
+    cust_phone = payment.get('customer_phone', '')
+    
+    # Get ledger balance
+    collection = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}.get(cust_type, 'doctors')
+    cust_doc = await db[collection].find_one({'id': cust_id}, {'_id': 0, 'opening_balance': 1, 'name': 1})
+    opening_bal = (cust_doc or {}).get('opening_balance', 0) or 0
+    
+    # Total invoiced
+    inv_pipeline = [{'$match': {'doctor_id': cust_id, 'invoice_value': {'$ne': None}}}, {'$group': {'_id': None, 'total': {'$sum': {'$toDouble': '$invoice_value'}}}}]
+    inv_result = await db.orders.aggregate(inv_pipeline).to_list(1)
+    total_invoiced = inv_result[0]['total'] if inv_result else 0
+    
+    # Total paid
+    pay_pipeline = [{'$match': {'customer_id': cust_id}}, {'$group': {'_id': None, 'total': {'$sum': '$amount'}}}]
+    pay_result = await db.payments.aggregate(pay_pipeline).to_list(1)
+    total_paid = pay_result[0]['total'] if pay_result else 0
+    
+    balance = opening_bal + total_invoiced - total_paid
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = (company or {}).get('company_name', 'VMP CRM')
+    
+    message = (
+        f"*{company_name}*\n"
+        f"*PAYMENT RECEIPT*\n"
+        f"{'─' * 25}\n"
+        f"Customer: {payment.get('customer_name', '')}\n"
+        f"Date: {payment.get('date', '')}\n"
+        f"Amount: Rs.{payment['amount']:,.2f}\n"
+        f"Mode: {payment.get('mode', 'Cash')}\n"
+    )
+    if payment.get('notes'):
+        message += f"Notes: {payment['notes']}\n"
+    message += (
+        f"{'─' * 25}\n"
+        f"*Ledger Balance: Rs.{balance:,.2f}*\n"
+        f"{'─' * 25}\n"
+        f"Thank you for your payment!"
+    )
+    
+    # Send WhatsApp
+    config = await get_whatsapp_config()
+    if not (config.get('api_url') and config.get('auth_token') and config.get('sender_id')):
+        raise HTTPException(status_code=400, detail="WhatsApp not configured")
+    
+    if not cust_phone:
+        raise HTTPException(status_code=400, detail="Customer phone not available")
+    
+    wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': wa_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(config['api_url'], params=params)
+            if response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'payment_receipt', message, 'success', recipient_name=payment.get('customer_name', ''))
+                return {"message": "Receipt sent via WhatsApp", "balance": balance}
+            else:
+                logger.error(f"WhatsApp receipt failed: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"WhatsApp receipt error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"WhatsApp error: {str(e)}")
+
 @api_router.get("/ledger/{customer_type}/{customer_id}")
 async def get_customer_ledger(
     customer_type: str,

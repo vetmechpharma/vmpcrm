@@ -1,162 +1,183 @@
 <analysis>**original_problem_statement:**
 The user is building a comprehensive business management CRM for pharmaceutical distributors. The application needs to manage customers, products, and a complex ordering system.
 
-Recent feature requests include:
-*   **Lead & Reminder Management:** Improve the lead follow-up system for Doctors, Medicals, and Agencies. Follow-ups should appear on a redesigned Reminders page, which should correctly separate Today, Overdue, Upcoming, and History.
-*   **Automated Greetings:** Automatically send birthday and anniversary greetings via Email and WhatsApp using a pool of editable templates.
-*   **User Management:** Add functionality for admins to edit and delete portal customers.
-*   **Bug Fixes:** Address various issues, including a broken Send to Admin WhatsApp message function and UI bugs on the Reminders page.
+Recent feature requests have significantly expanded the scope:
+*   **Item & Inventory Management**: Remove legacy pricing fields (, ) in favor of a role-based system. Implement an Out of Stock toggle for items. Update the Excel bulk import to use the new role-based fields. Improve the quality of uploaded item images.
+*   **Exporting**: Create a sophisticated export system for the item list (PDF/Excel). This system should support custom subcategory ordering, filtering by main category (Large Animal, Poultry, Pet), and role-based pricing columns.
+*   **Customer Portal**: Add a Downloads page where customers can download their role-based price lists and view catalogues managed by the admin.
+*   **Payment Tracking (Large Feature)**: Implement a full payment tracking system. This includes recording payments against customer accounts, managing opening balances, providing ledger statements for admins and customers, viewing outstanding balances, and sharing payment receipts via WhatsApp.
+*   **Bug Fixes & UI Tweaks**: Fix an issue where item images were not updating in the customer portal. Simplify the order printout page by removing amount and total columns.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application using FastAPI, React, and MongoDB.
-*   **Admin Panel ():** Features a Cuba themed design with role-based access control. It includes modules for managing customers (with new edit/delete functions), products, orders, and a new page for managing greeting templates.
-*   **Customer Portal ():** A PWA-enabled portal for customers with password and OTP login.
-*   **Backend:** A monolithic  file containing all API logic. It now includes new endpoints and background tasks for an advanced follow-up system and automated greetings.
-*   **Lead Management:** A complete follow-up system is implemented for Doctors, Medicals, and Agencies, allowing users to schedule and track follow-ups, which are reflected on the Reminders page.
+A full-stack CRM application using FastAPI, React, and MongoDB. The application has been significantly enhanced with the following:
+*   **Admin Panel ():**
+    *   **Items Page:** The item form and list have been overhauled to remove default 'Rate', 'Offer', and 'Special Offer' fields, replacing them with a purely role-based pricing model. It now includes an Out of Stock toggle per item, and a sophisticated export modal for generating PDF/Excel price lists with custom subcategory ordering and role-based pricing. The Excel import template has been updated accordingly.
+    *   **Payments Page (New):** A comprehensive module for payment tracking. It features an outstanding balance dashboard, a customer list with payment summaries, a detailed payment history log with search and filters, and functionality to record/edit payments and share receipts via WhatsApp.
+    *   **Customer Management (Doctors/Medicals/Agencies):** Forms now include an Opening Balance field to support the new ledger system.
+    *   **Settings Page:** A new section allows admins to manage catalogue links (Title, URL, Description) that appear in the customer portal.
+*   **Customer Portal ():**
+    *   **Downloads Page (New):** A dedicated page for customers to download their role-specific price lists as PDFs and access any catalogues published by the admin.
+    *   **Ledger Page (New):** Customers can view their complete account statement, including all orders and payments.
+*   **Backend ():** The monolithic backend file has grown substantially with new endpoints for payment management, ledger generation, advanced exports (PDF/Excel), out-of-stock toggling, and catalogue settings. The logic for item image processing has been upgraded to produce higher-quality images (400x400, 90% quality WebP).
 
 **Last working item**:
--   **Last item agent was working**: Fixing multiple critical bugs on the Reminders page. The user reported that the Todays Reminders" tab was incorrectly showing overdue items, while the "Upcoming" and "History" tabs were not rendering any data. The agent found and fixed the root cause on the backend—a duplicate API route in `server.py` that returned data in the wrong format. The agent was in the middle of rewriting the `frontend/src/pages/admin/Reminders.jsx` component to fix the frontend rendering logic.
--   **Status**: IN PROGRESS
+-   **Last item agent was working**: The user requested further enhancements to the payment and ledger system. Specifically:
+    1.  Add a WhatsApp Share option for the full ledger statement.
+    2.  Display the customer's current ledger balance prominently (bold, red, large text) on the Doctor, Medical, and Agency detail pages for quick reference.
+    The agent was in the initial investigation phase, analyzing the user's request and the existing codebase to plan the implementation.
+-   **Status**: NOT STARTED
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: frontend testing agent
+-   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0): Reminders page UI is broken.**
-    -   **Attempted fixes:** The agent identified and fixed the backend root cause by renaming a conflicting, old API route in `server.py` (`/api/reminders` -> `/api/reminders_old_followups`). A rewrite of `frontend/src/pages/admin/Reminders.jsx` was started but not completed.
+-   **Issue 1: Reminders page UI is broken. (CRITICAL, P0)**
+    -   **Attempted fixes:** This issue is from a previous session. The backend root cause was fixed, but the frontend rewrite of  was started and then abandoned due to user-driven priority shifts.
     -   **Next debug checklist:**
-        1.  Complete the rewrite of `frontend/src/pages/admin/Reminders.jsx`.
-        2.  Ensure each tab (Today, Overdue, Upcoming, History) correctly filters and displays its specific data.
-        3.  Verify that data fields (`title`, `reminder_date`) render correctly in the "Upcoming" and "History" tabs.
-        4.  Confirm the "Todays Reminders tab exclusively shows items for the current day.
-    -   **Why fix this issue and what will be achieved with the fix?**: The Reminders page is a core CRM function and is currently unusable. This fix will restore its functionality.
-    -   **Status**: IN PROGRESS
+        1.  Complete the rewrite of .
+        2.  Ensure each tab (Today, Overdue, Upcoming, History) correctly filters and displays data from the  endpoint.
+        3.  Verify all data fields and action buttons render and function correctly.
+    -   **Why fix this issue and what will be achieved with the fix?**: The Reminders page is a core CRM function for lead follow-up and is currently unusable. This fix will restore essential functionality.
+    -   **Status**: NOT STARTED
     -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 2 (P1): OTP delivery via WhatsApp is failing.**
-    -   **Attempted fixes:** This is a carry-over issue. The previous agent determined the problem is a  from the external  API, likely due to a configuration error on the user's end.
+-   **Issue 2: OTP delivery via WhatsApp is failing. (BLOCKER, P1)**
+    -   **Attempted fixes:** This is a carry-over issue. Determined to be a  from the external  API.
     -   **Next debug checklist:**
-        1.  Inform the user that the error is from the external WhatsApp service.
+        1.  Inform the user that the error is external.
         2.  Advise them to verify their API credentials and account setup for the  service.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is blocking the customer OTP login feature.
+    -   **Why fix this issue and what will be achieved with the fix?**: This blocks the customer OTP login feature.
     -   **Status**: BLOCKED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Backend
     -   **Blocked on other issue**: User action (verifying 3rd party API credentials).
 
 **In progress Task List**:
--   **Task 1 (P0): Complete the rewrite of the Reminders page frontend.**
-    -   **Where to resume:** The agent was about to execute a  command for . This command should be executed, followed by thorough testing.
-    -   **What will be achieved with this?**: A fully functional Reminders page that correctly separates today's, overdue, upcoming, and historical reminders, with all action buttons working as intended.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
+-   **Task 1: Implement Ledger Balance Display and Sharing (P0)**
+    -   **Where to resume:** The agent needs to start implementing the last user request.
+        1.  **Backend**: Create a new endpoint to share a ledger statement via WhatsApp.
+        2.  **Frontend**:
+            *   Modify , , and  to fetch and display the customer's ledger balance. Apply the requested styling (bold, red, large text).
+            *   Add a Share Ledger button on the Payments, Doctors, Medicals, and Agencies pages that calls the new WhatsApp endpoint.
+    -   **What will be achieved with this?**: Sales staff will have immediate visibility of a customer's balance before making contact, and they will be able to share full statements easily.
+    -   **Status**: NOT STARTED
+    -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   (P0) **Refactor :** This monolithic file is now over 8000 lines and poses a significant maintenance risk. It must be broken down into a modular structure (e.g., routers, models, services).
+    -   (P0) **Refactor :** This is now more critical than ever. The file is extremely large, causing dependency and ordering issues during development. It must be broken down into a modular structure (e.g., routers, models, services).
+    -   (P1) **Refactor Follow-up UI:** The , , and  files contain significant duplicated code for the follow-up system, which should be refactored into a reusable component.
     -   (P1) **Stock/Inventory Management:** Implement item quantity tracking, manage stock levels, and set up low-stock alerts.
-    -   (P1) **Payment Tracking:** Enhance payment tracking against orders and manage customer dues.
 -   **Future Tasks:**
     -   (P2) Sales reports with charts.
-    -   (P2) Data import/export functionality.
+    -   (P2) Data import/export functionality (beyond the current item price lists).
     -   (P2) Sales target management.
 
 **Completed work in this session**
--   **Lead Follow-up System:** Implemented a full-featured follow-up system for Doctors, Medicals, and Agencies with a dedicated history, backend APIs, and integration into the Reminders page.
--   **Automated Birthday/Anniversary Greetings:** Created a system to automatically send greetings via WhatsApp/Email using a random template from a new, admin-manageable template library.
--   **Portal Customer Management:** Added Edit and Delete functionality for portal customers in the admin panel.
--   **Bug Fixes:**
-    -   Resolved a  on the Send to Admin message feature by correcting the API key and request format.
-    -   Fixed a JSX syntax error in  that was causing build failures.
--   **Verification:** Confirmed that the OTP login flow correctly blocks and notifies unregistered users.
+-   **Payment Tracking System (Phases 1 & 2)**: A complete system for tracking customer payments, opening balances, and outstanding amounts was built. Includes admin pages for management and customer pages for viewing ledgers.
+-   **Item Pricing Model Refactor**: Removed legacy , , and  fields from the Items page and bulk import, standardizing on a role-based pricing model.
+-   **Advanced Item Export**: Implemented PDF/Excel export for item price lists with custom subcategory ordering, category filtering, and role-based pricing.
+-   **Out-of-Stock Feature**: Added functionality to mark items as Out of Stock, hiding them from the customer portal.
+-   **Customer Download Center**: Created a new page in the customer portal for downloading price lists and admin-provided catalogues.
+-   **Admin Catalogue Management**: Added a UI in the admin settings to manage downloadable catalogue links.
+-   **Image Quality Upgrade**: Improved image processing to save higher-quality (400x400) WebP images for new uploads.
+-   **Bug Fix**: Fixed a critical bug preventing updated item images from appearing in the customer portal.
+-   **UI Tweak**: Simplified the printable order view as requested.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Monolithic  file (CRITICAL, P0)**: This high-priority refactoring task remains pending.
--   **Issue 2: Duplicated UI logic**: The , , and  files contain significant duplicated code for the follow-up system, which should be refactored into a reusable component.
+-   **Issue 1: Monolithic  file (CRITICAL, P0)**: This high-priority refactoring task remains pending and has become more urgent as the file has grown, leading to development slowdowns and bugs (e.g., function definition order).
+-   **Issue 2: Duplicated UI logic**: The , , and  files contain significant duplicated code for the follow-up system.
 
 **Known issue recurrence from previous fork**
--   None.
+-   None in this session, but the risk associated with the monolithic  is a recurring theme.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Background Tasks ():** Used for automated daily greetings and enhanced reminder summaries.
--   **API Debugging:** Resolved a critical bug caused by a duplicate, conflicting API route in FastAPI.
+-   **Monolithic Backend ():** The application continues to be built on a single, massive Python file.
+-   **Dynamic PDF Generation ():** Used for generating item price lists and order printouts.
+-   **Complex Frontend State Management (, ):** Used extensively in  and the new  to handle modals, filters, and data fetching.
+-   **Background Tasks ():** Still in use for automated greetings.
 
 **key DB schema**
 -   ** (New):** 
 -   ** (New):** 
--   **, , :** Modified to include  and .
+-   ****: Modified to include .
+-   **, , **: Modified to include .
+-   ****: Modified to include a  array: .
 
 **changes in tech stack**
--   None.
+-   **** was installed and used for PDF generation.
 
 **All files of reference**
--   **/app/backend/server.py**: Main file for all backend logic, heavily modified.
--   **/app/frontend/src/pages/admin/Reminders.jsx**: Currently being rewritten to fix major bugs.
--   **/app/frontend/src/pages/admin/Customers.jsx**: Modified for edit/delete functionality.
--   **/app/frontend/src/pages/admin/GreetingTemplates.jsx**: New page for template management.
--   **/app/frontend/src/pages/admin/Doctors.jsx**: Modified to add follow-up feature.
--   **/app/frontend/src/pages/admin/Medicals.jsx**: Modified to add follow-up feature.
--   **/app/frontend/src/pages/admin/Agencies.jsx**: Modified to add follow-up feature.
+-   **/app/backend/server.py**: Contains all application logic. Now critically large and complex.
+-   **/app/frontend/src/pages/admin/Items.jsx**: Heavily modified for item management and exports.
+-   **/app/frontend/src/pages/admin/Payments.jsx**: New file for the payment tracking system.
+-   **/app/frontend/src/pages/customer/Downloads.jsx**: New file for the customer download center.
+-   **/app/frontend/src/pages/customer/Ledger.jsx**: New file for the customer ledger view.
+-   **/app/frontend/src/pages/admin/Doctors.jsx**: Modified to add opening balance.
+-   **/app/frontend/src/pages/admin/Medicals.jsx**: Modified to add opening balance.
+-   **/app/frontend/src/pages/admin/Agencies.jsx**: Modified to add opening balance.
+-   **/app/frontend/src/pages/admin/Reminders.jsx**: The original P0 issue; this file is still broken and needs to be fixed.
 
 **Areas that need refactoring**:
--   ** (CRITICAL)**: Top priority (P0). The monolithic structure is unsustainable.
--   **, , **: These pages share nearly identical follow-up logic that should be extracted into a single reusable component.
+-   ** (CRITICAL, P0)**: Top priority. The monolithic structure is causing bugs and slowing down development. It must be broken into a modern router-based structure.
+-   **, , **: These pages still share nearly identical follow-up logic that should be extracted into a reusable component.
 
 **key api endpoints**
--   : (New) Add a follow-up.
--    (+ CRUD): (New) Manage greeting templates.
--   : (New) Edit a portal customer.
--   : (New) Delete a portal customer.
--   : (New) Get completed reminders.
--   : (Fixed) Corrected API key and request format.
--   : (Renamed) Old, conflicting route was renamed to fix a bug.
+-   , , , : (New) CRUD for payments.
+-   : (New) Share payment receipt.
+-   : (New) Get ledger for an admin-selected customer.
+-   : (New) Get ledger for the logged-in customer.
+-   : (New) Get summary of outstanding balances.
+-   : (New) Toggle the out-of-stock status of an item.
+-   , : (New) Export item price lists.
+-   , : (New) Manage subcategory ordering.
+-   : (New) Manage catalogue links.
+-   : (New) Download customer-specific price list.
 
 **Critical Info for New Agent**
--   **The Reminders page is the top priority.** The backend fix is complete, but the frontend () requires a full rewrite to resolve user-reported bugs. The last agent action was preparing the  call for this rewrite.
--   **Code duplication has increased.** The new follow-up system was copied across three separate files (, , ). This should be refactored into a reusable component after the critical bugs are resolved.
--   The monolithic  is the largest source of technical debt and needs to be broken down into a modern router-based structure.
+-   **Prioritize User Requests, but Address Critical Debt:** The previous agent successfully delivered a high volume of features requested by the user. However, this came at the cost of deferring critical technical debt. The  monolith is now a major liability, causing bugs and development friction. The original P0 bug on the  page is also still outstanding.
+-   **New Feature Request:** The immediate next step is to implement the user's latest request: adding ledger balance display to customer pages and enabling WhatsApp sharing for ledgers.
+-   **After the current task, strongly propose a refactoring phase.** The stability and future maintainability of the application depend on breaking down  and deduplicating frontend code.
 
 **documents and test reports created in this job**
--   /app/memory/PRD.md
--   /app/test_reports/iteration_21.json
--   /app/test_reports/iteration_22.json
--   /app/test_reports/iteration_23.json
+-   /app/test_reports/iteration_24.json
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. : **(IN PROGRESS)** Bug report with screenshots for the Reminders page.
-9.  : **(PARTIALLY COMPLETED)** Request to improve reminders and add customer management. Bugs remain in the reminder implementation.
-8.  : **(COMPLETED)** Request to ensure only registered users can get an OTP. Verified as already working.
-7.  : **(COMPLETED)** Bug report for the Send to Admin button.
-6.  : **(COMPLETED)** Request to automate birthday/anniversary greetings.
-5.  : **(COMPLETED)** Request to improve the WhatsApp reminder template.
-4.  : **(COMPLETED)** Detailed request for a lead follow-up system.
-3.  : **(COMPLETED)** Initial request to improve the follow-up system.
-2.  : User approval.
-1.  : Agent's internal thought.
+10. : **(IN PROGRESS)** The current task the agent is working on.
+9.  : **(COMPLETED)** Request to add edit, search, filter, and share functions to payment history.
+8.  : **(COMPLETED)** User provided detailed requirements for the payment tracking system.
+7.  : **(COMPLETED)** Request to add an out-of-stock toggle for items.
+6.  : **(COMPLETED)** Request to simplify the order printout.
+5.  : **(COMPLETED)** Request for a customer-facing downloads page for price lists and catalogues.
+4.  : **(COMPLETED)** Request to improve image quality.
+3.  : **(COMPLETED)** Request to change the formatting of PDF/Excel exports.
+2.  : **(COMPLETED)** Request to add specific columns and role-based pricing to exports.
+1.  : **(COMPLETED)** The initial complex request for the item export feature.
 
 **Project Health Check:**
--   **Broken**: The Reminders page is non-functional due to major UI bugs. OTP delivery via WhatsApp is likely still broken due to an external configuration issue.
+-   **Broken**: The  page remains non-functional. WhatsApp OTP delivery is likely still broken.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **Custom SMTP:** For emails.
--   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(Currently experiencing  issues)**.
--   **openpyxl:** For reading  files.
+-   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(OTP endpoint is experiencing  issues)**.
+-   **openpyxl:** For reading/writing  files.
 -   **apscheduler:** For scheduling background tasks.
+-   **fpdf2 (New):** For server-side PDF generation.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES
+-   **Testing agent used after significant changes:** YES (Used successfully after implementing the first phase of the payment tracking system).
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** The Reminders page functionality has severely regressed.
+-   **Known regressions:** The Reminders page functionality is still in a broken state from the previous fork.
 
 **Credentials to test flow:**
 -   **Admin Email:** 
@@ -167,5 +188,6 @@ A full-stack CRM application using FastAPI, React, and MongoDB.
 -   **Accountant Password:** 
 
 **What agent forgot to execute**
--   The critical refactoring of the monolithic  file continues to be deferred.
--   When implementing the follow-up feature, the agent duplicated a large amount of code across , , and  instead of creating a reusable component, worsening the technical debt.</analysis>
+-   **Fix :** The agent was diverted from this original high-priority task and never returned to it.
+-   **Refactor :** Despite the growing complexity and bugs arising from the monolithic structure, this critical refactoring was deferred in favor of new features.
+-   **Refactor duplicated Follow-up UI:** The agent did not address the code duplication in , , and .</analysis>

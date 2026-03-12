@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://reminder-management.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://inventory-pricepoint.preview.emergentagent.com')
 
 # Test data
 TEST_ADMIN_EMAIL = "admin@vmpcrm.com"

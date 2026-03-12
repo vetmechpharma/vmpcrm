@@ -4282,6 +4282,88 @@ async def get_outstanding(
     results.sort(key=lambda x: x['outstanding'], reverse=True)
     return results
 
+@api_router.post("/ledger/{customer_type}/{customer_id}/whatsapp")
+async def send_ledger_whatsapp(
+    customer_type: str,
+    customer_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send ledger statement via WhatsApp"""
+    ledger = await get_customer_ledger(customer_type, customer_id, from_date, to_date, current_user)
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = (company or {}).get('company_name', 'VMP CRM')
+    
+    cust = ledger['customer']
+    cust_phone = cust.get('phone', '')
+    if not cust_phone:
+        raise HTTPException(status_code=400, detail="Customer phone not available")
+    
+    # Build WhatsApp message
+    message = (
+        f"*{company_name}*\n"
+        f"*LEDGER STATEMENT*\n"
+        f"{'─' * 28}\n"
+        f"Customer: {cust['name']}\n"
+        f"Type: {cust['type'].title()}\n"
+    )
+    if from_date or to_date:
+        message += f"Period: {from_date or 'Start'} to {to_date or 'Present'}\n"
+    message += f"{'─' * 28}\n\n"
+    
+    # Add entries (limit to recent entries to fit WhatsApp message)
+    entries = ledger['entries']
+    if len(entries) > 20:
+        message += f"_Showing last 20 of {len(entries)} entries_\n\n"
+        entries = entries[-20:]
+    
+    for entry in entries:
+        date_str = (entry.get('date', '') or '')[:10]
+        desc = entry.get('description', '')[:35]
+        if entry['debit'] > 0:
+            message += f"{date_str} | {desc}\n  Debit: Rs.{entry['debit']:,.2f} | Bal: Rs.{entry['balance']:,.2f}\n"
+        elif entry['credit'] > 0:
+            message += f"{date_str} | {desc}\n  Credit: Rs.{entry['credit']:,.2f} | Bal: Rs.{entry['balance']:,.2f}\n"
+    
+    message += (
+        f"\n{'─' * 28}\n"
+        f"*Total Debit: Rs.{ledger['total_debit']:,.2f}*\n"
+        f"*Total Credit: Rs.{ledger['total_credit']:,.2f}*\n"
+        f"*Closing Balance: Rs.{ledger['closing_balance']:,.2f}*\n"
+        f"{'─' * 28}\n"
+    )
+    
+    # Send WhatsApp
+    config = await get_whatsapp_config()
+    if not (config.get('api_url') and config.get('auth_token') and config.get('sender_id')):
+        raise HTTPException(status_code=400, detail="WhatsApp not configured")
+    
+    wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
+    params = {
+        'action': 'send',
+        'senderId': config['sender_id'],
+        'authToken': config['auth_token'],
+        'messageText': message,
+        'receiverId': wa_mobile
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(config['api_url'], params=params)
+            if response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'ledger_statement', message, 'success', recipient_name=cust['name'])
+                return {"message": "Ledger sent via WhatsApp", "balance": ledger['closing_balance']}
+            else:
+                logger.error(f"WhatsApp ledger failed: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"WhatsApp ledger error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"WhatsApp error: {str(e)}")
+
 @api_router.get("/ledger/export/pdf/{customer_type}/{customer_id}")
 async def export_ledger_pdf(
     customer_type: str,
@@ -6998,12 +7080,12 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Check if campaign has uploaded image
                     if campaign.get('has_image', False):
-                        image_url_to_send = f"https://reminder-management.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                        image_url_to_send = f"https://inventory-pricepoint.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"https://reminder-management.preview.emergentagent.com/api/items/{item['id']}/image"
+                                image_url_to_send = f"https://inventory-pricepoint.preview.emergentagent.com/api/items/{item['id']}/image"
                                 break
                     
                     if image_url_to_send:

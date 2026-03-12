@@ -42,6 +42,7 @@ export const Payments = () => {
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sendingLedgerWA, setSendingLedgerWA] = useState(false);
 
   const fetchOutstanding = useCallback(async () => {
     setLoading(true);
@@ -215,6 +216,21 @@ export const Payments = () => {
       window.URL.revokeObjectURL(url);
       toast.success('Ledger PDF downloaded');
     } catch { toast.error('Export failed'); }
+  };
+
+  const sendLedgerWhatsApp = async () => {
+    if (!ledgerCustomer) return;
+    setSendingLedgerWA(true);
+    try {
+      const params = {};
+      if (dateFrom) params.from_date = dateFrom;
+      if (dateTo) params.to_date = dateTo;
+      const res = await paymentsAPI.sendLedgerWhatsApp(ledgerCustomer.type, ledgerCustomer.id, params);
+      toast.success(`Ledger sent via WhatsApp (Balance: ₹${res.data.balance?.toLocaleString('en-IN')})`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to send ledger via WhatsApp');
+    }
+    finally { setSendingLedgerWA(false); }
   };
 
   const filteredOutstanding = outstanding.filter(o =>
@@ -498,6 +514,9 @@ export const Payments = () => {
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />
             <Button size="sm" variant="outline" onClick={refreshLedger}><Filter className="w-3 h-3 mr-1" />Filter</Button>
             <Button size="sm" variant="outline" onClick={exportLedgerPDF}><Download className="w-3 h-3 mr-1" />PDF</Button>
+            <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50" onClick={sendLedgerWhatsApp} disabled={sendingLedgerWA} data-testid="ledger-whatsapp-btn">
+              {sendingLedgerWA ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}WhatsApp
+            </Button>
           </div>
 
           {ledgerLoading ? (

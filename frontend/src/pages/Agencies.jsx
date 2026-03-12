@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { agenciesAPI, emailAPI, tasksAPI, transportAPI, locationAPI, followupsAPI } from '../lib/api';
+import { agenciesAPI, emailAPI, tasksAPI, transportAPI, locationAPI, followupsAPI, paymentsAPI } from '../lib/api';
 import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { 
   Plus, Search, Edit2, Trash2, Mail, Loader2, Phone, Calendar, Clock,
   MessageSquare, CheckSquare, AlertTriangle, PhoneCall, Eye, Building,
-  RefreshCw, Key, History, ArrowRight
+  RefreshCw, Key, History, ArrowRight, IndianRupee
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate, formatDateTime } from '../lib/utils';
 
@@ -64,9 +64,10 @@ export const Agencies = () => {
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [transports, setTransports] = useState([]);
+  const [outstandingMap, setOutstandingMap] = useState({});
 
   useEffect(() => { fetchAgencies(); }, [search, statusFilter]);
-  useEffect(() => { fetchStatesAndTransports(); }, []);
+  useEffect(() => { fetchStatesAndTransports(); fetchOutstandingBalances(); }, []);
   useEffect(() => {
     if (formData.state) fetchDistricts(formData.state);
     else setDistricts([]);
@@ -77,6 +78,15 @@ export const Agencies = () => {
       const [statesRes, transportsRes] = await Promise.all([locationAPI.getStates(), transportAPI.getAll()]);
       setStates(statesRes.data.states || []); setTransports(transportsRes.data || []);
     } catch (e) { console.error('Failed to fetch states/transports'); }
+  };
+
+  const fetchOutstandingBalances = async () => {
+    try {
+      const res = await paymentsAPI.getOutstanding({ customer_type: 'agency' });
+      const map = {};
+      (res.data || []).forEach(o => { map[o.customer_id] = o.outstanding; });
+      setOutstandingMap(map);
+    } catch { /* silent */ }
   };
 
   const fetchDistricts = async (state) => {
@@ -438,6 +448,19 @@ export const Agencies = () => {
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Building className="w-5 h-5" />{selectedAgency?.name} - {selectedAgency?.customer_code}</DialogTitle></DialogHeader>
           {selectedAgency && (
             <div className="space-y-6 py-4">
+              {/* Ledger Balance - Prominent Display */}
+              {outstandingMap[selectedAgency.id] !== undefined && outstandingMap[selectedAgency.id] !== 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between" data-testid="agency-ledger-balance">
+                  <div className="flex items-center gap-2">
+                    <IndianRupee className="w-5 h-5 text-red-600" />
+                    <span className="text-sm font-medium text-red-700">Outstanding Balance</span>
+                  </div>
+                  <span className="text-2xl font-bold text-red-600">
+                    ₹{Math.abs(outstandingMap[selectedAgency.id]).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    {outstandingMap[selectedAgency.id] < 0 && <span className="text-sm ml-1">(Advance)</span>}
+                  </span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><span className="text-slate-500">Phone:</span> {selectedAgency.phone}</div>
                 <div><span className="text-slate-500">Proprietor:</span> {selectedAgency.proprietor_name || 'N/A'}</div>

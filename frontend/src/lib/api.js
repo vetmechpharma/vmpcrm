@@ -309,6 +309,7 @@ export const paymentsAPI = {
   getLedger: (customerType, customerId, params) => api.get(`/ledger/${customerType}/${customerId}`, { params }),
   getOutstanding: (params) => api.get('/outstanding', { params }),
   exportLedgerPDF: (customerType, customerId, params) => api.get(`/ledger/export/pdf/${customerType}/${customerId}`, { params, responseType: 'blob' }),
+  sendLedgerWhatsApp: (customerType, customerId, params) => api.post(`/ledger/${customerType}/${customerId}/whatsapp`, null, { params }),
 };
 
 // Location APIs (public, no auth required)

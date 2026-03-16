@@ -66,4 +66,8 @@ export const mrAPI = {
   getFollowups: (params) => mrApi.get('/mr/followups', { params }),
   getVisualAids: () => mrApi.get('/mr/visual-aids'),
   getVisualAidDeck: (id) => mrApi.get(`/mr/visual-aids/${id}`),
+  getItems: (params) => mrApi.get('/mr/items', { params }),
+  getOrders: () => mrApi.get('/mr/orders'),
+  createOrder: (data) => mrApi.post('/mr/orders', data),
+  cancelOrder: (id, data) => mrApi.post(`/mr/orders/${id}/cancel-request`, data),
 };

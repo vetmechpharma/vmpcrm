@@ -1258,6 +1258,13 @@ class OrderResponse(BaseModel):
     location: Optional[str] = None
     device_info: Optional[str] = None
     created_at: datetime
+    # MR Order fields
+    source: Optional[str] = None
+    mr_id: Optional[str] = None
+    mr_name: Optional[str] = None
+    cancel_requested: Optional[bool] = None
+    cancel_requested_by: Optional[str] = None
+    cancel_reason: Optional[str] = None
 
 # ============== WHATSAPP CONFIG MODELS ==============
 
@@ -8299,7 +8306,14 @@ async def get_orders(
             ip_address=order.get('ip_address'),
             location=order.get('location'),
             device_info=order.get('device_info'),
-            created_at=created_at
+            created_at=created_at,
+            # MR Order fields
+            source=order.get('source'),
+            mr_id=order.get('mr_id'),
+            mr_name=order.get('mr_name'),
+            cancel_requested=order.get('cancel_requested'),
+            cancel_requested_by=order.get('cancel_requested_by'),
+            cancel_reason=order.get('cancel_reason')
         ))
     
     return result
@@ -10723,6 +10737,150 @@ async def get_mr_visual_aid_deck(deck_id: str, mr: dict = Depends(get_current_mr
     slides = await db.visual_aid_slides.find({'deck_id': deck_id}, {'_id': 0}).sort('order', 1).to_list(100)
     deck['slides'] = slides
     return deck
+
+# ============== MR ORDER ROUTES ==============
+
+@api_router.get("/mr/items")
+async def get_mr_items(search: Optional[str] = None, category: Optional[str] = None, mr: dict = Depends(get_current_mr)):
+    """Get items available for MR ordering"""
+    q = {'out_of_stock': {'$ne': True}}
+    if search:
+        q['$or'] = [
+            {'name': {'$regex': search, '$options': 'i'}},
+            {'item_code': {'$regex': search, '$options': 'i'}},
+        ]
+    if category:
+        q['main_category'] = category
+    
+    items = await db.items.find(q, {'_id': 0, 'image_webp': 0}).sort('name', 1).to_list(500)
+    # Add image URL
+    for item in items:
+        item['image_url'] = f"/api/items/{item['id']}/image"
+    return items
+
+@api_router.post("/mr/orders")
+async def create_mr_order(data: dict, background_tasks: BackgroundTasks, mr: dict = Depends(get_current_mr)):
+    """Create an order from MR on behalf of a customer"""
+    items = data.get('items', [])
+    customer_id = data.get('customer_id', '')
+    customer_name = data.get('customer_name', '')
+    customer_phone = data.get('customer_phone', '')
+    customer_type = data.get('customer_type', 'doctor')
+    notes = data.get('notes', '')
+    
+    if not items:
+        raise HTTPException(status_code=400, detail="No items in order")
+    if not customer_name:
+        raise HTTPException(status_code=400, detail="Customer name required")
+    
+    # Generate order number
+    today_str = datetime.now(timezone.utc).strftime('%Y%m%d')
+    today_orders = await db.orders.count_documents({'order_number': {'$regex': f'^ORD-{today_str}'}})
+    order_number = f"ORD-{today_str}-{(today_orders + 1):04d}"
+    
+    order_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    order_items = []
+    for item in items:
+        order_items.append({
+            'item_id': item.get('item_id', ''),
+            'item_code': item.get('item_code', ''),
+            'item_name': item.get('item_name', ''),
+            'quantity': str(item.get('quantity', '1')),
+            'rate': float(item.get('rate', 0)),
+            'mrp': float(item.get('mrp', 0)),
+        })
+    
+    order_doc = {
+        'id': order_id,
+        'order_number': order_number,
+        'doctor_id': customer_id,
+        'customer_type': customer_type,
+        'doctor_name': customer_name,
+        'doctor_phone': customer_phone,
+        'doctor_email': '',
+        'doctor_address': '',
+        'items': order_items,
+        'status': 'pending',
+        'notes': notes,
+        'source': 'mr',
+        'mr_id': mr['id'],
+        'mr_name': mr['name'],
+        'created_by': f"MR: {mr['name']}",
+        'created_by_id': mr['id'],
+        'created_at': now.isoformat(),
+    }
+    
+    await db.orders.insert_one(order_doc)
+    order_doc.pop('_id', None)
+    
+    # Send WhatsApp notification
+    try:
+        background_tasks.add_task(send_whatsapp_order, customer_phone, [OrderItem(**i) for i in order_items], order_number, customer_name)
+    except Exception as e:
+        logger.error(f"WhatsApp order notification error: {e}")
+    
+    return {'id': order_id, 'order_number': order_number, 'status': 'pending', 'message': 'Order created successfully'}
+
+@api_router.get("/mr/orders")
+async def get_mr_orders(mr: dict = Depends(get_current_mr)):
+    """Get orders placed by this MR"""
+    orders = await db.orders.find({'mr_id': mr['id']}, {'_id': 0}).sort('created_at', -1).to_list(200)
+    for o in orders:
+        if isinstance(o.get('created_at'), str):
+            pass
+    return orders
+
+@api_router.post("/mr/orders/{order_id}/cancel-request")
+async def mr_order_cancel_request(order_id: str, data: dict, mr: dict = Depends(get_current_mr)):
+    """MR requests order cancellation"""
+    order = await db.orders.find_one({'id': order_id, 'mr_id': mr['id']}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order['status'] in ['cancelled', 'dispatched', 'delivered']:
+        raise HTTPException(status_code=400, detail=f"Cannot cancel order with status: {order['status']}")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    reason = data.get('reason', '')
+    
+    await db.orders.update_one({'id': order_id}, {'$set': {
+        'cancel_requested': True,
+        'cancel_requested_by': f"MR: {mr['name']}",
+        'cancel_requested_at': now,
+        'cancel_reason': reason,
+    }})
+    
+    return {'message': 'Cancellation request submitted', 'order_id': order_id}
+
+@api_router.post("/orders/{order_id}/approve-cancel")
+async def approve_cancel_order(order_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Admin approves or rejects cancellation request"""
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    action = data.get('action', '')  # approve or reject
+    now = datetime.now(timezone.utc).isoformat()
+    
+    if action == 'approve':
+        await db.orders.update_one({'id': order_id}, {'$set': {
+            'status': 'cancelled',
+            'cancellation_reason': order.get('cancel_reason', 'Cancelled by admin'),
+            'cancel_approved_by': current_user.get('name', 'Admin'),
+            'cancel_approved_at': now,
+            'cancel_requested': False,
+        }})
+        return {'message': 'Order cancelled'}
+    elif action == 'reject':
+        await db.orders.update_one({'id': order_id}, {'$set': {
+            'cancel_requested': False,
+            'cancel_rejected_by': current_user.get('name', 'Admin'),
+            'cancel_rejected_at': now,
+        }})
+        return {'message': 'Cancellation rejected'}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
 
 @api_router.post("/mrs")
 async def create_mr(data: MRCreate, current_user: dict = Depends(get_current_user)):

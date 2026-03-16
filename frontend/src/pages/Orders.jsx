@@ -831,15 +831,20 @@ export const Orders = () => {
                       <tr key={order.id}>
                         <td>
                           <span className="font-mono font-medium">{order.order_number}</span>
+                          {order.source === 'mr' && <Badge className="ml-1 bg-indigo-100 text-indigo-700 text-[10px]">MR</Badge>}
                         </td>
                         <td>
                           <div>
                             <p className="font-medium text-slate-900">{order.doctor_name || 'Unknown'}</p>
                             <p className="text-sm text-slate-500">{order.doctor_phone}</p>
+                            {order.mr_name && <p className="text-xs text-indigo-500">via {order.mr_name}</p>}
                           </div>
                         </td>
                         <td><span className="text-sm">{order.items?.length || 0} items</span></td>
-                        <td><Badge className={statusConfig.color}>{statusConfig.label}</Badge></td>
+                        <td>
+                          <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+                          {order.cancel_requested && <Badge className="ml-1 bg-red-50 text-red-600 border border-red-200 text-[10px]">Cancel Req</Badge>}
+                        </td>
                         <td>
                           {order.transport_name ? (
                             <div>
@@ -1308,6 +1313,32 @@ export const Orders = () => {
                 <Card className="border-red-200 bg-red-50">
                   <CardHeader className="pb-3"><CardTitle className="text-base text-red-700 flex items-center gap-2"><XCircle className="w-4 h-4" /> Cancellation Reason</CardTitle></CardHeader>
                   <CardContent><p className="text-sm text-red-600">{selectedOrder.cancellation_reason}</p></CardContent>
+                </Card>
+              )}
+
+              {selectedOrder.cancel_requested && selectedOrder.status !== 'cancelled' && (
+                <Card className="border-orange-200 bg-orange-50">
+                  <CardHeader className="pb-3"><CardTitle className="text-base text-orange-700 flex items-center gap-2"><XCircle className="w-4 h-4" /> Cancellation Request</CardTitle></CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-orange-700 mb-1">Requested by: {selectedOrder.cancel_requested_by}</p>
+                    {selectedOrder.cancel_reason && <p className="text-sm text-orange-600 mb-3">Reason: {selectedOrder.cancel_reason}</p>}
+                    <div className="flex gap-2">
+                      <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={async () => {
+                        try {
+                          await ordersAPI.approveCancel(selectedOrder.id, { action: 'approve' });
+                          toast.success('Order cancelled');
+                          fetchOrders(); setShowDetailModal(false);
+                        } catch { toast.error('Failed'); }
+                      }} data-testid="approve-cancel-btn">Approve Cancel</Button>
+                      <Button size="sm" variant="outline" onClick={async () => {
+                        try {
+                          await ordersAPI.approveCancel(selectedOrder.id, { action: 'reject' });
+                          toast.success('Cancellation rejected');
+                          fetchOrders(); setShowDetailModal(false);
+                        } catch { toast.error('Failed'); }
+                      }} data-testid="reject-cancel-btn">Reject</Button>
+                    </div>
+                  </CardContent>
                 </Card>
               )}
 

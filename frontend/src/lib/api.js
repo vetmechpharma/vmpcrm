@@ -183,6 +183,7 @@ export const ordersAPI = {
   delete: (id) => api.delete(`/orders/${id}`),
   lookupDoctor: (id) => api.get(`/orders/${id}/lookup-doctor`),
   searchCustomers: (q) => api.get('/customers/search', { params: { q } }),
+  approveCancel: (id, data) => api.post(`/orders/${id}/approve-cancel`, data),
 };
 
 // Pending Items APIs

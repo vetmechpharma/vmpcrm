@@ -48,6 +48,7 @@ import MRVisits from './pages/mrvet/MRVisits';
 import MRFollowups from './pages/mrvet/MRFollowups';
 import MRVisualAids from './pages/mrvet/MRVisualAids';
 import MRSlideshow from './pages/mrvet/MRSlideshow';
+import MROrders from './pages/mrvet/MROrders';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
@@ -137,6 +138,7 @@ function AppRoutes() {
         <Route path="visits" element={<MRVisits />} />
         <Route path="followups" element={<MRFollowups />} />
         <Route path="visual-aids" element={<MRVisualAids />} />
+        <Route path="orders" element={<MROrders />} />
         <Route index element={<Navigate to="/mrvet/dashboard" replace />} />
       </Route>
       

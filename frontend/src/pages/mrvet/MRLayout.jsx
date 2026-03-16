@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMRAuth } from '../../context/MRAuthContext';
 import {
   LayoutDashboard, Users, Layers, ClipboardList, CalendarCheck,
-  LogOut, Menu, X, Stethoscope, RefreshCw
+  LogOut, Menu, X, Stethoscope, ShoppingCart
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -13,6 +13,7 @@ const navItems = [
   { path: '/mrvet/visual-aids', icon: Layers, label: 'Visual Aids' },
   { path: '/mrvet/visits', icon: ClipboardList, label: 'Visits' },
   { path: '/mrvet/followups', icon: CalendarCheck, label: 'Follow-ups' },
+  { path: '/mrvet/orders', icon: ShoppingCart, label: 'Orders' },
 ];
 
 export default function MRLayout() {

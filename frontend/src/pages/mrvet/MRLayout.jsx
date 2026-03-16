@@ -45,13 +45,13 @@ export default function MRLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50" data-testid="mr-layout">
-      {/* PWA Meta */}
+      {/* PWA Meta - manifest is set in index.html dynamically */}
       <Helmet>
-        <link rel="manifest" href="/mr-manifest.json" />
-        <meta name="theme-color" content="#1e3a5f" />
+        <meta name="theme-color" content="#0c3c60" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/mr-icon-192.png" />
+        <title>MR Field App</title>
       </Helmet>
 
       {/* Offline Banner */}

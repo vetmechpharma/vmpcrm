@@ -1,7 +1,7 @@
 {
   "short_name": "MR Field App",
-  "name": "MR Field App - VMP CRM",
-  "description": "Medical Representative field application for product presentations, visit tracking, and order management",
+  "name": "MR Field App - VMP Pharma",
+  "description": "Medical Representative field app for visits, presentations, and orders",
   "icons": [
     {
       "src": "/mr-icon-192.png",
@@ -16,11 +16,11 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/mrvet/dashboard",
+  "start_url": "/mrvet/login",
   "scope": "/mrvet/",
   "display": "standalone",
-  "theme_color": "#1e3a5f",
-  "background_color": "#f8fafc",
+  "theme_color": "#0c3c60",
+  "background_color": "#f4f6f9",
   "orientation": "any",
   "categories": ["business", "productivity"]
 }

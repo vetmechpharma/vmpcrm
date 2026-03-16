@@ -10,9 +10,13 @@ root.render(
   </React.StrictMode>,
 );
 
-// Register service worker for PWA
+// Register service worker for PWA - different SW per app
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if (window.location.pathname.startsWith('/mrvet')) {
+      // MR app SW is registered by usePWA hook in MRLayout
+    } else {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
   });
 }

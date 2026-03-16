@@ -1,12 +1,7 @@
 {
-  "name": "VMP CRM - Customer Portal",
   "short_name": "VMP CRM",
-  "description": "Pharmaceutical distributor customer portal",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#059669",
-  "orientation": "portrait-primary",
+  "name": "VMP CRM - Customer Portal",
+  "description": "Pharmaceutical distributor customer portal for orders and tracking",
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -20,5 +15,12 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#1e7a4d",
+  "background_color": "#f4f6f9",
+  "orientation": "portrait-primary",
+  "categories": ["business", "shopping"]
 }

@@ -133,7 +133,7 @@ export const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#F8F7FA' }}>
+    <div className="min-h-screen" style={{ background: '#f4f6f9' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
@@ -151,7 +151,7 @@ export const Layout = ({ children }) => {
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6">
             <Link to="/admin" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#7367F0' }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#1e7a4d' }}>
                 <span className="text-white font-bold text-sm">V</span>
               </div>
               <span className="font-bold text-lg text-white tracking-tight">VMP CRM</span>
@@ -170,7 +170,7 @@ export const Layout = ({ children }) => {
             
             {/* MR Section */}
             <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#616272' }}>MR Module</p>
+              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7ca8c4' }}>MR Module</p>
               <button
                 onClick={() => setMrExpanded(!mrExpanded)}
                 className={cn(
@@ -200,7 +200,7 @@ export const Layout = ({ children }) => {
             {/* Company Section - only show if user has any company permissions */}
             {companySubItems.some(item => item.adminOnly ? user?.role === 'admin' : (!item.perm || hasPermission(item.perm))) && (
             <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#616272' }}>Company</p>
+              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7ca8c4' }}>Company</p>
               <button
                 onClick={() => setCompanyExpanded(!companyExpanded)}
                 className={cn(
@@ -232,14 +232,14 @@ export const Layout = ({ children }) => {
           {/* User info */}
           <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#7367F0' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#1e7a4d' }}>
                 <span className="text-sm font-semibold text-white">
                   {user?.name?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-                <p className="text-xs capitalize" style={{ color: '#616272' }}>{user?.role}</p>
+                <p className="text-xs capitalize" style={{ color: '#7ca8c4' }}>{user?.role}</p>
               </div>
             </div>
             <button 
@@ -263,23 +263,23 @@ export const Layout = ({ children }) => {
             className="lg:hidden p-2 mr-2 rounded-md hover:bg-slate-100"
             onClick={() => setSidebarOpen(true)}
             data-testid="mobile-menu-btn"
-            style={{ color: '#5D596C' }}
+            style={{ color: '#555' }}
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 flex-1">
-            <Search className="w-4 h-4" style={{ color: '#B4B2B7' }} />
-            <span className="text-sm" style={{ color: '#B4B2B7' }}>Search...</span>
+            <Search className="w-4 h-4" style={{ color: '#999' }} />
+            <span className="text-sm" style={{ color: '#999' }}>Search...</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(115,103,240,0.15)' }}>
-              <span className="text-sm font-semibold" style={{ color: '#7367F0' }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(30, 122, 77, 0.15)' }}>
+              <span className="text-sm font-semibold" style={{ color: '#1e7a4d' }}>
                 {user?.name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="hidden md:block">
-              <p className="text-sm font-medium" style={{ color: '#434050' }}>{user?.name}</p>
-              <p className="text-xs capitalize" style={{ color: '#8D8A94' }}>{user?.role}</p>
+              <p className="text-sm font-medium" style={{ color: '#0c3c60' }}>{user?.name}</p>
+              <p className="text-xs capitalize" style={{ color: '#777' }}>{user?.role}</p>
             </div>
           </div>
         </header>

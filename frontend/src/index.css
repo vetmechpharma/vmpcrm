@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,35 +6,35 @@
 
 @layer base {
     :root {
-        --background: 252 20% 98%;
-        --foreground: 252 10% 28%;
+        --background: 214 20% 97%;
+        --foreground: 210 20% 20%;
         --card: 0 0% 100%;
-        --card-foreground: 252 10% 28%;
+        --card-foreground: 210 20% 20%;
         --popover: 0 0% 100%;
-        --popover-foreground: 252 10% 28%;
-        --primary: 245 85% 67%;
+        --popover-foreground: 210 20% 20%;
+        --primary: 155 61% 30%;
         --primary-foreground: 0 0% 100%;
-        --secondary: 220 5% 68%;
+        --secondary: 210 5% 65%;
         --secondary-foreground: 0 0% 100%;
-        --muted: 250 15% 95%;
-        --muted-foreground: 250 5% 55%;
-        --accent: 245 85% 67%;
+        --muted: 214 15% 95%;
+        --muted-foreground: 210 5% 50%;
+        --accent: 155 61% 30%;
         --accent-foreground: 0 0% 100%;
         --destructive: 0 72% 62%;
         --destructive-foreground: 0 0% 98%;
-        --border: 250 10% 87%;
-        --input: 250 10% 87%;
-        --ring: 245 85% 67%;
+        --border: 214 10% 87%;
+        --input: 214 10% 87%;
+        --ring: 155 61% 30%;
         --radius: 0.375rem;
         --success: 152 69% 47%;
         --warning: 28 100% 63%;
         --info: 187 100% 46%;
 
-        /* Materialize custom vars */
-        --sidebar-bg: #2F3349;
-        --sidebar-fg: #D0D2D6;
-        --sidebar-active: #7367F0;
-        --sidebar-hover: #3A3E5B;
+        /* Custom theme vars */
+        --sidebar-bg: #0c3c60;
+        --sidebar-fg: #c8d8e8;
+        --sidebar-active: #1e7a4d;
+        --sidebar-hover: #0f4a74;
     }
 }
 
@@ -44,10 +44,10 @@
     }
     body {
         @apply bg-background text-foreground;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Poppins', sans-serif;
         @apply tracking-tight;
     }
     code, pre {
@@ -93,7 +93,7 @@
 .sidebar-nav-item.active {
     background: var(--sidebar-active);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(115, 103, 240, 0.45);
+    box-shadow: 0 2px 8px rgba(30, 122, 77, 0.45);
 }
 
 /* Custom scrollbar */
@@ -120,64 +120,65 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Materialize-style data table */
+/* Data table */
 .data-table {
     @apply w-full text-sm;
 }
 .data-table th {
     @apply text-left font-semibold text-xs tracking-wider py-3 px-4;
-    color: #5D596C;
+    background: #1e7a4d;
+    color: #fff;
     text-transform: uppercase;
 }
 .data-table td {
     @apply py-3 px-4;
-    border-bottom: 1px solid #DBDADE;
-    color: #5D596C;
+    border-bottom: 1px solid #eee;
+    color: #555;
 }
 .data-table tr:hover td {
-    background: #F8F7FA;
+    background: #f4f6f9;
 }
 
-/* Cuba-style card */
+/* Card style */
 .mat-card {
     background: #fff;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(8, 21, 66, 0.05);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     border: none;
     transition: box-shadow 0.2s ease;
 }
 .mat-card:hover {
-    box-shadow: 0 0 20px rgba(8, 21, 66, 0.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* Cuba page title */
+/* Page title */
 .page-title-cuba {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Poppins', sans-serif;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #2F3349;
+    color: #0c3c60;
     letter-spacing: -0.025em;
 }
 
-/* Cuba input fields */
+/* Input fields */
 .cuba-input {
     border-radius: 8px;
-    border: 1px solid #DBDADE;
+    border: 1px solid #ddd;
     font-size: 14px;
-    color: #5D596C;
+    color: #555;
     transition: border-color 0.15s ease;
 }
 .cuba-input:focus {
-    border-color: #7367F0;
-    box-shadow: 0 0 0 3px rgba(115, 103, 240, 0.15);
+    border-color: #1e7a4d;
+    box-shadow: 0 0 0 3px rgba(30, 122, 77, 0.15);
 }
 
-/* Floating header - Cuba style */
+/* Floating header */
 .floating-header {
     background: rgba(255, 255, 255, 0.97);
     backdrop-filter: blur(10px);
-    box-shadow: 0 0 20px rgba(8, 21, 66, 0.05);
-    border-radius: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
 /* Safe area insets for mobile */

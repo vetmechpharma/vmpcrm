@@ -13,17 +13,17 @@ import {
 import { formatDate } from '../lib/utils';
 
 const COLORS = {
-  primary: '#7367F0',
+  primary: '#1e7a4d',
   success: '#28C76F',
   warning: '#FF9F43',
   danger: '#EA5455',
   info: '#00CFE8',
   secondary: '#A8AAAE',
-  dark: '#2F3349',
-  body: '#5D596C',
-  muted: '#8D8A94',
-  light: '#B4B2B7',
-  bg: '#F8F7FA',
+  dark: '#0c3c60',
+  body: '#555',
+  muted: '#777',
+  light: '#999',
+  bg: '#f4f6f9',
 };
 
 const LEAD_STATUS_CONFIG = {

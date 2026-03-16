@@ -69,7 +69,7 @@ export const Login = () => {
           alt="Background"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(115,103,240,0.85) 0%, rgba(40,199,111,0.7) 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(12,60,96,0.9) 0%, rgba(30,122,77,0.75) 100%)' }} />
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div className="flex items-center gap-3">
             {logoUrl ? (
@@ -84,7 +84,7 @@ export const Login = () => {
             <span className="text-white font-bold text-xl tracking-tight">{companyName}</span>
           </div>
           <div className="max-w-lg">
-            <h1 className="text-4xl font-bold text-white mb-4 leading-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
               Manage Your Business<br />Smarter & Faster
             </h1>
             <p className="text-white/80 text-lg">
@@ -98,42 +98,42 @@ export const Login = () => {
       </div>
 
       {/* Right - Login Form */}
-      <div className="w-full lg:w-5/12 flex items-center justify-center p-6 lg:p-12" style={{ background: '#F8F7FA' }}>
+      <div className="w-full lg:w-5/12 flex items-center justify-center p-6 lg:p-12" style={{ background: '#f4f6f9' }}>
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
             {logoUrl ? (
-              <div className="w-10 h-10 rounded-lg overflow-hidden p-1" style={{ background: '#7367F026' }}>
+              <div className="w-10 h-10 rounded-lg overflow-hidden p-1" style={{ background: 'rgba(30,122,77,0.15)' }}>
                 <img src={logoUrl} alt={companyName} className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: '#7367F0' }}>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: '#1e7a4d' }}>
                 <span className="text-white font-bold text-lg">V</span>
               </div>
             )}
-            <span className="font-bold text-xl" style={{ color: '#434050' }}>{companyName}</span>
+            <span className="font-bold text-xl" style={{ color: '#0c3c60' }}>{companyName}</span>
           </div>
 
           {/* Welcome Text */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-2" style={{ color: '#434050', fontFamily: 'Manrope, sans-serif' }}>
-              Welcome Back! 👋
+            <h2 className="text-2xl font-bold mb-2" style={{ color: '#0c3c60' }}>
+              Welcome Back!
             </h2>
-            <p style={{ color: '#8D8A94' }}>Sign in to your admin account to continue</p>
+            <p style={{ color: '#777' }}>Sign in to your admin account to continue</p>
           </div>
 
           {/* Login Card */}
           <div className="mat-card p-8">
             <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium" style={{ color: '#5D596C' }}>Email Address</label>
+                <label className="text-sm font-medium" style={{ color: '#555' }}>Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" style={{ color: '#B4B2B7' }} />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" style={{ color: '#999' }} />
                   <Input
                     type="email"
                     placeholder="admin@company.com"
                     data-testid="login-email"
-                    className="h-12 pl-11 rounded-lg border-slate-200 bg-white focus:border-[#7367F0] focus:ring-[#7367F0]"
+                    className="h-12 pl-11 rounded-lg border-slate-200 bg-white focus:border-[#1e7a4d] focus:ring-[#1e7a4d]"
                     {...loginForm.register('email')}
                   />
                 </div>
@@ -144,22 +144,22 @@ export const Login = () => {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium" style={{ color: '#5D596C' }}>Password</label>
+                  <label className="text-sm font-medium" style={{ color: '#555' }}>Password</label>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" style={{ color: '#B4B2B7' }} />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px]" style={{ color: '#999' }} />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     data-testid="login-password"
-                    className="h-12 pl-11 pr-11 rounded-lg border-slate-200 bg-white focus:border-[#7367F0] focus:ring-[#7367F0]"
+                    className="h-12 pl-11 pr-11 rounded-lg border-slate-200 bg-white focus:border-[#1e7a4d] focus:ring-[#1e7a4d]"
                     {...loginForm.register('password')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                    style={{ color: '#B4B2B7' }}
+                    style={{ color: '#999' }}
                   >
                     {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
                   </button>
@@ -174,7 +174,7 @@ export const Login = () => {
                 disabled={loading}
                 data-testid="login-submit-btn"
                 className="w-full h-12 rounded-lg text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:shadow-lg disabled:opacity-70"
-                style={{ background: '#7367F0', boxShadow: '0 2px 6px rgba(115,103,240,0.4)' }}
+                style={{ background: '#1e7a4d', boxShadow: '0 2px 6px rgba(30,122,77,0.4)' }}
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Sign In
@@ -182,9 +182,9 @@ export const Login = () => {
             </form>
           </div>
 
-          <p className="text-center mt-6 text-sm" style={{ color: '#8D8A94' }}>
+          <p className="text-center mt-6 text-sm" style={{ color: '#777' }}>
             Customer Portal?{' '}
-            <a href="/login" className="font-semibold hover:underline" style={{ color: '#7367F0' }}>Login here</a>
+            <a href="/login" className="font-semibold hover:underline" style={{ color: '#1e7a4d' }}>Login here</a>
           </p>
         </div>
       </div>

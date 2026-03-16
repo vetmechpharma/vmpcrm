@@ -903,3 +903,37 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Backend APIs**: GET /api/mr/items, POST /api/mr/orders, GET /api/mr/orders, POST /api/mr/orders/{id}/cancel-request, POST /api/orders/{id}/approve-cancel
 - [x] **WhatsApp notification**: Auto-sends order notification on placement
 - [x] **Testing**: 100% (28/28 backend, 100% frontend)
+
+
+## MR Order Form Enhancement & PWA Setup - COMPLETED Mar 16, 2026
+- [x] **MR Order Form Rewrite**: Full-featured order form matching admin CRM functionality
+  - Customer search and selection with territory filtering
+  - Item search by name/code with add-to-order
+  - Text-based quantity input (e.g., "10+5" for quantity + free scheme)
+  - Out-of-stock toggle with restore functionality
+  - Order notes field
+  - Summary showing available vs out-of-stock items
+- [x] **Backend Bug Fix**: MR items search query used `name` instead of `item_name` field
+- [x] **PWA Infrastructure**: Complete PWA setup for MR Field App
+  - `mr-manifest.json` with start_url=/mrvet/dashboard, scope=/mrvet/, standalone display
+  - `mr-sw.js` service worker with network-first (API), cache-first (static), SPA navigation fallback
+  - `usePWA.js` hook with online/offline detection, install prompt, sync mechanism
+  - IndexedDB-based offline queue for POST/PUT mutations
+  - Auto-sync when coming back online
+  - Offline banner and sync status indicators in MR Layout
+- [x] **Testing**: 100% backend (23/23 + 11/11), 100% frontend
+
+## MR Reports Page Enhancement - COMPLETED Mar 16, 2026
+- [x] **Enhanced Backend API** (`GET /api/mr-reports`): Returns comprehensive data
+  - Summary: total_mrs, active_mrs, total_visits, today_visits, total_orders, pending_orders, states_covered
+  - Per-MR stats: visits, today visits, pending follow-ups, orders, cancelled orders, outcome breakdown
+  - Visit log and order list with pagination
+  - Filters: MR ID, date range (from/to)
+- [x] **Frontend Reports Page** (`/admin/mr-reports`): Full analytics dashboard
+  - 7 summary cards with key metrics
+  - Three tabs: MR Overview, Visit Log, Orders
+  - MR Overview: Per-MR performance cards with outcome badges
+  - Visit Log: Chronological visit entries with MR name, customer, outcome
+  - Orders: MR-placed orders with status, cancel request, and MR attribution
+  - MR dropdown filter and date range filter
+- [x] **Testing**: 100% (11/11 backend, 100% frontend)

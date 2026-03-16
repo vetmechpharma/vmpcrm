@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { mrAPI } from '../../context/MRAuthContext';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -7,9 +7,11 @@ import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, ShoppingCart, Plus, Minus, Search, Trash2, Send, X, Package } from 'lucide-react';
+import {
+  Loader2, ShoppingCart, Plus, Search, Trash2, Send, X, Package,
+  User, AlertTriangle
+} from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 
 const statusColors = {
@@ -20,24 +22,29 @@ const statusColors = {
   cancelled: 'bg-red-100 text-red-700',
 };
 
+const typeColors = {
+  doctor: 'bg-blue-100 text-blue-700',
+  medical: 'bg-emerald-100 text-emerald-700',
+  agency: 'bg-purple-100 text-purple-700',
+};
+
 export default function MROrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelOrder, setCancelOrder] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
-  const [formLoading, setFormLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Order form state
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [cart, setCart] = useState([]);
+  const [orderItems, setOrderItems] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
-  const [step, setStep] = useState(1); // 1: customer, 2: items, 3: review
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -49,7 +56,11 @@ export default function MROrders() {
   };
 
   const openOrderForm = async () => {
-    setStep(1); setSelectedCustomer(null); setCart([]); setOrderNotes(''); setItemSearch(''); setCustomerSearch('');
+    setSelectedCustomer(null);
+    setOrderItems([]);
+    setOrderNotes('');
+    setItemSearch('');
+    setCustomerSearch('');
     setShowOrderForm(true);
     try {
       const [custRes, itemRes] = await Promise.all([mrAPI.getCustomers({}), mrAPI.getItems({})]);
@@ -58,71 +69,119 @@ export default function MROrders() {
     } catch { toast.error('Failed to load data'); }
   };
 
-  const addToCart = (item) => {
-    const existing = cart.find(c => c.item_id === item.id);
-    if (existing) {
-      setCart(cart.map(c => c.item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c));
+  const selectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    setCustomerSearch('');
+  };
+
+  const clearCustomer = () => { setSelectedCustomer(null); };
+
+  // Item management - same pattern as CRM
+  const addItemToOrder = (item) => {
+    const existingIdx = orderItems.findIndex(i => i.item_id === item.id);
+    if (existingIdx >= 0) {
+      const updated = [...orderItems];
+      const currentQty = String(updated[existingIdx].quantity);
+      const parts = currentQty.split('+').map(p => parseInt(p.trim()) || 0);
+      const newQty = (parts[0] || 0) + 1;
+      updated[existingIdx].quantity = parts[1] ? `${newQty}+${parts[1]}` : String(newQty);
+      updated[existingIdx].outOfStock = false;
+      setOrderItems(updated);
     } else {
-      setCart([...cart, {
-        item_id: item.id, item_code: item.item_code || '', item_name: item.name,
-        quantity: 1, rate: item.role_pricing?.doctor || item.mrp || 0, mrp: item.mrp || 0,
+      setOrderItems([...orderItems, {
+        item_id: item.id,
+        item_code: item.item_code || '',
+        item_name: item.name || item.item_name || '',
+        quantity: '1',
+        mrp: item.mrp || 0,
+        rate: item.rate || 0,
+        gst: item.gst || 0,
+        outOfStock: false,
+        previousQty: '1',
       }]);
     }
+    setItemSearch('');
   };
 
-  const updateQty = (itemId, delta) => {
-    setCart(cart.map(c => {
-      if (c.item_id === itemId) {
-        const newQty = Math.max(1, c.quantity + delta);
-        return { ...c, quantity: newQty };
-      }
-      return c;
-    }));
+  const updateItemQty = (index, qty) => {
+    const qtyStr = String(qty).trim();
+    const updated = [...orderItems];
+    if (qtyStr === '' || qtyStr === '0') {
+      updated[index].quantity = qtyStr;
+      updated[index].outOfStock = true;
+    } else {
+      updated[index].quantity = qtyStr;
+      updated[index].outOfStock = false;
+    }
+    setOrderItems(updated);
   };
 
-  const removeFromCart = (itemId) => { setCart(cart.filter(c => c.item_id !== itemId)); };
+  const markOutOfStock = (index) => {
+    const updated = [...orderItems];
+    updated[index].outOfStock = true;
+    updated[index].previousQty = updated[index].quantity;
+    updated[index].quantity = '0';
+    setOrderItems(updated);
+  };
 
-  const filteredItems = useMemo(() => {
-    if (!itemSearch) return items;
-    const s = itemSearch.toLowerCase();
-    return items.filter(i => i.name?.toLowerCase().includes(s) || (i.item_code || '').toLowerCase().includes(s));
-  }, [items, itemSearch]);
+  const restoreItem = (index) => {
+    const updated = [...orderItems];
+    updated[index].outOfStock = false;
+    updated[index].quantity = updated[index].previousQty || '1';
+    setOrderItems(updated);
+  };
 
-  const filteredCustomers = useMemo(() => {
-    if (!customerSearch) return customers;
+  const removeItem = (index) => { setOrderItems(orderItems.filter((_, i) => i !== index)); };
+
+  const filteredItems = items.filter(item =>
+    (item.name || item.item_name || '').toLowerCase().includes(itemSearch.toLowerCase()) ||
+    (item.item_code || '').toLowerCase().includes(itemSearch.toLowerCase())
+  );
+
+  const filteredCustomers = customers.filter(c => {
+    if (!customerSearch) return true;
     const s = customerSearch.toLowerCase();
-    return customers.filter(c => c.name?.toLowerCase().includes(s) || (c.phone || '').includes(customerSearch));
-  }, [customers, customerSearch]);
+    return c.name?.toLowerCase().includes(s) || (c.phone || '').includes(customerSearch);
+  });
 
   const submitOrder = async () => {
-    if (!selectedCustomer || cart.length === 0) return;
-    setFormLoading(true);
+    if (!selectedCustomer) { toast.error('Select a customer'); return; }
+    const availableItems = orderItems.filter(i => !i.outOfStock && i.quantity !== '0' && i.quantity !== '');
+    if (availableItems.length === 0) { toast.error('Add at least one available item'); return; }
+
+    setSaving(true);
     try {
       const res = await mrAPI.createOrder({
         customer_id: selectedCustomer.id,
         customer_name: selectedCustomer.name,
         customer_phone: selectedCustomer.phone || '',
         customer_type: selectedCustomer.entity_type,
-        items: cart,
+        items: availableItems.map(i => ({
+          item_id: i.item_id, item_code: i.item_code, item_name: i.item_name,
+          quantity: String(i.quantity), mrp: i.mrp, rate: i.rate,
+        })),
         notes: orderNotes,
       });
-      toast.success(`Order ${res.data.order_number} created`);
+      let msg = `Order ${res.data.order_number} created!`;
+      const oosCount = orderItems.filter(i => i.outOfStock).length;
+      if (oosCount > 0) msg += ` ${oosCount} item(s) marked out of stock.`;
+      toast.success(msg);
       setShowOrderForm(false);
       fetchOrders();
     } catch (e) { toast.error(e.response?.data?.detail || 'Order failed'); }
-    finally { setFormLoading(false); }
+    finally { setSaving(false); }
   };
 
   const requestCancel = async () => {
-    if (!cancelOrder) return;
-    setFormLoading(true);
+    if (!cancelTarget) return;
+    setSaving(true);
     try {
-      await mrAPI.cancelOrder(cancelOrder.id, { reason: cancelReason });
+      await mrAPI.cancelOrder(cancelTarget.id, { reason: cancelReason });
       toast.success('Cancellation requested');
-      setShowCancelModal(false); setCancelOrder(null); setCancelReason('');
+      setShowCancelModal(false); setCancelTarget(null); setCancelReason('');
       fetchOrders();
     } catch (e) { toast.error(e.response?.data?.detail || 'Failed'); }
-    finally { setFormLoading(false); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -130,10 +189,10 @@ export default function MROrders() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Orders</h1>
-          <p className="text-sm text-slate-500">Place and track orders for customers</p>
+          <p className="text-sm text-slate-500">Place and track customer orders</p>
         </div>
         <Button onClick={openOrderForm} style={{ background: '#1e3a5f' }} data-testid="mr-new-order-btn">
-          <ShoppingCart className="w-4 h-4 mr-2" />New Order
+          <Plus className="w-4 h-4 mr-2" />New Order
         </Button>
       </div>
 
@@ -154,20 +213,23 @@ export default function MROrders() {
                     </div>
                     <p className="text-sm text-slate-600 mt-1">{o.doctor_name}</p>
                     <p className="text-xs text-slate-400">{(o.items || []).length} item(s) - {formatDate(o.created_at)}</p>
+                    {o.notes && <p className="text-xs text-slate-500 mt-1 line-clamp-1">Notes: {o.notes}</p>}
                   </div>
                   {o.status === 'pending' && !o.cancel_requested && (
                     <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => { setCancelOrder(o); setShowCancelModal(true); }} data-testid={`mr-cancel-${o.id}`}>
+                      onClick={() => { setCancelTarget(o); setShowCancelModal(true); }} data-testid={`mr-cancel-${o.id}`}>
                       <X className="w-3 h-3 mr-1" />Cancel
                     </Button>
                   )}
                 </div>
-                {/* Items summary */}
-                <div className="mt-2 space-y-0.5">
-                  {(o.items || []).slice(0, 3).map((item, i) => (
-                    <p key={i} className="text-xs text-slate-500">{item.item_name} x {item.quantity}</p>
+                {/* Items list */}
+                <div className="mt-2 pt-2 border-t space-y-0.5">
+                  {(o.items || []).map((item, i) => (
+                    <div key={i} className="flex justify-between text-xs">
+                      <span className="text-slate-600">{item.item_name} <span className="text-slate-400">({item.item_code})</span></span>
+                      <span className="text-slate-500 font-medium">x {item.quantity}</span>
+                    </div>
                   ))}
-                  {(o.items || []).length > 3 && <p className="text-xs text-slate-400">+{o.items.length - 3} more</p>}
                 </div>
               </CardContent>
             </Card>
@@ -181,135 +243,193 @@ export default function MROrders() {
         </div>
       )}
 
-      {/* Order Form Dialog */}
+      {/* ========== ORDER FORM DIALOG ========== */}
       <Dialog open={showOrderForm} onOpenChange={setShowOrderForm}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {step === 1 && 'Select Customer'}
-              {step === 2 && 'Add Products'}
-              {step === 3 && 'Review Order'}
-            </DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Plus className="w-5 h-5" />Create New Order</DialogTitle>
           </DialogHeader>
+          <div className="space-y-6 py-4">
 
-          {/* Step 1: Customer Selection */}
-          {step === 1 && (
-            <div className="space-y-3 py-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Search customer..." value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="pl-10" data-testid="mr-order-customer-search" />
-              </div>
-              <div className="max-h-64 overflow-y-auto border rounded-lg">
-                {filteredCustomers.map(c => (
-                  <button key={c.id} onClick={() => { setSelectedCustomer(c); setStep(2); }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-50 border-b last:border-0" data-testid={`mr-order-select-customer-${c.id}`}>
-                    <div className="flex items-center justify-between">
+            {/* ---- Customer Selection ---- */}
+            <div className="space-y-3">
+              <h4 className="font-medium flex items-center gap-2"><User className="w-4 h-4" />Select Customer</h4>
+
+              {selectedCustomer ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <User className="w-5 h-5 text-green-600" />
+                      </div>
                       <div>
-                        <p className="text-sm font-medium">{c.name}</p>
-                        <p className="text-xs text-slate-400">{c.phone} - {c.entity_type}</p>
+                        <p className="font-medium">{selectedCustomer.name}</p>
+                        <p className="text-sm text-slate-600">{selectedCustomer.phone}</p>
+                        <Badge className={typeColors[selectedCustomer.entity_type] || 'bg-slate-100 text-slate-700'}>
+                          {selectedCustomer.entity_type}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">{c.entity_type}</Badge>
                     </div>
-                  </button>
-                ))}
-                {filteredCustomers.length === 0 && <p className="text-center text-sm text-slate-400 py-4">No customers found</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Product Selection */}
-          {step === 2 && (
-            <div className="space-y-3 py-2">
-              <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg">
-                <p className="text-sm"><strong>{selectedCustomer?.name}</strong> <span className="text-slate-400">({selectedCustomer?.entity_type})</span></p>
-                <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="ml-auto text-xs">Change</Button>
-              </div>
-              
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input placeholder="Search products..." value={itemSearch} onChange={e => setItemSearch(e.target.value)} className="pl-10" data-testid="mr-order-item-search" />
-              </div>
-
-              <div className="max-h-48 overflow-y-auto border rounded-lg">
-                {filteredItems.slice(0, 30).map(item => {
-                  const inCart = cart.find(c => c.item_id === item.id);
-                  return (
-                    <div key={item.id} className="flex items-center justify-between px-3 py-2 border-b last:border-0 hover:bg-slate-50">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.name}</p>
-                        <p className="text-xs text-slate-400">{item.item_code} - MRP: ₹{item.mrp || 0}</p>
-                      </div>
-                      {inCart ? (
-                        <div className="flex items-center gap-1">
-                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => updateQty(item.id, -1)}><Minus className="w-3 h-3" /></Button>
-                          <span className="text-sm font-medium w-6 text-center">{inCart.quantity}</span>
-                          <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={() => updateQty(item.id, 1)}><Plus className="w-3 h-3" /></Button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => addToCart(item)} data-testid={`mr-order-add-item-${item.id}`}>
-                          <Plus className="w-3 h-3 mr-1" />Add
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {cart.length > 0 && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-sm font-medium mb-2">Cart ({cart.length} items)</p>
-                  {cart.map(c => (
-                    <div key={c.item_id} className="flex items-center justify-between text-xs py-1">
-                      <span className="truncate flex-1">{c.item_name} x {c.quantity}</span>
-                      <button onClick={() => removeFromCart(c.item_id)} className="text-red-500 ml-2"><Trash2 className="w-3 h-3" /></button>
-                    </div>
-                  ))}
+                    <Button variant="outline" size="sm" onClick={clearCustomer}>Change</Button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input placeholder="Search by name or phone..." value={customerSearch}
+                      onChange={e => setCustomerSearch(e.target.value)} className="pl-10" data-testid="mr-order-customer-search" />
+                  </div>
+                  <div className="border rounded-lg max-h-48 overflow-y-auto">
+                    {filteredCustomers.slice(0, 15).map(c => (
+                      <div key={c.id} className="p-3 hover:bg-slate-50 cursor-pointer flex items-center justify-between border-b last:border-0"
+                        onClick={() => selectCustomer(c)} data-testid={`mr-order-select-${c.id}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-slate-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{c.name}</p>
+                            <p className="text-xs text-slate-500">{c.phone} {c.district && `- ${c.district}`}</p>
+                          </div>
+                        </div>
+                        <Badge className={typeColors[c.entity_type] || 'bg-slate-100'}>{c.entity_type}</Badge>
+                      </div>
+                    ))}
+                    {filteredCustomers.length === 0 && <p className="text-center text-sm text-slate-400 py-4">No customers found</p>}
+                  </div>
+                </>
               )}
             </div>
-          )}
 
-          {/* Step 3: Review */}
-          {step === 3 && (
-            <div className="space-y-4 py-2">
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Customer</p>
-                <p className="font-medium text-sm">{selectedCustomer?.name} ({selectedCustomer?.entity_type})</p>
-                {selectedCustomer?.phone && <p className="text-xs text-slate-400">{selectedCustomer.phone}</p>}
+            {/* ---- Add Items ---- */}
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-medium flex items-center gap-2"><Package className="w-4 h-4" />Order Items</h4>
+
+              {/* Item Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)}
+                  placeholder="Search items by name or code..." className="pl-10" data-testid="mr-order-item-search" />
               </div>
-              <div>
-                <p className="text-sm font-medium mb-2">Order Items</p>
-                <div className="border rounded-lg">
-                  {cart.map((c, i) => (
-                    <div key={c.item_id} className="flex justify-between px-3 py-2 border-b last:border-0 text-sm">
+
+              {/* Search Results */}
+              {itemSearch && (
+                <div className="border rounded-lg max-h-40 overflow-y-auto">
+                  {filteredItems.length > 0 ? filteredItems.slice(0, 10).map(item => (
+                    <div key={item.id} className="p-2 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
+                      onClick={() => addItemToOrder(item)} data-testid={`mr-order-add-${item.id}`}>
                       <div>
-                        <p className="font-medium">{c.item_name}</p>
-                        <p className="text-xs text-slate-400">{c.item_code}</p>
+                        <p className="font-medium text-sm">{item.name || item.item_name}</p>
+                        <p className="text-xs text-slate-500">{item.item_code} | MRP: ₹{item.mrp || 0}</p>
                       </div>
-                      <span className="text-slate-600">x {c.quantity}</span>
+                      <Plus className="w-4 h-4 text-green-600 shrink-0" />
                     </div>
-                  ))}
+                  )) : (
+                    <p className="p-3 text-sm text-slate-400 text-center">No items found</p>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Notes (optional)</Label>
-                <Textarea value={orderNotes} onChange={e => setOrderNotes(e.target.value)} placeholder="Any special instructions..." rows={2} data-testid="mr-order-notes" />
+              )}
+
+              {/* Selected Items */}
+              <div className="space-y-3">
+                {orderItems.length > 0 ? (
+                  <>
+                    {/* Helper text */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        Enter qty as number (10) or with free scheme (10+5). Mark items "Out of Stock" to track for follow-up.
+                      </p>
+                    </div>
+
+                    {orderItems.map((item, index) => (
+                      <div key={index} className={`p-4 rounded-lg border ${item.outOfStock ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}
+                        data-testid={`mr-order-item-${index}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-800">{item.item_name}</p>
+                            <p className="text-sm text-slate-500">{item.item_code}</p>
+                            <div className="flex gap-3 mt-1 text-xs text-slate-600">
+                              {item.rate > 0 && <span>Rate: ₹{item.rate}</span>}
+                              {item.mrp > 0 && <span>MRP: ₹{item.mrp}</span>}
+                              {item.gst > 0 && <span>GST: {item.gst}%</span>}
+                            </div>
+                          </div>
+                          {!item.outOfStock ? (
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
+                                <Input type="text" value={item.quantity}
+                                  onChange={e => updateItemQty(index, e.target.value)}
+                                  className="w-24 h-9 text-center" placeholder="10 or 10+5"
+                                  data-testid={`mr-order-qty-${index}`} />
+                              </div>
+                              <Button variant="outline" size="sm"
+                                onClick={() => markOutOfStock(index)}
+                                className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9">
+                                Out of Stock
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 text-red-500"
+                                onClick={() => removeItem(index)} title="Remove item">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-red-100 text-red-700">Out of Stock</Badge>
+                              <Button variant="outline" size="sm"
+                                onClick={() => restoreItem(index)}
+                                className="text-green-600 border-green-300 hover:bg-green-50">
+                                Restore
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 text-red-500"
+                                onClick={() => removeItem(index)} title="Remove">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        {item.outOfStock && (
+                          <div className="mt-3 pt-3 border-t border-red-200">
+                            <p className="text-sm text-red-600 flex items-center gap-1">
+                              <AlertTriangle className="w-4 h-4" />
+                              This item will be tracked as pending for customer follow-up
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Summary */}
+                    <div className="p-3 bg-slate-100 rounded-lg">
+                      <p className="text-sm text-slate-600">
+                        <strong>{orderItems.filter(i => !i.outOfStock && i.quantity !== '0' && i.quantity !== '').length}</strong> available item(s)
+                        {orderItems.filter(i => i.outOfStock).length > 0 && (
+                          <>, <strong className="text-orange-600">{orderItems.filter(i => i.outOfStock).length}</strong> out of stock (will be tracked)</>
+                        )}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-center py-8 text-slate-400">Search and add items above</p>
+                )}
               </div>
             </div>
-          )}
 
-          <DialogFooter className="flex gap-2">
-            {step > 1 && <Button variant="outline" onClick={() => setStep(step - 1)}>Back</Button>}
-            {step === 2 && (
-              <Button onClick={() => setStep(3)} disabled={cart.length === 0} style={{ background: '#1e3a5f' }} data-testid="mr-order-review-btn">
-                Review ({cart.length})
-              </Button>
-            )}
-            {step === 3 && (
-              <Button onClick={submitOrder} disabled={formLoading} style={{ background: '#1e3a5f' }} data-testid="mr-order-submit-btn">
-                {formLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}Place Order
-              </Button>
-            )}
+            {/* ---- Notes ---- */}
+            <div className="space-y-2 border-t pt-4">
+              <Label>Order Notes</Label>
+              <Textarea value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
+                placeholder="Any special instructions, delivery notes, etc." rows={3} data-testid="mr-order-notes" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOrderForm(false)}>Cancel</Button>
+            <Button onClick={submitOrder} disabled={saving || !selectedCustomer || orderItems.length === 0}
+              style={{ background: '#1e3a5f' }} data-testid="mr-order-submit-btn">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}Place Order
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -319,16 +439,17 @@ export default function MROrders() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle className="text-red-600">Request Cancellation</DialogTitle></DialogHeader>
           <div className="py-4 space-y-3">
-            <p className="text-sm">Cancel order <strong>{cancelOrder?.order_number}</strong> for {cancelOrder?.doctor_name}?</p>
+            <p className="text-sm">Cancel order <strong>{cancelTarget?.order_number}</strong> for {cancelTarget?.doctor_name}?</p>
             <div className="space-y-2">
               <Label>Reason</Label>
-              <Textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="Reason for cancellation..." rows={2} data-testid="mr-cancel-reason" />
+              <Textarea value={cancelReason} onChange={e => setCancelReason(e.target.value)}
+                placeholder="Reason for cancellation..." rows={2} data-testid="mr-cancel-reason" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCancelModal(false)}>Close</Button>
-            <Button onClick={requestCancel} disabled={formLoading} className="bg-red-600 hover:bg-red-700" data-testid="mr-cancel-submit-btn">
-              {formLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Request Cancel
+            <Button onClick={requestCancel} disabled={saving} className="bg-red-600 hover:bg-red-700" data-testid="mr-cancel-submit-btn">
+              {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Request Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -7123,12 +7123,12 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Check if campaign has uploaded image
                     if campaign.get('has_image', False):
-                        image_url_to_send = f"https://inventory-pricepoint.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                        image_url_to_send = f"https://mrvet-offline-test.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"https://inventory-pricepoint.preview.emergentagent.com/api/items/{item['id']}/image"
+                                image_url_to_send = f"https://mrvet-offline-test.preview.emergentagent.com/api/items/{item['id']}/image"
                                 break
                     
                     if image_url_to_send:
@@ -10746,13 +10746,13 @@ async def get_mr_items(search: Optional[str] = None, category: Optional[str] = N
     q = {'out_of_stock': {'$ne': True}}
     if search:
         q['$or'] = [
-            {'name': {'$regex': search, '$options': 'i'}},
+            {'item_name': {'$regex': search, '$options': 'i'}},
             {'item_code': {'$regex': search, '$options': 'i'}},
         ]
     if category:
         q['main_category'] = category
     
-    items = await db.items.find(q, {'_id': 0, 'image_webp': 0}).sort('name', 1).to_list(500)
+    items = await db.items.find(q, {'_id': 0, 'image_webp': 0}).sort('item_name', 1).to_list(500)
     # Add image URL
     for item in items:
         item['image_url'] = f"/api/items/{item['id']}/image"

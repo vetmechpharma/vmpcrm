@@ -10499,6 +10499,231 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
 
 # ============== MR (MEDICAL REPRESENTATIVE) ROUTES ==============
 
+def create_mr_token(mr_id: str, name: str):
+    """Create JWT token for MR"""
+    payload = {
+        'mr_id': mr_id,
+        'name': name,
+        'type': 'mr',
+        'exp': datetime.now(timezone.utc) + timedelta(days=30)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_mr(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
+    """Validate MR JWT token"""
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get('type') != 'mr':
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        mr = await db.mrs.find_one({'id': payload['mr_id']}, {'_id': 0, 'password_hash': 0})
+        if not mr:
+            raise HTTPException(status_code=401, detail="MR not found")
+        if mr.get('status') != 'active':
+            raise HTTPException(status_code=403, detail="MR account is inactive")
+        return mr
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@api_router.post("/mr/login")
+async def mr_login(data: dict):
+    """MR Login with phone + password"""
+    phone = data.get('phone', '').strip()
+    password = data.get('password', '').strip()
+    if not phone or not password:
+        raise HTTPException(status_code=400, detail="Phone and password required")
+    
+    clean_phone = ''.join(filter(str.isdigit, phone))
+    mr = await db.mrs.find_one({'phone': {'$regex': clean_phone + '$'}}, {'_id': 0})
+    if not mr:
+        raise HTTPException(status_code=401, detail="Invalid phone or password")
+    if mr.get('status') != 'active':
+        raise HTTPException(status_code=403, detail="Your account is inactive")
+    if not verify_password(password, mr['password_hash']):
+        raise HTTPException(status_code=401, detail="Invalid phone or password")
+    
+    token = create_mr_token(mr['id'], mr['name'])
+    return {
+        "access_token": token,
+        "mr": {
+            "id": mr['id'], "name": mr['name'], "phone": mr['phone'],
+            "email": mr.get('email', ''), "state": mr['state'],
+            "districts": mr.get('districts', []),
+        }
+    }
+
+@api_router.get("/mr/me")
+async def get_mr_profile(mr: dict = Depends(get_current_mr)):
+    """Get current MR profile"""
+    return mr
+
+@api_router.get("/mr/dashboard")
+async def get_mr_dashboard(mr: dict = Depends(get_current_mr)):
+    """Get MR dashboard stats"""
+    state = mr.get('state', '')
+    districts = mr.get('districts', [])
+    loc_q = {'state': state}
+    if districts:
+        loc_q['district'] = {'$in': districts}
+    
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    doctors_count = await db.doctors.count_documents(loc_q)
+    medicals_count = await db.medicals.count_documents(loc_q)
+    agencies_count = await db.agencies.count_documents(loc_q)
+    
+    today_visits = await db.mr_visits.count_documents({'mr_id': mr['id'], 'visit_date': today})
+    total_visits = await db.mr_visits.count_documents({'mr_id': mr['id']})
+    
+    # Pending follow-ups (visits with follow_up_required and next_follow_up_date <= today)
+    pending_followups = await db.mr_visits.count_documents({
+        'mr_id': mr['id'],
+        'outcome': 'follow_up_required',
+        'follow_up_done': {'$ne': True},
+        'next_follow_up_date': {'$lte': today}
+    })
+    
+    overdue_followups = await db.mr_visits.count_documents({
+        'mr_id': mr['id'],
+        'outcome': 'follow_up_required',
+        'follow_up_done': {'$ne': True},
+        'next_follow_up_date': {'$lt': today}
+    })
+    
+    active_decks = await db.visual_aid_decks.count_documents({'status': 'active'})
+    
+    return {
+        'doctors': doctors_count,
+        'medicals': medicals_count,
+        'agencies': agencies_count,
+        'total_customers': doctors_count + medicals_count + agencies_count,
+        'today_visits': today_visits,
+        'total_visits': total_visits,
+        'pending_followups': pending_followups,
+        'overdue_followups': overdue_followups,
+        'active_decks': active_decks,
+    }
+
+@api_router.get("/mr/customers")
+async def get_mr_customers(entity_type: Optional[str] = None, search: Optional[str] = None, mr: dict = Depends(get_current_mr)):
+    """Get customers in MR's territory"""
+    state = mr.get('state', '')
+    districts = mr.get('districts', [])
+    loc_q = {'state': state}
+    if districts:
+        loc_q['district'] = {'$in': districts}
+    
+    results = []
+    types = [entity_type] if entity_type else ['doctor', 'medical', 'agency']
+    collections = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}
+    
+    for t in types:
+        col_name = collections.get(t)
+        if not col_name:
+            continue
+        q = {**loc_q}
+        if search:
+            q['$or'] = [
+                {'name': {'$regex': search, '$options': 'i'}},
+                {'phone': {'$regex': search, '$options': 'i'}},
+            ]
+        docs = await db[col_name].find(q, {'_id': 0}).sort('name', 1).to_list(500)
+        for d in docs:
+            d['entity_type'] = t
+        results.extend(docs)
+    
+    return results
+
+@api_router.post("/mr/visits")
+async def create_mr_visit(data: dict, mr: dict = Depends(get_current_mr)):
+    """Record a visit"""
+    visit_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    visit = {
+        'id': visit_id,
+        'mr_id': mr['id'],
+        'mr_name': mr['name'],
+        'entity_type': data.get('entity_type', ''),
+        'entity_id': data.get('entity_id', ''),
+        'entity_name': data.get('entity_name', ''),
+        'visit_date': data.get('visit_date', now[:10]),
+        'notes': data.get('notes', ''),
+        'outcome': data.get('outcome', ''),
+        'next_follow_up_date': data.get('next_follow_up_date', ''),
+        'next_follow_up_notes': data.get('next_follow_up_notes', ''),
+        'follow_up_done': False,
+        'created_at': now,
+        'updated_at': now,
+    }
+    await db.mr_visits.insert_one(visit)
+    visit.pop('_id', None)
+    return visit
+
+@api_router.get("/mr/visits")
+async def get_mr_visits(from_date: Optional[str] = None, to_date: Optional[str] = None, outcome: Optional[str] = None, mr: dict = Depends(get_current_mr)):
+    """Get MR's visits"""
+    q = {'mr_id': mr['id']}
+    if from_date or to_date:
+        dq = {}
+        if from_date: dq['$gte'] = from_date
+        if to_date: dq['$lte'] = to_date
+        q['visit_date'] = dq
+    if outcome:
+        q['outcome'] = outcome
+    
+    visits = await db.mr_visits.find(q, {'_id': 0}).sort('created_at', -1).to_list(500)
+    return visits
+
+@api_router.put("/mr/visits/{visit_id}")
+async def update_mr_visit(visit_id: str, data: dict, mr: dict = Depends(get_current_mr)):
+    """Update a visit"""
+    update_data = {}
+    for k in ['notes', 'outcome', 'next_follow_up_date', 'next_follow_up_notes', 'follow_up_done']:
+        if k in data:
+            update_data[k] = data[k]
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.mr_visits.update_one({'id': visit_id, 'mr_id': mr['id']}, {'$set': update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    visit = await db.mr_visits.find_one({'id': visit_id}, {'_id': 0})
+    return visit
+
+@api_router.get("/mr/followups")
+async def get_mr_followups(filter_type: Optional[str] = None, mr: dict = Depends(get_current_mr)):
+    """Get MR's follow-ups from visits"""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    q = {'mr_id': mr['id'], 'outcome': 'follow_up_required', 'follow_up_done': {'$ne': True}}
+    
+    if filter_type == 'today':
+        q['next_follow_up_date'] = today
+    elif filter_type == 'overdue':
+        q['next_follow_up_date'] = {'$lt': today}
+    elif filter_type == 'upcoming':
+        q['next_follow_up_date'] = {'$gt': today}
+    
+    followups = await db.mr_visits.find(q, {'_id': 0}).sort('next_follow_up_date', 1).to_list(500)
+    return followups
+
+@api_router.get("/mr/visual-aids")
+async def get_mr_visual_aids(mr: dict = Depends(get_current_mr)):
+    """Get active visual aid decks for MR"""
+    decks = await db.visual_aid_decks.find({'status': 'active'}, {'_id': 0}).sort('name', 1).to_list(100)
+    return decks
+
+@api_router.get("/mr/visual-aids/{deck_id}")
+async def get_mr_visual_aid_deck(deck_id: str, mr: dict = Depends(get_current_mr)):
+    """Get deck with slides for MR slideshow"""
+    deck = await db.visual_aid_decks.find_one({'id': deck_id, 'status': 'active'}, {'_id': 0})
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    slides = await db.visual_aid_slides.find({'deck_id': deck_id}, {'_id': 0}).sort('order', 1).to_list(100)
+    deck['slides'] = slides
+    return deck
+
 @api_router.post("/mrs")
 async def create_mr(data: MRCreate, current_user: dict = Depends(get_current_user)):
     """Create a new Medical Representative"""

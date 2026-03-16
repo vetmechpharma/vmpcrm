@@ -39,6 +39,15 @@ import ForgotPassword from './pages/ForgotPassword';
 import { MRManagement } from './pages/MRManagement';
 import { VisualAids } from './pages/VisualAids';
 import { MRReports } from './pages/MRReports';
+import { MRAuthProvider, useMRAuth } from './context/MRAuthContext';
+import MRLogin from './pages/mrvet/MRLogin';
+import MRLayout from './pages/mrvet/MRLayout';
+import MRDashboard from './pages/mrvet/MRDashboard';
+import MRCustomers from './pages/mrvet/MRCustomers';
+import MRVisits from './pages/mrvet/MRVisits';
+import MRFollowups from './pages/mrvet/MRFollowups';
+import MRVisualAids from './pages/mrvet/MRVisualAids';
+import MRSlideshow from './pages/mrvet/MRSlideshow';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
@@ -80,6 +89,14 @@ const AdminPublicRoute = ({ children }) => {
   return children;
 };
 
+// MR Protected Route wrapper
+const MRProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useMRAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-slate-200 border-t-slate-600 rounded-full animate-spin"></div></div>;
+  if (!isAuthenticated) return <Navigate to="/mrvet/login" replace />;
+  return children;
+};
+
 function AppRoutes() {
   return (
     <Routes>
@@ -110,6 +127,18 @@ function AppRoutes() {
       
       {/* Public showcase */}
       <Route path="/showcase" element={<PublicShowcase />} />
+      
+      {/* ============== MR VET PANEL ============== */}
+      <Route path="/mrvet/login" element={<MRLogin />} />
+      <Route path="/mrvet/slideshow/:deckId" element={<MRProtectedRoute><MRSlideshow /></MRProtectedRoute>} />
+      <Route path="/mrvet" element={<MRProtectedRoute><MRLayout /></MRProtectedRoute>}>
+        <Route path="dashboard" element={<MRDashboard />} />
+        <Route path="customers" element={<MRCustomers />} />
+        <Route path="visits" element={<MRVisits />} />
+        <Route path="followups" element={<MRFollowups />} />
+        <Route path="visual-aids" element={<MRVisualAids />} />
+        <Route index element={<Navigate to="/mrvet/dashboard" replace />} />
+      </Route>
       
       {/* ============== ADMIN PANEL ============== */}
       {/* Admin Login */}
@@ -349,8 +378,10 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
-        <Toaster position="top-right" richColors />
+        <MRAuthProvider>
+          <AppRoutes />
+          <Toaster position="top-right" richColors />
+        </MRAuthProvider>
       </AuthProvider>
     </BrowserRouter>
   );

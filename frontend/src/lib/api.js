@@ -312,6 +312,33 @@ export const paymentsAPI = {
   sendLedgerWhatsApp: (customerType, customerId, params) => api.post(`/ledger/${customerType}/${customerId}/whatsapp`, null, { params }),
 };
 
+// MR (Medical Representative) APIs
+export const mrAPI = {
+  getAll: (params) => api.get('/mrs', { params }),
+  getOne: (id) => api.get(`/mrs/${id}`),
+  create: (data) => api.post('/mrs', data),
+  update: (id, data) => api.put(`/mrs/${id}`, data),
+  delete: (id) => api.delete(`/mrs/${id}`),
+};
+
+// Visual Aid APIs
+export const visualAidAPI = {
+  getDecks: (params) => api.get('/visual-aids', { params }),
+  getDeck: (id) => api.get(`/visual-aids/${id}`),
+  createDeck: (data) => api.post('/visual-aids', data),
+  updateDeck: (id, data) => api.put(`/visual-aids/${id}`, data),
+  deleteDeck: (id) => api.delete(`/visual-aids/${id}`),
+  addSlide: (deckId, data) => api.post(`/visual-aids/${deckId}/slides`, data),
+  updateSlide: (deckId, slideId, data) => api.put(`/visual-aids/${deckId}/slides/${slideId}`, data),
+  deleteSlide: (deckId, slideId) => api.delete(`/visual-aids/${deckId}/slides/${slideId}`),
+  reorderSlides: (deckId, slideIds) => api.put(`/visual-aids/${deckId}/slides/reorder`, { slide_ids: slideIds }),
+};
+
+// MR Reports APIs
+export const mrReportsAPI = {
+  getReports: (params) => api.get('/mr-reports', { params }),
+};
+
 // Location APIs (public, no auth required)
 export const locationAPI = {
   getStates: () => axios.get(`${API_URL}/api/public/states`),

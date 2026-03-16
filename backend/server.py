@@ -1466,6 +1466,42 @@ class FollowUpResponse(BaseModel):
     created_by: str
     created_at: str
 
+# ============== MR (Medical Representative) MODELS ==============
+
+class MRCreate(BaseModel):
+    name: str
+    phone: str
+    email: Optional[str] = None
+    password: str
+    state: str
+    districts: List[str] = []
+    status: str = "active"
+
+class MRUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    state: Optional[str] = None
+    districts: Optional[List[str]] = None
+    status: Optional[str] = None
+
+class VisualAidDeckCreate(BaseModel):
+    name: str
+    deck_type: str = "custom"  # category, subcategory, custom
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    description: Optional[str] = None
+    status: str = "active"
+
+class VisualAidDeckUpdate(BaseModel):
+    name: Optional[str] = None
+    deck_type: Optional[str] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
 # ============== AUTH HELPERS ==============
 
 def hash_password(password: str) -> str:
@@ -10460,6 +10496,278 @@ async def get_user(user_id: str, current_user: dict = Depends(get_current_user))
         user['created_at'] = datetime.fromisoformat(user['created_at'].replace('Z', '+00:00'))
     
     return user
+
+# ============== MR (MEDICAL REPRESENTATIVE) ROUTES ==============
+
+@api_router.post("/mrs")
+async def create_mr(data: MRCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new Medical Representative"""
+    mr_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Check duplicate phone
+    existing = await db.mrs.find_one({'phone': data.phone}, {'_id': 0, 'id': 1})
+    if existing:
+        raise HTTPException(status_code=400, detail="MR with this phone already exists")
+    
+    mr_doc = {
+        'id': mr_id,
+        'name': data.name,
+        'phone': data.phone,
+        'email': data.email or '',
+        'password_hash': hash_password(data.password),
+        'state': data.state,
+        'districts': data.districts,
+        'status': data.status,
+        'created_at': now,
+        'updated_at': now,
+    }
+    await db.mrs.insert_one(mr_doc)
+    mr_doc.pop('_id', None)
+    mr_doc.pop('password_hash', None)
+    return mr_doc
+
+@api_router.get("/mrs")
+async def get_mrs(search: Optional[str] = None, state: Optional[str] = None, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get all Medical Representatives"""
+    query = {}
+    if search:
+        query['$or'] = [
+            {'name': {'$regex': search, '$options': 'i'}},
+            {'phone': {'$regex': search, '$options': 'i'}},
+            {'email': {'$regex': search, '$options': 'i'}},
+        ]
+    if state:
+        query['state'] = state
+    if status:
+        query['status'] = status
+    
+    mrs = await db.mrs.find(query, {'_id': 0, 'password_hash': 0}).sort('created_at', -1).to_list(500)
+    return mrs
+
+@api_router.get("/mrs/{mr_id}")
+async def get_mr(mr_id: str, current_user: dict = Depends(get_current_user)):
+    """Get single MR"""
+    mr = await db.mrs.find_one({'id': mr_id}, {'_id': 0, 'password_hash': 0})
+    if not mr:
+        raise HTTPException(status_code=404, detail="MR not found")
+    return mr
+
+@api_router.put("/mrs/{mr_id}")
+async def update_mr(mr_id: str, data: MRUpdate, current_user: dict = Depends(get_current_user)):
+    """Update MR"""
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    if 'password' in update_data:
+        update_data['password_hash'] = hash_password(update_data.pop('password'))
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.mrs.update_one({'id': mr_id}, {'$set': update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="MR not found")
+    
+    mr = await db.mrs.find_one({'id': mr_id}, {'_id': 0, 'password_hash': 0})
+    return mr
+
+@api_router.delete("/mrs/{mr_id}")
+async def delete_mr(mr_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete MR"""
+    result = await db.mrs.delete_one({'id': mr_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="MR not found")
+    return {"message": "MR deleted"}
+
+# ============== VISUAL AID ROUTES ==============
+
+def process_slide_image(image_data: bytes) -> str:
+    """Process slide image: convert to WebP, optimize for presentation"""
+    img = Image.open(BytesIO(image_data))
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    
+    # For slides, keep higher quality and larger size
+    max_width, max_height = 1200, 900
+    img.thumbnail((max_width, max_height), Image.LANCZOS)
+    
+    buffer = BytesIO()
+    img.save(buffer, format='WebP', quality=80)
+    return base64.b64encode(buffer.read()).decode('utf-8')
+
+@api_router.post("/visual-aids")
+async def create_visual_aid_deck(data: VisualAidDeckCreate, current_user: dict = Depends(get_current_user)):
+    """Create a visual aid deck"""
+    deck_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    deck_doc = {
+        'id': deck_id,
+        'name': data.name,
+        'deck_type': data.deck_type,
+        'category': data.category or '',
+        'subcategory': data.subcategory or '',
+        'description': data.description or '',
+        'status': data.status,
+        'slide_count': 0,
+        'created_at': now,
+        'updated_at': now,
+    }
+    await db.visual_aid_decks.insert_one(deck_doc)
+    deck_doc.pop('_id', None)
+    return deck_doc
+
+@api_router.get("/visual-aids")
+async def get_visual_aid_decks(deck_type: Optional[str] = None, category: Optional[str] = None, status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """List all visual aid decks (without slide image data)"""
+    query = {}
+    if deck_type:
+        query['deck_type'] = deck_type
+    if category:
+        query['category'] = category
+    if status:
+        query['status'] = status
+    
+    decks = await db.visual_aid_decks.find(query, {'_id': 0}).sort('created_at', -1).to_list(200)
+    return decks
+
+@api_router.get("/visual-aids/{deck_id}")
+async def get_visual_aid_deck(deck_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a deck with its slides"""
+    deck = await db.visual_aid_decks.find_one({'id': deck_id}, {'_id': 0})
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    
+    slides = await db.visual_aid_slides.find({'deck_id': deck_id}, {'_id': 0}).sort('order', 1).to_list(100)
+    deck['slides'] = slides
+    return deck
+
+@api_router.put("/visual-aids/{deck_id}")
+async def update_visual_aid_deck(deck_id: str, data: VisualAidDeckUpdate, current_user: dict = Depends(get_current_user)):
+    """Update deck metadata"""
+    update_data = {k: v for k, v in data.dict().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.visual_aid_decks.update_one({'id': deck_id}, {'$set': update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    
+    deck = await db.visual_aid_decks.find_one({'id': deck_id}, {'_id': 0})
+    return deck
+
+@api_router.delete("/visual-aids/{deck_id}")
+async def delete_visual_aid_deck(deck_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete deck and all its slides"""
+    result = await db.visual_aid_decks.delete_one({'id': deck_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    await db.visual_aid_slides.delete_many({'deck_id': deck_id})
+    return {"message": "Deck and slides deleted"}
+
+@api_router.post("/visual-aids/{deck_id}/slides")
+async def add_slide_to_deck(deck_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Add a slide to a deck"""
+    deck = await db.visual_aid_decks.find_one({'id': deck_id}, {'_id': 0, 'id': 1})
+    if not deck:
+        raise HTTPException(status_code=404, detail="Deck not found")
+    
+    slide_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Get current max order
+    last_slide = await db.visual_aid_slides.find_one({'deck_id': deck_id}, {'_id': 0, 'order': 1}, sort=[('order', -1)])
+    next_order = (last_slide['order'] + 1) if last_slide else 1
+    
+    # Process image
+    image_webp = ''
+    if data.get('image_base64'):
+        try:
+            image_bytes = base64.b64decode(data['image_base64'])
+            image_webp = process_slide_image(image_bytes)
+        except Exception as e:
+            logger.error(f"Slide image processing error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid image data")
+    
+    slide_doc = {
+        'id': slide_id,
+        'deck_id': deck_id,
+        'title': data.get('title', ''),
+        'image_webp': image_webp,
+        'order': data.get('order', next_order),
+        'created_at': now,
+    }
+    await db.visual_aid_slides.insert_one(slide_doc)
+    
+    # Update deck slide count
+    count = await db.visual_aid_slides.count_documents({'deck_id': deck_id})
+    await db.visual_aid_decks.update_one({'id': deck_id}, {'$set': {'slide_count': count, 'updated_at': now}})
+    
+    slide_doc.pop('_id', None)
+    return slide_doc
+
+@api_router.put("/visual-aids/{deck_id}/slides/{slide_id}")
+async def update_slide(deck_id: str, slide_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update a slide"""
+    update_data = {}
+    if 'title' in data:
+        update_data['title'] = data['title']
+    if 'order' in data:
+        update_data['order'] = data['order']
+    if 'image_base64' in data and data['image_base64']:
+        try:
+            image_bytes = base64.b64decode(data['image_base64'])
+            update_data['image_webp'] = process_slide_image(image_bytes)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid image data")
+    
+    result = await db.visual_aid_slides.update_one({'id': slide_id, 'deck_id': deck_id}, {'$set': update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Slide not found")
+    
+    slide = await db.visual_aid_slides.find_one({'id': slide_id}, {'_id': 0})
+    return slide
+
+@api_router.delete("/visual-aids/{deck_id}/slides/{slide_id}")
+async def delete_slide(deck_id: str, slide_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a slide"""
+    result = await db.visual_aid_slides.delete_one({'id': slide_id, 'deck_id': deck_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Slide not found")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    count = await db.visual_aid_slides.count_documents({'deck_id': deck_id})
+    await db.visual_aid_decks.update_one({'id': deck_id}, {'$set': {'slide_count': count, 'updated_at': now}})
+    return {"message": "Slide deleted"}
+
+@api_router.put("/visual-aids/{deck_id}/slides/reorder")
+async def reorder_slides(deck_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Reorder slides. data = { slide_ids: [id1, id2, ...] }"""
+    slide_ids = data.get('slide_ids', [])
+    for idx, sid in enumerate(slide_ids):
+        await db.visual_aid_slides.update_one({'id': sid, 'deck_id': deck_id}, {'$set': {'order': idx + 1}})
+    return {"message": "Slides reordered"}
+
+@api_router.get("/mr-reports")
+async def get_mr_reports(mr_id: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get MR activity reports - placeholder for Phase 1"""
+    query = {}
+    if mr_id:
+        query['mr_id'] = mr_id
+    if from_date or to_date:
+        date_q = {}
+        if from_date:
+            date_q['$gte'] = from_date
+        if to_date:
+            date_q['$lte'] = to_date + 'T23:59:59'
+        query['created_at'] = date_q
+    
+    visits = await db.mr_visits.find(query, {'_id': 0}).sort('created_at', -1).to_list(500)
+    
+    # Get MR summary
+    mrs = await db.mrs.find({}, {'_id': 0, 'password_hash': 0}).to_list(100)
+    mr_map = {m['id']: m['name'] for m in mrs}
+    
+    for v in visits:
+        v['mr_name'] = mr_map.get(v.get('mr_id'), 'Unknown')
+    
+    return {'visits': visits, 'total': len(visits)}
 
 # ============== HEALTH CHECK ==============
 

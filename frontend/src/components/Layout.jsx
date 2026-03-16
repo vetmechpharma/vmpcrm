@@ -29,7 +29,10 @@ import {
   Megaphone,
   Database,
   Key,
-  Search
+  Search,
+  Presentation,
+  Layers,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -60,17 +63,26 @@ const companySubItems = [
   { path: '/admin/database-backup', icon: Database, label: 'Database Backup', perm: 'backup' },
 ];
 
+const mrNavItems = [
+  { path: '/admin/mr-management', icon: UserCog, label: 'MR Management', perm: null },
+  { path: '/admin/visual-aids', icon: Layers, label: 'Visual Aids', perm: null },
+  { path: '/admin/mr-reports', icon: BarChart3, label: 'MR Reports', perm: null },
+];
+
 export const Layout = ({ children }) => {
   const { user, logout, hasPermission } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [companyExpanded, setCompanyExpanded] = useState(false);
+  const [mrExpanded, setMrExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     const isCompanySubPath = companySubItems.some(item => location.pathname === item.path);
     if (isCompanySubPath) setCompanyExpanded(true);
+    const isMrSubPath = mrNavItems.some(item => location.pathname === item.path);
+    if (isMrSubPath) setMrExpanded(true);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -156,6 +168,35 @@ export const Layout = ({ children }) => {
           <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-auto scrollbar-hide">
             {mainNavItems.map((item) => renderNavItem(item))}
             
+            {/* MR Section */}
+            <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#616272' }}>MR Module</p>
+              <button
+                onClick={() => setMrExpanded(!mrExpanded)}
+                className={cn(
+                  "sidebar-nav-item w-full justify-between",
+                  mrNavItems.some(item => location.pathname === item.path) && "text-white"
+                )}
+                data-testid="nav-mr-toggle"
+              >
+                <div className="flex items-center gap-3">
+                  <Presentation className="w-[22px] h-[22px] shrink-0" />
+                  <span className="font-medium">MR / Rep</span>
+                </div>
+                {mrExpanded ? (
+                  <ChevronDown className="w-4 h-4 shrink-0" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 shrink-0" />
+                )}
+              </button>
+              
+              {mrExpanded && (
+                <div className="mt-0.5 space-y-0.5">
+                  {mrNavItems.map((item) => renderNavItem(item, true))}
+                </div>
+              )}
+            </div>
+
             {/* Company Section - only show if user has any company permissions */}
             {companySubItems.some(item => item.adminOnly ? user?.role === 'admin' : (!item.perm || hasPermission(item.perm))) && (
             <div className="pt-3 mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>

@@ -36,6 +36,9 @@ import CustomerProfile from './pages/CustomerProfile';
 import CustomerDownloads from './pages/CustomerDownloads';
 import CustomerLedger from './pages/CustomerLedger';
 import ForgotPassword from './pages/ForgotPassword';
+import { MRManagement } from './pages/MRManagement';
+import { VisualAids } from './pages/VisualAids';
+import { MRReports } from './pages/MRReports';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
@@ -287,6 +290,30 @@ function AppRoutes() {
         element={
           <AdminProtectedRoute>
             <DatabaseBackup />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/mr-management" 
+        element={
+          <AdminProtectedRoute>
+            <MRManagement />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/visual-aids" 
+        element={
+          <AdminProtectedRoute>
+            <VisualAids />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/mr-reports" 
+        element={
+          <AdminProtectedRoute>
+            <MRReports />
           </AdminProtectedRoute>
         } 
       />

@@ -842,7 +842,9 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] New items also get `has_image` flag set correctly
 
 ## Pending/Upcoming Tasks
-- [ ] (P0) Refactor monolithic `server.py` (~10400+ lines) into modular routers
+- [ ] (P0) MR Module Phase 2 - MR Panel (separate app-like PWA: login, visual aid slideshow, mark visit, follow-up tracking, sync)
+- [ ] (P0) MR Module Phase 3 - MR Orders & Communication (order form, OTP, WhatsApp template, cancellation requests)
+- [ ] (P1) Refactor monolithic `server.py` (~10800+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management (quantity tracking, low-stock alerts)
 - [ ] (P1) Refactor duplicated Follow-up UI in Doctors/Medicals/Agencies into reusable components
 - [ ] (P2) Sales reports with charts
@@ -856,3 +858,24 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Frontend**: Added `sendLedgerWhatsApp` to paymentsAPI, outstanding balance map fetching on Doctors/Medicals/Agencies pages
 - [x] **Reminders Page**: Verified fully functional (Today/Overdue/Upcoming/History tabs, Add Reminder, Follow-up actions)
 - [x] **Testing**: 100% backend (12/12), 100% frontend pass rate
+
+
+## MR Module Phase 1 - Admin Setup & Management - COMPLETED Mar 16, 2026
+- [x] **MR Management Page** (`/admin/mr-management`): Full CRUD for Medical Representatives
+  - Create/Edit/Delete MRs with name, phone, email, password, territory (state + multiple districts)
+  - Territory assignment using state dropdown + clickable district badges
+  - Stats cards (Total MRs, Active MRs), search by name/phone, status display
+- [x] **Visual Aids Page** (`/admin/visual-aids`): Presentation slide deck management
+  - Create decks: Category-wise, Subcategory-wise, or Custom types
+  - Deck detail view with slide upload (auto-converts to optimized WebP 1200x900)
+  - Slide reordering (up/down), delete slides, slide count tracking
+  - Stats cards by deck type (Total, Category, Subcategory, Custom)
+- [x] **MR Reports Page** (`/admin/mr-reports`): Activity tracking dashboard
+  - Summary cards (Total MRs, Active MRs, Total Visits, States Covered)
+  - MR Territory Overview with state/district display
+  - Activity log (placeholder for Phase 2 visit data)
+  - Filters by MR, date range
+- [x] **Sidebar Navigation**: New "MR Module" collapsible section with MR Management, Visual Aids, MR Reports
+- [x] **Backend APIs**: POST/GET/PUT/DELETE /api/mrs, POST/GET/PUT/DELETE /api/visual-aids, /api/visual-aids/{id}/slides, /api/mr-reports
+- [x] **DB Collections**: `mrs` (id, name, phone, email, password_hash, state, districts, status), `visual_aid_decks`, `visual_aid_slides`
+- [x] **Testing**: 100% backend (22/22 tests), 100% frontend pass rate

@@ -946,6 +946,15 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Login Page**: Navy/green gradient overlay, green Sign In button, updated form styling
 - [x] **Buttons**: Primary buttons now green (#1e7a4d) with matching shadow
 - [x] **Components Updated**: index.css, Layout.jsx, Login.jsx, Dashboard.jsx, table.jsx, card.jsx, badge.jsx, button.jsx, tailwind.config.js, App.css
+
+## Separate PWA Install for MR & User Apps - COMPLETED Mar 16, 2026
+- [x] **Root Cause Fix**: Removed static `<link rel="manifest">` from index.html; added dynamic JS that sets correct manifest based on URL path before browser reads it
+- [x] **MR App PWA**: Name "MR Field App", navy "MR" icon, start_url=/mrvet/login, scope=/mrvet/, theme=#0c3c60
+- [x] **User App PWA**: Name "VMP CRM - Customer Portal", green "V" icon, start_url=/login, scope=/, theme=#1e7a4d
+- [x] **Distinct Icons**: Generated and deployed separate 192x192 and 512x512 icons for each app
+- [x] **Separate Service Workers**: mr-sw.js for MR app, sw.js for user app (registered conditionally in index.js)
+- [x] **Testing**: 100% (22/22 backend, 100% frontend)
+
 - [x] **Testing**: 100% frontend pass rate, no regressions on MR login
 
   - MR dropdown filter and date range filter

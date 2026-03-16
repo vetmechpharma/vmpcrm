@@ -935,5 +935,18 @@ Build a simple CRM for managing doctor leads. Features include:
   - MR Overview: Per-MR performance cards with outcome badges
   - Visit Log: Chronological visit entries with MR name, customer, outcome
   - Orders: MR-placed orders with status, cancel request, and MR attribution
+
+## Admin Panel UI Theme Update - COMPLETED Mar 16, 2026
+- [x] **Color Scheme**: Changed from purple (#7367F0) to navy (#0c3c60) sidebar + green (#1e7a4d) accent
+- [x] **Font**: Switched from Inter/Manrope to Poppins across entire admin panel
+- [x] **Sidebar**: Dark navy blue background, green active state with matching box-shadow
+- [x] **Table Headers**: Green (#1e7a4d) background with white text on all data tables
+- [x] **Cards**: Updated to 8px border-radius with `box-shadow: 0 4px 12px rgba(0,0,0,0.08)`
+- [x] **Background**: Changed from #F8F7FA to #f4f6f9
+- [x] **Login Page**: Navy/green gradient overlay, green Sign In button, updated form styling
+- [x] **Buttons**: Primary buttons now green (#1e7a4d) with matching shadow
+- [x] **Components Updated**: index.css, Layout.jsx, Login.jsx, Dashboard.jsx, table.jsx, card.jsx, badge.jsx, button.jsx, tailwind.config.js, App.css
+- [x] **Testing**: 100% frontend pass rate, no regressions on MR login
+
   - MR dropdown filter and date range filter
 - [x] **Testing**: 100% (11/11 backend, 100% frontend)

@@ -842,9 +842,8 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] New items also get `has_image` flag set correctly
 
 ## Pending/Upcoming Tasks
-- [ ] (P0) MR Module Phase 2 - MR Panel (separate app-like PWA: login, visual aid slideshow, mark visit, follow-up tracking, sync)
-- [ ] (P0) MR Module Phase 3 - MR Orders & Communication (order form, OTP, WhatsApp template, cancellation requests)
-- [ ] (P1) Refactor monolithic `server.py` (~10800+ lines) into modular routers
+- [ ] (P0) PWA/Offline Support for MR Panel (service worker, offline caching, sync)
+- [ ] (P1) Refactor monolithic `server.py` (~11200+ lines) into modular routers
 - [ ] (P1) Stock/Inventory Management (quantity tracking, low-stock alerts)
 - [ ] (P1) Refactor duplicated Follow-up UI in Doctors/Medicals/Agencies into reusable components
 - [ ] (P2) Sales reports with charts
@@ -879,3 +878,28 @@ Build a simple CRM for managing doctor leads. Features include:
 - [x] **Backend APIs**: POST/GET/PUT/DELETE /api/mrs, POST/GET/PUT/DELETE /api/visual-aids, /api/visual-aids/{id}/slides, /api/mr-reports
 - [x] **DB Collections**: `mrs` (id, name, phone, email, password_hash, state, districts, status), `visual_aid_decks`, `visual_aid_slides`
 - [x] **Testing**: 100% backend (22/22 tests), 100% frontend pass rate
+
+
+## MR Module Phase 2 - MR Panel - COMPLETED Mar 16, 2026
+- [x] **MR Login** (`/mrvet/login`): Phone + password authentication with JWT tokens (type='mr')
+- [x] **MR Dashboard** (`/mrvet/dashboard`): Stats (Customers, Today's Visits, Pending Follow-ups, Active Decks), Quick Actions, Territory Summary, Overdue alerts
+- [x] **MR Customers** (`/mrvet/customers`): Territory-filtered list grouped by type (doctor/medical/agency), search, phone call links
+- [x] **MR Visits** (`/mrvet/visits`): Record visits with customer selection, notes, outcomes (Interested/Not Interested/Order Placed/Follow-up Required), follow-up date scheduling
+- [x] **MR Follow-ups** (`/mrvet/followups`): Tabs for Today/Overdue/Upcoming, mark done functionality
+- [x] **MR Visual Aids** (`/mrvet/visual-aids`): Browse active decks, Present button
+- [x] **MR Slideshow** (`/mrvet/slideshow/:deckId`): Full-screen presentation with keyboard/touch/swipe navigation, fullscreen toggle, progress bar, slide indicators
+- [x] **MR Layout**: Navy blue sidebar with navigation, MR profile, sign out
+- [x] **Backend APIs**: POST /api/mr/login, GET /api/mr/me, /api/mr/dashboard, /api/mr/customers, /api/mr/visits (CRUD), /api/mr/followups, /api/mr/visual-aids
+- [x] **Testing**: 100% (27/27 backend, 100% frontend)
+
+## MR Module Phase 3 - MR Orders - COMPLETED Mar 16, 2026
+- [x] **MR Orders Page** (`/mrvet/orders`): 3-step order form (Select Customer -> Add Products -> Review & Place)
+- [x] **Product Selection**: Search items, add to cart with +/- quantity controls, cart summary
+- [x] **Order Placement**: Creates order with source='mr', mr_id, mr_name fields
+- [x] **Order History**: List of MR's orders with status, items summary, order number
+- [x] **Cancel Request**: MR can request cancellation on pending orders with reason
+- [x] **Admin Integration**: MR orders show 'MR' indigo badge + 'via {MR name}' on admin Orders page
+- [x] **Admin Cancel Management**: 'Cancel Req' badge on orders, Approve/Reject buttons in detail dialog
+- [x] **Backend APIs**: GET /api/mr/items, POST /api/mr/orders, GET /api/mr/orders, POST /api/mr/orders/{id}/cancel-request, POST /api/orders/{id}/approve-cancel
+- [x] **WhatsApp notification**: Auto-sends order notification on placement
+- [x] **Testing**: 100% (28/28 backend, 100% frontend)

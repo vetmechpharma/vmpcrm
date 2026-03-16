@@ -10973,6 +10973,7 @@ def process_slide_image(image_data: bytes) -> str:
     
     buffer = BytesIO()
     img.save(buffer, format='WebP', quality=80)
+    buffer.seek(0)
     return base64.b64encode(buffer.read()).decode('utf-8')
 
 @api_router.post("/visual-aids")

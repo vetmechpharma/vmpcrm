@@ -11130,28 +11130,89 @@ async def reorder_slides(deck_id: str, data: dict, current_user: dict = Depends(
 
 @api_router.get("/mr-reports")
 async def get_mr_reports(mr_id: Optional[str] = None, from_date: Optional[str] = None, to_date: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """Get MR activity reports - placeholder for Phase 1"""
-    query = {}
+    """Get comprehensive MR activity reports"""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    # Build visit query
+    visit_q = {}
+    order_q = {'source': 'mr'}
     if mr_id:
-        query['mr_id'] = mr_id
+        visit_q['mr_id'] = mr_id
+        order_q['mr_id'] = mr_id
     if from_date or to_date:
         date_q = {}
         if from_date:
             date_q['$gte'] = from_date
         if to_date:
-            date_q['$lte'] = to_date + 'T23:59:59'
-        query['created_at'] = date_q
+            date_q['$lte'] = to_date
+        visit_q['visit_date'] = date_q
+        order_date_q = {}
+        if from_date:
+            order_date_q['$gte'] = from_date + 'T00:00:00'
+        if to_date:
+            order_date_q['$lte'] = to_date + 'T23:59:59'
+        order_q['created_at'] = order_date_q
     
-    visits = await db.mr_visits.find(query, {'_id': 0}).sort('created_at', -1).to_list(500)
-    
-    # Get MR summary
+    # Fetch all data concurrently
     mrs = await db.mrs.find({}, {'_id': 0, 'password_hash': 0}).to_list(100)
-    mr_map = {m['id']: m['name'] for m in mrs}
+    visits = await db.mr_visits.find(visit_q, {'_id': 0}).sort('created_at', -1).to_list(500)
+    orders = await db.orders.find(order_q, {'_id': 0}).sort('created_at', -1).to_list(500)
     
+    mr_map = {m['id']: m for m in mrs}
+    
+    # Fill MR name in visits
     for v in visits:
-        v['mr_name'] = mr_map.get(v.get('mr_id'), 'Unknown')
+        v['mr_name'] = mr_map.get(v.get('mr_id'), {}).get('name', 'Unknown')
     
-    return {'visits': visits, 'total': len(visits)}
+    # Build per-MR performance stats
+    mr_stats = []
+    for m in mrs:
+        mid = m['id']
+        m_visits = [v for v in visits if v.get('mr_id') == mid]
+        m_orders = [o for o in orders if o.get('mr_id') == mid]
+        today_visits = [v for v in m_visits if v.get('visit_date') == today]
+        pending_followups = [v for v in m_visits if v.get('outcome') == 'follow_up_required' and not v.get('follow_up_done')]
+        
+        # Outcome breakdown
+        outcomes = {}
+        for v in m_visits:
+            oc = v.get('outcome', 'unknown')
+            outcomes[oc] = outcomes.get(oc, 0) + 1
+        
+        mr_stats.append({
+            'id': mid,
+            'name': m['name'],
+            'phone': m.get('phone', ''),
+            'state': m.get('state', ''),
+            'districts': m.get('districts', []),
+            'status': m.get('status', ''),
+            'total_visits': len(m_visits),
+            'today_visits': len(today_visits),
+            'pending_followups': len(pending_followups),
+            'total_orders': len(m_orders),
+            'pending_orders': len([o for o in m_orders if o.get('status') == 'pending']),
+            'cancelled_orders': len([o for o in m_orders if o.get('status') == 'cancelled']),
+            'outcomes': outcomes,
+        })
+    
+    # Overall summary
+    summary = {
+        'total_mrs': len(mrs),
+        'active_mrs': len([m for m in mrs if m.get('status') == 'active']),
+        'total_visits': len(visits),
+        'today_visits': len([v for v in visits if v.get('visit_date') == today]),
+        'total_orders': len(orders),
+        'pending_orders': len([o for o in orders if o.get('status') == 'pending']),
+        'states_covered': len(set(m.get('state', '') for m in mrs)),
+    }
+    
+    return {
+        'summary': summary,
+        'mr_stats': mr_stats,
+        'visits': visits[:100],
+        'orders': orders[:100],
+        'total': len(visits),
+    }
 
 # ============== HEALTH CHECK ==============
 

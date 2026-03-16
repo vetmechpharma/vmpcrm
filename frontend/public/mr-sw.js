@@ -1,18 +1,9 @@
-const CACHE_NAME = 'mr-field-app-v1';
-const STATIC_CACHE = 'mr-static-v1';
-const DATA_CACHE = 'mr-data-v1';
-const SLIDE_CACHE = 'mr-slides-v1';
+const CACHE_VERSION = 'v2';
+const STATIC_CACHE = `mr-static-${CACHE_VERSION}`;
+const DATA_CACHE = `mr-data-${CACHE_VERSION}`;
+const SLIDE_CACHE = `mr-slides-${CACHE_VERSION}`;
 
-// Static assets to cache on install
-const STATIC_ASSETS = [
-  '/mrvet/login',
-  '/mrvet/dashboard',
-  '/mrvet/customers',
-  '/mrvet/visits',
-  '/mrvet/followups',
-  '/mrvet/visual-aids',
-  '/mrvet/orders',
-];
+const VALID_CACHES = [STATIC_CACHE, DATA_CACHE, SLIDE_CACHE];
 
 // API endpoints to cache with network-first strategy
 const CACHEABLE_API = [
@@ -25,13 +16,13 @@ const CACHEABLE_API = [
   '/api/mr/orders',
 ];
 
-// Install: cache static assets
+// Install: cache the app shell (index.html)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
-      console.log('[MR-SW] Caching static assets');
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        console.log('[MR-SW] Some static assets failed to cache');
+      console.log('[MR-SW] Caching app shell');
+      return cache.addAll(['/', '/index.html']).catch((err) => {
+        console.log('[MR-SW] App shell cache failed:', err);
       });
     })
   );
@@ -41,52 +32,67 @@ self.addEventListener('install', (event) => {
 // Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== STATIC_CACHE && key !== DATA_CACHE && key !== SLIDE_CACHE)
-          .map((key) => caches.delete(key))
-      );
-    })
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => !VALID_CACHES.includes(key)).map((key) => {
+          console.log('[MR-SW] Deleting old cache:', key);
+          return caches.delete(key);
+        })
+      )
+    )
   );
   self.clients.claim();
 });
 
-// Fetch: network-first for API, cache-first for static
+// Fetch handler
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-GET requests (POST visits/orders go to queue)
+  // Non-GET: try network, queue if offline
   if (event.request.method !== 'GET') {
-    // Queue offline mutations
-    if (!navigator.onLine && url.pathname.startsWith('/api/mr/')) {
-      event.respondWith(
-        handleOfflineMutation(event.request)
-      );
-      return;
+    if (url.pathname.startsWith('/api/mr/')) {
+      event.respondWith(handleMutation(event.request));
     }
     return;
   }
 
-  // Slide images - cache first (they don't change often)
-  if (url.pathname.includes('/visual-aids/') && url.pathname.includes('/slides')) {
+  // Slide images - cache first
+  if (url.pathname.includes('/visual-aid') && url.pathname.includes('/slide')) {
     event.respondWith(cacheFirst(event.request, SLIDE_CACHE));
     return;
   }
 
-  // API data - network first, fall back to cache
-  if (CACHEABLE_API.some(api => url.pathname.startsWith(api))) {
+  // API data - network first with cache fallback
+  if (CACHEABLE_API.some((api) => url.pathname.startsWith(api))) {
     event.respondWith(networkFirst(event.request, DATA_CACHE));
     return;
   }
 
-  // Static assets and pages
-  if (url.pathname.startsWith('/mrvet/') || url.pathname.startsWith('/static/')) {
+  // SPA navigation requests for /mrvet/* - serve cached index.html
+  if (event.request.mode === 'navigate' && url.pathname.startsWith('/mrvet')) {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match('/index.html').then((r) => r || caches.match('/'))
+      )
+    );
+    return;
+  }
+
+  // Static assets (JS/CSS bundles, fonts, images)
+  if (
+    url.pathname.startsWith('/static/') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.ico') ||
+    url.pathname.endsWith('.woff2')
+  ) {
     event.respondWith(cacheFirst(event.request, STATIC_CACHE));
     return;
   }
 });
 
-// Network-first strategy
+// Network-first: try network, cache response, fallback to cache
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
@@ -95,20 +101,20 @@ async function networkFirst(request, cacheName) {
       cache.put(request, response.clone());
     }
     return response;
-  } catch (error) {
+  } catch (err) {
     const cached = await caches.match(request);
     if (cached) {
-      console.log('[MR-SW] Serving from cache:', request.url);
+      console.log('[MR-SW] Serving cached:', request.url);
       return cached;
     }
     return new Response(JSON.stringify({ error: 'Offline', cached: false }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
 
-// Cache-first strategy
+// Cache-first: check cache, fallback to network and cache
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -124,37 +130,52 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-// Handle offline mutations - store in IndexedDB for later sync
-async function handleOfflineMutation(request) {
+// Handle POST/PUT mutations: try network first, queue on failure
+async function handleMutation(request) {
   try {
-    const body = await request.clone().json();
-    const offlineQueue = await getOfflineQueue();
-    offlineQueue.push({
-      url: request.url,
-      method: request.method,
-      body: body,
-      timestamp: Date.now(),
-      headers: Object.fromEntries(request.headers.entries()),
-    });
-    await saveOfflineQueue(offlineQueue);
+    const response = await fetch(request.clone());
+    return response;
+  } catch (err) {
+    // Network failed - queue for later sync
+    try {
+      const body = await request.clone().json();
+      const queue = await getOfflineQueue();
+      queue.push({
+        url: request.url,
+        method: request.method,
+        body: body,
+        timestamp: Date.now(),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: request.headers.get('Authorization') || '',
+        },
+      });
+      await saveOfflineQueue(queue);
 
-    return new Response(JSON.stringify({
-      message: 'Saved offline. Will sync when online.',
-      offline: true,
-      queued: true,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  } catch {
-    return new Response(JSON.stringify({ error: 'Failed to queue' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+      // Notify clients about queued item
+      const clients = await self.clients.matchAll();
+      clients.forEach((client) =>
+        client.postMessage({ type: 'QUEUE_COUNT', count: queue.length })
+      );
+
+      return new Response(
+        JSON.stringify({
+          message: 'Saved offline. Will sync when online.',
+          offline: true,
+          queued: true,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    } catch {
+      return new Response(JSON.stringify({ error: 'Failed to queue offline' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 }
 
-// IndexedDB helpers for offline queue
+// === IndexedDB helpers ===
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('mr-offline-db', 1);
@@ -182,10 +203,10 @@ async function saveOfflineQueue(items) {
   const tx = db.transaction('queue', 'readwrite');
   const store = tx.objectStore('queue');
   store.clear();
-  items.forEach(item => store.put(item));
+  items.forEach((item) => store.put(item));
 }
 
-// Listen for sync event
+// === Message handler for sync ===
 self.addEventListener('message', async (event) => {
   if (event.data?.type === 'SYNC_OFFLINE') {
     const queue = await getOfflineQueue();
@@ -199,7 +220,11 @@ self.addEventListener('message', async (event) => {
           headers: item.headers,
           body: JSON.stringify(item.body),
         });
-        results.push({ url: item.url, success: response.ok, status: response.status });
+        results.push({
+          url: item.url,
+          success: response.ok,
+          status: response.status,
+        });
       } catch {
         remaining.push(item);
       }

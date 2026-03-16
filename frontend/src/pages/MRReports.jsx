@@ -6,24 +6,42 @@ import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, BarChart3, UserCog, MapPin, Calendar, Activity, ClipboardList } from 'lucide-react';
+import {
+  Loader2, UserCog, MapPin, Activity, ClipboardList,
+  ShoppingCart, AlertTriangle, TrendingUp, Calendar, Eye
+} from 'lucide-react';
 import { formatDate, formatDateTime } from '../lib/utils';
 
+const outcomeLabels = {
+  interested: 'Interested',
+  follow_up_required: 'Follow-up',
+  order_placed: 'Order Placed',
+  not_interested: 'Not Interested',
+  unavailable: 'Unavailable',
+};
+
+const outcomeBadge = {
+  interested: 'bg-emerald-100 text-emerald-700',
+  follow_up_required: 'bg-amber-100 text-amber-700',
+  order_placed: 'bg-blue-100 text-blue-700',
+  not_interested: 'bg-red-100 text-red-700',
+  unavailable: 'bg-slate-100 text-slate-500',
+};
+
 export const MRReports = () => {
-  const [mrs, setMrs] = useState([]);
-  const [reports, setReports] = useState({ visits: [], total: 0 });
+  const [data, setData] = useState({ summary: {}, mr_stats: [], visits: [], orders: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [mrFilter, setMrFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [mrs, setMrs] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => { fetchMRs(); fetchReports(); }, []);
 
   const fetchMRs = async () => {
-    try {
-      const res = await mrAPI.getAll();
-      setMrs(res.data);
-    } catch { /* silent */ }
+    try { const res = await mrAPI.getAll(); setMrs(res.data); }
+    catch { /* silent */ }
   };
 
   const fetchReports = async () => {
@@ -34,54 +52,48 @@ export const MRReports = () => {
       if (dateFrom) params.from_date = dateFrom;
       if (dateTo) params.to_date = dateTo;
       const res = await mrReportsAPI.getReports(params);
-      setReports(res.data);
+      setData(res.data);
     } catch { toast.error('Failed to fetch reports'); }
     finally { setLoading(false); }
   };
+
+  const applyFilters = () => fetchReports();
+
+  const s = data.summary || {};
 
   return (
     <div className="space-y-6" data-testid="mr-reports-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">MR Reports & Activity</h1>
-          <p className="text-slate-500">Track Medical Representative field activity and visits</p>
+          <h1 className="text-2xl font-bold text-slate-800">MR Reports</h1>
+          <p className="text-slate-500">Field activity, visits, and order analytics</p>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div><p className="text-sm text-slate-500">Total MRs</p><p className="text-2xl font-bold text-indigo-600">{mrs.length}</p></div>
-            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center"><UserCog className="w-5 h-5 text-indigo-600" /></div>
-          </div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div><p className="text-sm text-slate-500">Active MRs</p><p className="text-2xl font-bold text-emerald-600">{mrs.filter(m => m.status === 'active').length}</p></div>
-            <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center"><Activity className="w-5 h-5 text-emerald-600" /></div>
-          </div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div><p className="text-sm text-slate-500">Total Visits</p><p className="text-2xl font-bold text-blue-600">{reports.total}</p></div>
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"><MapPin className="w-5 h-5 text-blue-600" /></div>
-          </div>
-        </CardContent></Card>
-        <Card><CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div><p className="text-sm text-slate-500">States Covered</p><p className="text-2xl font-bold text-purple-600">{new Set(mrs.map(m => m.state)).size}</p></div>
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center"><BarChart3 className="w-5 h-5 text-purple-600" /></div>
-          </div>
-        </CardContent></Card>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {[
+          { label: 'Total MRs', value: s.total_mrs || 0, icon: UserCog, color: 'indigo' },
+          { label: 'Active MRs', value: s.active_mrs || 0, icon: Activity, color: 'emerald' },
+          { label: 'Total Visits', value: s.total_visits || 0, icon: MapPin, color: 'blue' },
+          { label: "Today's Visits", value: s.today_visits || 0, icon: Calendar, color: 'teal' },
+          { label: 'Total Orders', value: s.total_orders || 0, icon: ShoppingCart, color: 'purple' },
+          { label: 'Pending Orders', value: s.pending_orders || 0, icon: AlertTriangle, color: 'amber' },
+          { label: 'States', value: s.states_covered || 0, icon: TrendingUp, color: 'rose' },
+        ].map(c => (
+          <Card key={c.label}><CardContent className="p-4">
+            <p className="text-xs text-slate-500 mb-1">{c.label}</p>
+            <p className={`text-xl font-bold text-${c.color}-600`}>{c.value}</p>
+          </CardContent></Card>
+        ))}
       </div>
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-end">
         <div className="space-y-1">
-          <label className="text-xs text-slate-500">Filter by MR</label>
+          <label className="text-xs text-slate-500">MR</label>
           <Select value={mrFilter || 'all'} onValueChange={v => setMrFilter(v === 'all' ? '' : v)}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="All MRs" /></SelectTrigger>
+            <SelectTrigger className="w-48" data-testid="mr-reports-filter-mr"><SelectValue placeholder="All MRs" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All MRs</SelectItem>
               {mrs.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -90,76 +102,176 @@ export const MRReports = () => {
         </div>
         <div className="space-y-1">
           <label className="text-xs text-slate-500">From</label>
-          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" />
+          <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-40" data-testid="mr-reports-date-from" />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-slate-500">To</label>
-          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" />
+          <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-40" data-testid="mr-reports-date-to" />
         </div>
-        <Button onClick={fetchReports} variant="outline">Apply</Button>
+        <Button onClick={applyFilters} variant="outline" data-testid="mr-reports-apply-btn">Apply</Button>
       </div>
 
-      {/* MR List with Territory */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2"><UserCog className="w-4 h-4" />MR Territory Overview</h3>
-          {mrs.length > 0 ? (
+      {/* Tabs */}
+      <div className="flex gap-1 border-b">
+        {[
+          { key: 'overview', label: 'MR Overview' },
+          { key: 'visits', label: 'Visit Log' },
+          { key: 'orders', label: 'Orders' },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+            data-testid={`mr-reports-tab-${tab.key}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+      ) : (
+        <>
+          {/* MR Overview Tab */}
+          {activeTab === 'overview' && (
             <div className="space-y-3">
-              {mrs.map(mr => (
-                <div key={mr.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg" data-testid={`mr-report-${mr.id}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${mr.status === 'active' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
-                      {mr.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{mr.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <MapPin className="w-3 h-3" />{mr.state}
-                        <span className="text-slate-300">|</span>
-                        {(mr.districts || []).slice(0, 3).join(', ')}
-                        {(mr.districts || []).length > 3 && ` +${mr.districts.length - 3}`}
+              {(data.mr_stats || []).length > 0 ? data.mr_stats.map(mr => (
+                <Card key={mr.id} data-testid={`mr-stat-${mr.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                          mr.status === 'active' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
+                          {mr.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{mr.name}</p>
+                            <Badge className={mr.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>{mr.status}</Badge>
+                          </div>
+                          <p className="text-xs text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />{mr.state} - {(mr.districts || []).join(', ')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-4 text-center">
+                        <div className="min-w-[60px]">
+                          <p className="text-lg font-bold text-blue-600">{mr.total_visits}</p>
+                          <p className="text-[10px] text-slate-500">Visits</p>
+                        </div>
+                        <div className="min-w-[60px]">
+                          <p className="text-lg font-bold text-teal-600">{mr.today_visits}</p>
+                          <p className="text-[10px] text-slate-500">Today</p>
+                        </div>
+                        <div className="min-w-[60px]">
+                          <p className="text-lg font-bold text-amber-600">{mr.pending_followups}</p>
+                          <p className="text-[10px] text-slate-500">Follow-ups</p>
+                        </div>
+                        <div className="min-w-[60px]">
+                          <p className="text-lg font-bold text-purple-600">{mr.total_orders}</p>
+                          <p className="text-[10px] text-slate-500">Orders</p>
+                        </div>
+                        <div className="min-w-[60px]">
+                          <p className="text-lg font-bold text-red-500">{mr.cancelled_orders}</p>
+                          <p className="text-[10px] text-slate-500">Cancelled</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <Badge className={mr.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>{mr.status}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-slate-400 py-8">No MRs registered yet</p>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Activity Log */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="font-semibold text-slate-700 mb-4 flex items-center gap-2"><ClipboardList className="w-4 h-4" />Activity Log</h3>
-          {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
-          ) : reports.visits.length > 0 ? (
-            <div className="space-y-2">
-              {reports.visits.map(v => (
-                <div key={v.id} className="p-3 border rounded-lg">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-sm">{v.mr_name} visited {v.entity_name}</p>
-                      <p className="text-xs text-slate-500">{v.notes}</p>
-                    </div>
-                    <span className="text-xs text-slate-400">{formatDateTime(v.created_at)}</span>
-                  </div>
+                    {/* Outcome breakdown */}
+                    {Object.keys(mr.outcomes || {}).length > 0 && (
+                      <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
+                        {Object.entries(mr.outcomes).map(([key, count]) => (
+                          <Badge key={key} className={outcomeBadge[key] || 'bg-slate-100 text-slate-500'}>
+                            {outcomeLabels[key] || key}: {count}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )) : (
+                <div className="text-center py-12">
+                  <UserCog className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No MR data available</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Activity className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-500">No Activity Yet</h3>
-              <p className="text-sm text-slate-400">MR visit reports will appear here once MRs start using the app</p>
+              )}
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Visit Log Tab */}
+          {activeTab === 'visits' && (
+            <div className="space-y-2">
+              {(data.visits || []).length > 0 ? data.visits.map(v => (
+                <Card key={v.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">{v.mr_name}</span>
+                          <span className="text-slate-400">visited</span>
+                          <span className="font-medium text-sm">{v.entity_name}</span>
+                          <Badge className={outcomeBadge[v.outcome] || 'bg-slate-100 text-slate-500'}>
+                            {outcomeLabels[v.outcome] || v.outcome}
+                          </Badge>
+                        </div>
+                        {v.notes && <p className="text-xs text-slate-500 mt-1">{v.notes}</p>}
+                        {v.next_follow_up_date && (
+                          <p className="text-xs text-amber-600 mt-1">Follow-up: {v.next_follow_up_date}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400 whitespace-nowrap">{v.visit_date}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )) : (
+                <div className="text-center py-12">
+                  <ClipboardList className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No visits recorded yet</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Orders Tab */}
+          {activeTab === 'orders' && (
+            <div className="space-y-2">
+              {(data.orders || []).length > 0 ? data.orders.map(o => (
+                <Card key={o.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-semibold text-indigo-700">{o.order_number}</span>
+                          <Badge className={{
+                            pending: 'bg-amber-100 text-amber-700',
+                            confirmed: 'bg-blue-100 text-blue-700',
+                            dispatched: 'bg-purple-100 text-purple-700',
+                            delivered: 'bg-emerald-100 text-emerald-700',
+                            cancelled: 'bg-red-100 text-red-700',
+                          }[o.status] || 'bg-slate-100'}>{o.status}</Badge>
+                          {o.cancel_requested && <Badge className="bg-red-50 text-red-600">Cancel Req</Badge>}
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1">{o.doctor_name}</p>
+                        <p className="text-xs text-slate-400">
+                          by <span className="text-indigo-600">{o.mr_name}</span> - {(o.items || []).length} item(s)
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-400 whitespace-nowrap">{formatDate(o.created_at)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )) : (
+                <div className="text-center py-12">
+                  <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No MR orders yet</p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

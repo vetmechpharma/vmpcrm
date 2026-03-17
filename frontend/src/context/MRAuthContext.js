@@ -1,9 +1,11 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const mrApi = axios.create({ baseURL: `${API_URL}/api` });
+
+// Request interceptor - attach token
 mrApi.interceptors.request.use(config => {
   const token = localStorage.getItem('mr_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -22,17 +24,53 @@ export const MRAuthProvider = ({ children }) => {
   const [mr, setMR] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('mr_token');
+    localStorage.removeItem('mr_user');
+    setMR(null);
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('mr_token');
     const stored = localStorage.getItem('mr_user');
+
     if (token && stored) {
-      setMR(JSON.parse(stored));
+      // Restore session immediately from localStorage
+      try { setMR(JSON.parse(stored)); } catch { /* ignore parse error */ }
+
+      // Validate token in background — only clear on 401, not on network errors
       mrApi.get('/mr/me')
-        .then(res => setMR(res.data))
-        .catch(() => { localStorage.removeItem('mr_token'); localStorage.removeItem('mr_user'); setMR(null); })
+        .then(res => {
+          setMR(res.data);
+          localStorage.setItem('mr_user', JSON.stringify(res.data));
+        })
+        .catch(err => {
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            // Token expired or account deactivated — force logout
+            clearSession();
+          }
+          // Network error / offline — keep existing session
+        })
         .finally(() => setLoading(false));
-    } else { setLoading(false); }
-  }, []);
+    } else {
+      setLoading(false);
+    }
+  }, [clearSession]);
+
+  // Response interceptor — auto-logout on 401 during any API call
+  useEffect(() => {
+    const id = mrApi.interceptors.response.use(
+      res => res,
+      err => {
+        if (err?.response?.status === 401) {
+          clearSession();
+        }
+        return Promise.reject(err);
+      }
+    );
+    return () => mrApi.interceptors.response.eject(id);
+  }, [clearSession]);
 
   const login = async (phone, password) => {
     const res = await mrApi.post('/mr/login', { phone, password });
@@ -43,11 +81,7 @@ export const MRAuthProvider = ({ children }) => {
     return mrData;
   };
 
-  const logout = () => {
-    localStorage.removeItem('mr_token');
-    localStorage.removeItem('mr_user');
-    setMR(null);
-  };
+  const logout = () => clearSession();
 
   return (
     <MRAuthContext.Provider value={{ mr, loading, login, logout, isAuthenticated: !!mr }}>

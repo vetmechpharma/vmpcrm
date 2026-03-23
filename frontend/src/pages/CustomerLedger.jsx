@@ -17,7 +17,7 @@ const CustomerLedger = () => {
   const fetchLedger = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('customer_token');
+      const token = localStorage.getItem('customerToken');
       const params = {};
       if (dateFrom) params.from_date = dateFrom;
       if (dateTo) params.to_date = dateTo;

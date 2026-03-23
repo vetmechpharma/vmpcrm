@@ -21,7 +21,7 @@ const CustomerDownloads = () => {
 
   const fetchCatalogues = async () => {
     try {
-      const token = localStorage.getItem('customer_token');
+      const token = localStorage.getItem('customerToken');
       const res = await axios.get(`${API_URL}/api/catalogue-settings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -34,7 +34,7 @@ const CustomerDownloads = () => {
     const key = mainCategory || 'all';
     setDownloading(key);
     try {
-      const token = localStorage.getItem('customer_token');
+      const token = localStorage.getItem('customerToken');
       const params = mainCategory ? { main_category: mainCategory } : {};
       const res = await axios.get(`${API_URL}/api/customer/pricelist/pdf`, {
         headers: { Authorization: `Bearer ${token}` },

@@ -5653,19 +5653,34 @@ async def get_customer_own_ledger(
     customer: dict = Depends(get_current_customer)
 ):
     """Get ledger for the logged-in customer (portal)"""
-    cust_id = customer.get('doctor_id') or customer.get('medical_id') or customer.get('agency_id')
     cust_type = customer.get('role', 'doctor')
-    if not cust_id:
-        raise HTTPException(status_code=400, detail="Customer not linked to entity")
-    
     collection = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}.get(cust_type)
-    cust_doc = await db[collection].find_one({'id': cust_id}, {'_id': 0, 'image_webp': 0}) if collection else None
+    if not collection:
+        raise HTTPException(status_code=400, detail="Invalid customer role")
+    
+    # Find linked entity: by linked_record_id, portal_customer_id, or phone match
+    cust_doc = None
+    linked_id = customer.get('linked_record_id')
+    if linked_id:
+        cust_doc = await db[collection].find_one({'id': linked_id}, {'_id': 0, 'image_webp': 0})
+    if not cust_doc:
+        cust_doc = await db[collection].find_one({'portal_customer_id': customer['id']}, {'_id': 0, 'image_webp': 0})
+    if not cust_doc:
+        clean_phone = ''.join(filter(str.isdigit, customer.get('phone', '')))[-10:]
+        if clean_phone:
+            cust_doc = await db[collection].find_one({'phone': {'$regex': clean_phone + '$'}}, {'_id': 0, 'image_webp': 0})
     if not cust_doc:
         raise HTTPException(status_code=404, detail="Customer entity not found")
     
+    entity_id = cust_doc['id']
+    
+    # Update linked_record_id if missing (self-heal)
+    if not linked_id:
+        await db.portal_customers.update_one({'id': customer['id']}, {'$set': {'linked_record_id': entity_id}})
+    
     opening_balance = cust_doc.get('opening_balance', 0) or 0
     
-    order_query = {'doctor_id': cust_id}
+    order_query = {'doctor_id': entity_id}
     if from_date or to_date:
         date_q = {}
         if from_date: date_q['$gte'] = from_date
@@ -5674,7 +5689,7 @@ async def get_customer_own_ledger(
     
     orders = await db.orders.find(order_query, {'_id': 0, 'items': 0}).sort('created_at', 1).to_list(5000)
     
-    pay_query = {'customer_id': cust_id}
+    pay_query = {'customer_id': entity_id}
     if from_date or to_date:
         date_q = {}
         if from_date: date_q['$gte'] = from_date

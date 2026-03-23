@@ -839,6 +839,13 @@ class ItemCreate(BaseModel):
     rate_agencies: Optional[float] = None
     offer_agencies: Optional[str] = None
     special_offer_agencies: Optional[str] = None
+    # Special Offer 2 - for dashboard scroll (near expiry, launch, no movement)
+    special_offer_2_doctors: Optional[str] = None
+    special_offer_2_doctors_desc: Optional[str] = None
+    special_offer_2_medicals: Optional[str] = None
+    special_offer_2_medicals_desc: Optional[str] = None
+    special_offer_2_agencies: Optional[str] = None
+    special_offer_2_agencies_desc: Optional[str] = None
     # Legacy fields (for backward compatibility)
     rate: Optional[float] = None
     offer: Optional[str] = None
@@ -867,6 +874,13 @@ class ItemUpdate(BaseModel):
     rate_agencies: Optional[float] = None
     offer_agencies: Optional[str] = None
     special_offer_agencies: Optional[str] = None
+    # Special Offer 2 - for dashboard scroll (near expiry, launch, no movement)
+    special_offer_2_doctors: Optional[str] = None
+    special_offer_2_doctors_desc: Optional[str] = None
+    special_offer_2_medicals: Optional[str] = None
+    special_offer_2_medicals_desc: Optional[str] = None
+    special_offer_2_agencies: Optional[str] = None
+    special_offer_2_agencies_desc: Optional[str] = None
     # Legacy fields
     rate: Optional[float] = None
     offer: Optional[str] = None
@@ -896,6 +910,13 @@ class ItemResponse(BaseModel):
     rate_agencies: Optional[float] = None
     offer_agencies: Optional[str] = None
     special_offer_agencies: Optional[str] = None
+    # Special Offer 2 - for dashboard scroll (near expiry, launch, no movement)
+    special_offer_2_doctors: Optional[str] = None
+    special_offer_2_doctors_desc: Optional[str] = None
+    special_offer_2_medicals: Optional[str] = None
+    special_offer_2_medicals_desc: Optional[str] = None
+    special_offer_2_agencies: Optional[str] = None
+    special_offer_2_agencies_desc: Optional[str] = None
     # Legacy fields (for backward compatibility)
     rate: float
     offer: Optional[str] = None
@@ -3481,6 +3502,13 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         'rate_agencies': item_data.rate_agencies if item_data.rate_agencies is not None else rate,
         'offer_agencies': item_data.offer_agencies or item_data.offer,
         'special_offer_agencies': item_data.special_offer_agencies or item_data.special_offer,
+        # Special Offer 2 - for dashboard scroll
+        'special_offer_2_doctors': item_data.special_offer_2_doctors,
+        'special_offer_2_doctors_desc': item_data.special_offer_2_doctors_desc,
+        'special_offer_2_medicals': item_data.special_offer_2_medicals,
+        'special_offer_2_medicals_desc': item_data.special_offer_2_medicals_desc,
+        'special_offer_2_agencies': item_data.special_offer_2_agencies,
+        'special_offer_2_agencies_desc': item_data.special_offer_2_agencies_desc,
         # Legacy fields
         'rate': rate,
         'offer': item_data.offer,
@@ -3513,6 +3541,13 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         rate_agencies=item_doc['rate_agencies'],
         offer_agencies=item_doc['offer_agencies'],
         special_offer_agencies=item_doc['special_offer_agencies'],
+        # Special Offer 2 - for dashboard scroll
+        special_offer_2_doctors=item_data.special_offer_2_doctors,
+        special_offer_2_doctors_desc=item_data.special_offer_2_doctors_desc,
+        special_offer_2_medicals=item_data.special_offer_2_medicals,
+        special_offer_2_medicals_desc=item_data.special_offer_2_medicals_desc,
+        special_offer_2_agencies=item_data.special_offer_2_agencies,
+        special_offer_2_agencies_desc=item_data.special_offer_2_agencies_desc,
         rate=rate,
         offer=item_data.offer,
         special_offer=item_data.special_offer,
@@ -3585,6 +3620,13 @@ async def get_items(
             rate_agencies=item.get('rate_agencies') or item.get('rate', 0),
             offer_agencies=item.get('offer_agencies') or item.get('offer'),
             special_offer_agencies=item.get('special_offer_agencies') or item.get('special_offer'),
+            # Special Offer 2 - for dashboard scroll
+            special_offer_2_doctors=item.get('special_offer_2_doctors'),
+            special_offer_2_doctors_desc=item.get('special_offer_2_doctors_desc'),
+            special_offer_2_medicals=item.get('special_offer_2_medicals'),
+            special_offer_2_medicals_desc=item.get('special_offer_2_medicals_desc'),
+            special_offer_2_agencies=item.get('special_offer_2_agencies'),
+            special_offer_2_agencies_desc=item.get('special_offer_2_agencies_desc'),
             # Legacy
             rate=item.get('rate', 0),
             offer=item.get('offer'),
@@ -3598,21 +3640,21 @@ async def get_items(
 
 @api_router.get("/items/offers/active")
 async def get_active_offers(role: Optional[str] = None):
-    """Get items with active offers - public endpoint for dashboards"""
+    """Get items with active Special Offer 2 - for dashboard scrolling"""
     items = await db.items.find({'out_of_stock': {'$ne': True}}, {
         '_id': 0, 'image_webp': 0, 'custom_fields': 0
     }).to_list(500)
     
     offers = []
     for item in items:
-        offer_key = f'offer_{role}s' if role else 'offer'
-        special_key = f'special_offer_{role}s' if role else 'special_offer'
+        so2_key = f'special_offer_2_{role}s' if role else 'special_offer_2_doctors'
+        desc_key = f'special_offer_2_{role}s_desc' if role else 'special_offer_2_doctors_desc'
         rate_key = f'rate_{role}s' if role else 'rate'
         
-        offer_text = item.get(offer_key) or item.get('offer') or ''
-        special_text = item.get(special_key) or item.get('special_offer') or ''
+        offer_text = item.get(so2_key) or ''
+        desc_text = item.get(desc_key) or ''
         
-        if offer_text or special_text:
+        if offer_text:
             has_image = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
             offers.append({
                 'id': item['id'],
@@ -3621,7 +3663,7 @@ async def get_active_offers(role: Optional[str] = None):
                 'mrp': item.get('mrp', 0),
                 'rate': item.get(rate_key) or item.get('rate', 0),
                 'offer': offer_text,
-                'special_offer': special_text,
+                'description': desc_text,
                 'image_url': f"/api/items/{item['id']}/image" if has_image else None,
             })
     return offers
@@ -3665,6 +3707,13 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         rate_agencies=item.get('rate_agencies'),
         offer_agencies=item.get('offer_agencies'),
         special_offer_agencies=item.get('special_offer_agencies'),
+        # Special Offer 2 - for dashboard scroll
+        special_offer_2_doctors=item.get('special_offer_2_doctors'),
+        special_offer_2_doctors_desc=item.get('special_offer_2_doctors_desc'),
+        special_offer_2_medicals=item.get('special_offer_2_medicals'),
+        special_offer_2_medicals_desc=item.get('special_offer_2_medicals_desc'),
+        special_offer_2_agencies=item.get('special_offer_2_agencies'),
+        special_offer_2_agencies_desc=item.get('special_offer_2_agencies_desc'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item['id']}/image" if has_image else None,
         created_at=created_at
@@ -3738,6 +3787,13 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         rate_agencies=updated_item.get('rate_agencies'),
         offer_agencies=updated_item.get('offer_agencies'),
         special_offer_agencies=updated_item.get('special_offer_agencies'),
+        # Special Offer 2 - for dashboard scroll
+        special_offer_2_doctors=updated_item.get('special_offer_2_doctors'),
+        special_offer_2_doctors_desc=updated_item.get('special_offer_2_doctors_desc'),
+        special_offer_2_medicals=updated_item.get('special_offer_2_medicals'),
+        special_offer_2_medicals_desc=updated_item.get('special_offer_2_medicals_desc'),
+        special_offer_2_agencies=updated_item.get('special_offer_2_agencies'),
+        special_offer_2_agencies_desc=updated_item.get('special_offer_2_agencies_desc'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item_id}/image" if has_image else None,
         created_at=created_at

@@ -83,6 +83,13 @@ export const Items = () => {
     rate_agencies: '',
     offer_agencies: '',
     special_offer_agencies: '',
+    // Special Offer 2 (for dashboard scroll - near expiry, launch, no movement)
+    special_offer_2_doctors: '',
+    special_offer_2_doctors_desc: '',
+    special_offer_2_medicals: '',
+    special_offer_2_medicals_desc: '',
+    special_offer_2_agencies: '',
+    special_offer_2_agencies_desc: '',
   });
 
   // Image preview state
@@ -140,6 +147,12 @@ export const Items = () => {
       rate_agencies: '',
       offer_agencies: '',
       special_offer_agencies: '',
+      special_offer_2_doctors: '',
+      special_offer_2_doctors_desc: '',
+      special_offer_2_medicals: '',
+      special_offer_2_medicals_desc: '',
+      special_offer_2_agencies: '',
+      special_offer_2_agencies_desc: '',
     });
     setImagePreview(null);
     setNewFieldName('');
@@ -168,6 +181,12 @@ export const Items = () => {
       rate_agencies: item.rate_agencies?.toString() || '',
       offer_agencies: item.offer_agencies || '',
       special_offer_agencies: item.special_offer_agencies || '',
+      special_offer_2_doctors: item.special_offer_2_doctors || '',
+      special_offer_2_doctors_desc: item.special_offer_2_doctors_desc || '',
+      special_offer_2_medicals: item.special_offer_2_medicals || '',
+      special_offer_2_medicals_desc: item.special_offer_2_medicals_desc || '',
+      special_offer_2_agencies: item.special_offer_2_agencies || '',
+      special_offer_2_agencies_desc: item.special_offer_2_agencies_desc || '',
     });
     setImagePreview(item.image_url ? `${API_URL}${item.image_url}` : null);
     setIsEditing(false);
@@ -305,6 +324,13 @@ export const Items = () => {
         rate_agencies: formData.rate_agencies ? parseFloat(formData.rate_agencies) : null,
         offer_agencies: formData.offer_agencies || null,
         special_offer_agencies: formData.special_offer_agencies || null,
+        // Special Offer 2
+        special_offer_2_doctors: formData.special_offer_2_doctors || null,
+        special_offer_2_doctors_desc: formData.special_offer_2_doctors_desc || null,
+        special_offer_2_medicals: formData.special_offer_2_medicals || null,
+        special_offer_2_medicals_desc: formData.special_offer_2_medicals_desc || null,
+        special_offer_2_agencies: formData.special_offer_2_agencies || null,
+        special_offer_2_agencies_desc: formData.special_offer_2_agencies_desc || null,
       };
 
       // Only include image if a new one was uploaded
@@ -904,6 +930,28 @@ export const Items = () => {
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-blue-200">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Special Offer 2 (Dashboard)</Label>
+                        <Input
+                          value={formData.special_offer_2_doctors}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_doctors: e.target.value })}
+                          placeholder="e.g. Near Expiry - 50% off"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-doctors"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Offer 2 Description</Label>
+                        <Input
+                          value={formData.special_offer_2_doctors_desc}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_doctors_desc: e.target.value })}
+                          placeholder="e.g. Expiring Mar 2026, clear stock"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-doctors-desc"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Medicals Pricing */}
@@ -944,6 +992,28 @@ export const Items = () => {
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-purple-200">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Special Offer 2 (Dashboard)</Label>
+                        <Input
+                          value={formData.special_offer_2_medicals}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_medicals: e.target.value })}
+                          placeholder="e.g. Launch Offer - Buy 10 Get 5 Free"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-medicals"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Offer 2 Description</Label>
+                        <Input
+                          value={formData.special_offer_2_medicals_desc}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_medicals_desc: e.target.value })}
+                          placeholder="e.g. New product launch, limited time"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-medicals-desc"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Agencies Pricing */}
@@ -981,6 +1051,28 @@ export const Items = () => {
                           onChange={(e) => setFormData({ ...formData, special_offer_agencies: e.target.value })}
                           placeholder="Enter special offer"
                           disabled={!isFormMode}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-orange-200">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Special Offer 2 (Dashboard)</Label>
+                        <Input
+                          value={formData.special_offer_2_agencies}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_agencies: e.target.value })}
+                          placeholder="e.g. Clearance - 40% off"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-agencies"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-amber-700 font-semibold">Offer 2 Description</Label>
+                        <Input
+                          value={formData.special_offer_2_agencies_desc}
+                          onChange={(e) => setFormData({ ...formData, special_offer_2_agencies_desc: e.target.value })}
+                          placeholder="e.g. No stock movement, must clear"
+                          disabled={!isFormMode}
+                          data-testid="special-offer-2-agencies-desc"
                         />
                       </div>
                     </div>

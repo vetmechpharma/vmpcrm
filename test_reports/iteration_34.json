@@ -1,0 +1,76 @@
+{
+  "summary": "Special Offer 2 feature testing complete. Backend API and frontend UI working correctly. Items with special_offer_2 appear in MR and Customer dashboard carousels. Admin Items page shows Special Offer 2 fields with correct values.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_offers_api.py",
+    "/app/test_reports/pytest/pytest_special_offer_2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: ItemCreate, ItemUpdate, and ItemResponse models were missing special_offer_2 fields - added them to ensure proper API response",
+    "Fixed: get_item, update_item, create_item, and get_items endpoints were not returning special_offer_2 fields - updated all endpoints"
+  ],
+  "updated_files": [
+    "/app/backend/server.py",
+    "/app/backend/tests/test_offers_api.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "Email: admin@vmpcrm.com, Password: admin123",
+    "mr": "Phone: 9876543211, Password: testpass",
+    "customer": "Phone: 9999777766, Password: test123 (role: doctor)"
+  },
+  "seed_data_creation": "Test data already seeded: Paracetamol (ITM-0001) and Amoxicillin (AMX-500) have special_offer_2 values. Vitamin D3 (ITM-0002) does NOT have special_offer_2.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Special Offer 2 feature fully implemented and tested. Backend models (ItemCreate, ItemUpdate, ItemResponse) now include special_offer_2 fields. Frontend uses data-testid attributes: special-offer-2-doctors, special-offer-2-doctors-desc, special-offer-2-medicals, special-offer-2-medicals-desc, special-offer-2-agencies, special-offer-2-agencies-desc. Offers carousel uses data-testid='offers-carousel' and cards use data-testid='offer-card-{id}'.",
+  "features_tested": {
+    "Backend API Tests": {
+      "GET /api/items/offers/active returns items with special_offer_2": "PASS",
+      "GET /api/items/offers/active?role=doctor returns doctor-specific offers": "PASS",
+      "GET /api/items/offers/active?role=medical returns medical-specific offers": "PASS",
+      "Response includes offer and description fields": "PASS",
+      "Items without special_offer_2 are NOT returned": "PASS",
+      "Response includes rate and mrp fields": "PASS",
+      "Response includes image_url field": "PASS",
+      "Doctor and medical offers are different": "PASS",
+      "Default role uses doctor offers": "PASS"
+    },
+    "Admin Items Page UI": {
+      "Special Offer 2 (Dashboard) field visible for Doctor pricing": "PASS",
+      "Offer 2 Description field visible for Doctor pricing": "PASS",
+      "Special Offer 2 (Dashboard) field visible for Medical pricing": "PASS",
+      "Offer 2 Description field visible for Medical pricing": "PASS",
+      "Special Offer 2 (Dashboard) field visible for Agency pricing": "PASS",
+      "Offer 2 Description field visible for Agency pricing": "PASS",
+      "Fields show correct values from database": "PASS",
+      "Existing offer and special_offer fields still present": "PASS"
+    },
+    "MR Dashboard": {
+      "Offers carousel visible": "PASS",
+      "Special Offers heading with product count": "PASS",
+      "Offer cards show item name and code": "PASS",
+      "Offer cards show rate and MRP": "PASS",
+      "Offer badge shows special_offer_2 text": "PASS",
+      "Description text shown below offer badge": "PASS",
+      "MR login works correctly": "PASS"
+    },
+    "Customer Dashboard": {
+      "Offers carousel visible": "PASS",
+      "Role-specific offers shown (doctor role)": "PASS",
+      "Offer cards show correct content": "PASS",
+      "Customer login works correctly": "PASS"
+    }
+  }
+}

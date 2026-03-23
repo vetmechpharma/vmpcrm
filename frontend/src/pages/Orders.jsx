@@ -385,22 +385,25 @@ export const Orders = () => {
       ...item, 
       remove: false, 
       originalQty: item.quantity,
-      editQty: item.quantity  // String to allow "10+5" format
+      originalRate: item.rate || 0,
+      editQty: item.quantity
     })));
     setItemsToMarkPending({});
     setShowEditModal(true);
   };
 
   const handleQuantityChange = (index, newQty) => {
-    // Allow both number and scheme format like "10+5"
     const newItems = [...editItems];
     newItems[index].editQty = newQty;
     newItems[index].quantity = newQty;
-    
-    // Check if empty or zero
     const isZero = newQty === '' || newQty === '0';
     newItems[index].remove = isZero;
-    
+    setEditItems(newItems);
+  };
+
+  const handleEditItemRate = (index, rate) => {
+    const newItems = [...editItems];
+    newItems[index].rate = parseFloat(rate) || 0;
     setEditItems(newItems);
   };
 
@@ -679,6 +682,12 @@ export const Orders = () => {
       newItems[index].quantity = qtyStr;
       newItems[index].outOfStock = false;
     }
+    setNewOrderForm({ ...newOrderForm, items: newItems });
+  };
+
+  const updateOrderItemRate = (index, rate) => {
+    const newItems = [...newOrderForm.items];
+    newItems[index].rate = parseFloat(rate) || 0;
     setNewOrderForm({ ...newOrderForm, items: newItems });
   };
 
@@ -1111,15 +1120,27 @@ export const Orders = () => {
                             <p className="font-medium text-slate-800">{item.item_name}</p>
                             <p className="text-sm text-slate-500">{item.item_code}</p>
                             <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                              <span>Rate: ₹{item.rate}</span>
-                              {item.mrp && <span>MRP: ₹{item.mrp}</span>}
-                              {item.gst && <span>GST: {item.gst}%</span>}
+                              {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
+                              {item.gst > 0 && <span>GST: {item.gst}%</span>}
                             </div>
                           </div>
                           {!item.outOfStock ? (
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <div className="space-y-1">
-                                <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
+                                <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                                <Input
+                                  type="number"
+                                  value={item.rate || ''}
+                                  onChange={(e) => updateOrderItemRate(index, e.target.value)}
+                                  className="w-20 h-9 text-center"
+                                  placeholder="Rate"
+                                  min="0"
+                                  step="0.01"
+                                  data-testid={`new-order-rate-${index}`}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Qty (e.g. 10+5)</Label>
                                 <Input
                                   type="text"
                                   value={item.quantity}
@@ -1604,15 +1625,27 @@ export const Orders = () => {
                       <p className="font-medium text-slate-800">{item.item_name}</p>
                       <p className="text-sm text-slate-500">{item.item_code}</p>
                       <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                        {item.rate && <span>Rate: ₹{item.rate}</span>}
-                        {item.mrp && <span>MRP: ₹{item.mrp}</span>}
-                        {item.gst && <span>GST: {item.gst}%</span>}
+                        {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
+                        {item.gst > 0 && <span>GST: {item.gst}%</span>}
                       </div>
                     </div>
                     {!item.remove ? (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="space-y-1">
-                          <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
+                          <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                          <Input
+                            type="number"
+                            value={item.rate || ''}
+                            onChange={(e) => handleEditItemRate(index, e.target.value)}
+                            className="w-20 h-9 text-center"
+                            placeholder="Rate"
+                            min="0"
+                            step="0.01"
+                            data-testid={`edit-order-rate-${index}`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-slate-500">Qty (e.g. 10+5)</Label>
                           <Input
                             type="text"
                             value={item.editQty || item.quantity}
@@ -1655,11 +1688,14 @@ export const Orders = () => {
               ))}
             </div>
             
-            {(editItems.filter(item => item.remove).length > 0 || editItems.some((item, i) => !item.remove && item.quantity !== item.originalQty)) && (
+            {(editItems.filter(item => item.remove).length > 0 || editItems.some((item, i) => !item.remove && (item.quantity !== item.originalQty || item.rate !== item.originalRate))) && (
               <div className="mt-4 p-3 bg-slate-100 rounded-lg">
                 <p className="text-sm text-slate-600">
                   {editItems.filter(item => !item.remove && item.quantity !== item.originalQty).length > 0 && (
                     <><strong>{editItems.filter(item => !item.remove && item.quantity !== item.originalQty).length}</strong> qty changed. </>
+                  )}
+                  {editItems.filter(item => !item.remove && item.rate !== item.originalRate).length > 0 && (
+                    <><strong>{editItems.filter(item => !item.remove && item.rate !== item.originalRate).length}</strong> rate changed. </>
                   )}
                   {editItems.filter(item => item.remove).length > 0 && (
                     <><strong>{editItems.filter(item => item.remove).length}</strong> item(s) marked out of stock. </>

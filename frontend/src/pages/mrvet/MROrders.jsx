@@ -116,6 +116,12 @@ export default function MROrders() {
     setOrderItems(updated);
   };
 
+  const updateItemRate = (index, rate) => {
+    const updated = [...orderItems];
+    updated[index].rate = parseFloat(rate) || 0;
+    setOrderItems(updated);
+  };
+
   const markOutOfStock = (index) => {
     const updated = [...orderItems];
     updated[index].outOfStock = true;
@@ -350,15 +356,22 @@ export default function MROrders() {
                             <p className="font-medium text-slate-800">{item.item_name}</p>
                             <p className="text-sm text-slate-500">{item.item_code}</p>
                             <div className="flex gap-3 mt-1 text-xs text-slate-600">
-                              {item.rate > 0 && <span>Rate: ₹{item.rate}</span>}
-                              {item.mrp > 0 && <span>MRP: ₹{item.mrp}</span>}
+                              {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
                             </div>
                           </div>
                           {!item.outOfStock ? (
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <div className="space-y-1">
-                                <Label className="text-xs text-slate-500">Qty (e.g. 10 or 10+5)</Label>
+                                <Label className="text-xs text-slate-500">Rate (₹)</Label>
+                                <Input type="number" value={item.rate || ''}
+                                  onChange={e => updateItemRate(index, e.target.value)}
+                                  className="w-20 h-9 text-center" placeholder="Rate"
+                                  min="0" step="0.01"
+                                  data-testid={`mr-order-rate-${index}`} />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-slate-500">Qty (e.g. 10+5)</Label>
                                 <Input type="text" value={item.quantity}
                                   onChange={e => updateItemQty(index, e.target.value)}
                                   className="w-24 h-9 text-center" placeholder="10 or 10+5"

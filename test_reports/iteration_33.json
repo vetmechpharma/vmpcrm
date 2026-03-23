@@ -1,0 +1,70 @@
+{
+  "summary": "Rate/Unit field feature testing complete. All backend APIs and frontend UI components working correctly. Rate field is editable in Admin New Order, Admin Edit Items, and MR New Order forms. MRP is displayed as read-only '(fixed)' text.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rate_field.py",
+    "/app/test_reports/pytest/pytest_rate_field.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_rate_field.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 tests passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "Email: admin@vmpcrm.com, Password: admin123",
+    "mr": "Phone: 9876543211, Password: testpass"
+  },
+  "seed_data_creation": "Test orders created and cleaned up during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Rate/Unit field feature fully implemented and tested. Backend OrderItem model has rate:float field. Frontend uses data-testid attributes: new-order-rate-{index}, edit-order-rate-{index}, mr-order-rate-{index}.",
+  "features_tested": {
+    "Backend API Tests": {
+      "POST /api/orders accepts custom rate per item": "PASS",
+      "POST /api/mr/orders accepts custom rate per item": "PASS",
+      "PUT /api/orders/{id}/items accepts updated rate values": "PASS",
+      "OrderItem model has rate:float field": "PASS",
+      "MRP and rate stored as separate fields": "PASS",
+      "Multiple items with different rates": "PASS",
+      "Zero rate (free sample) supported": "PASS"
+    },
+    "Admin New Order Form UI": {
+      "Rate input field appears next to Qty": "PASS",
+      "Rate input has data-testid='new-order-rate-{index}'": "PASS",
+      "Rate field is editable (type=number, min=0, step=0.01)": "PASS",
+      "MRP shown as read-only text with '(fixed)' indicator": "PASS",
+      "Can change rate value in input": "PASS"
+    },
+    "Admin Edit Items Dialog UI": {
+      "Rate input field appears for each item": "PASS",
+      "Rate input has data-testid='edit-order-rate-{index}'": "PASS",
+      "Rate field is editable": "PASS",
+      "MRP shown as '(fixed)' text": "PASS",
+      "Shows 'rate changed' indicator when modified": "PASS"
+    },
+    "MR New Order Form UI": {
+      "Rate input field appears next to Qty": "PASS",
+      "Rate input has data-testid='mr-order-rate-{index}'": "PASS",
+      "Rate field is editable": "PASS",
+      "MRP shown as '(fixed)' text": "PASS",
+      "Can change rate value and submit order": "PASS"
+    },
+    "Authentication": {
+      "Admin login works": "PASS",
+      "MR login works": "PASS",
+      "Navigation to Orders page works": "PASS"
+    }
+  }
+}

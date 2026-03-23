@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2, BookOpen, Link } from 'lucide-react';
+import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2, BookOpen, Link, Edit, ToggleLeft, ToggleRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export const Settings = () => {
@@ -37,11 +37,29 @@ export const Settings = () => {
     from_name: 'VMP CRM',
   });
 
-  const [whatsappFormData, setWhatsappFormData] = useState({
-    api_url: 'https://api.botmastersender.com/api/v1/',
+  const [whatsappConfigs, setWhatsappConfigs] = useState([]);
+  const [editingConfig, setEditingConfig] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  const defaultWaForm = {
+    name: '',
+    api_url: '',
     auth_token: '',
-    sender_id: '919944472488',
-  });
+    sender_id: '',
+    http_method: 'GET',
+    field_action: 'action',
+    field_sender_id: 'senderId',
+    field_auth_token: 'authToken',
+    field_message: 'messageText',
+    field_receiver: 'receiverId',
+    field_file_url: 'fileUrl',
+    field_file_caption: 'fileCaption',
+    action_send: 'send',
+    action_send_file: 'sendFile',
+    is_active: true
+  };
+
+  const [whatsappFormData, setWhatsappFormData] = useState(defaultWaForm);
 
   useEffect(() => {
     fetchConfigs();
@@ -49,9 +67,10 @@ export const Settings = () => {
 
   const fetchConfigs = async () => {
     try {
-      const [smtpRes, whatsappRes, fallbackRes, catRes] = await Promise.all([
+      const [smtpRes, whatsappRes, waConfigsRes, fallbackRes, catRes] = await Promise.all([
         smtpAPI.getConfig(),
         whatsappAPI.getConfig(),
+        whatsappAPI.getAllConfigs(),
         fallbackOTPAPI.getAll(),
         catalogueAPI.get()
       ]);
@@ -70,11 +89,10 @@ export const Settings = () => {
       
       if (whatsappRes.data) {
         setWhatsappConfig(whatsappRes.data);
-        setWhatsappFormData({
-          api_url: whatsappRes.data.api_url,
-          auth_token: '',
-          sender_id: whatsappRes.data.sender_id,
-        });
+      }
+
+      if (waConfigsRes.data) {
+        setWhatsappConfigs(Array.isArray(waConfigsRes.data) ? waConfigsRes.data : []);
       }
 
       if (fallbackRes.data) {
@@ -119,20 +137,76 @@ export const Settings = () => {
       return;
     }
 
-    if (!whatsappFormData.auth_token) {
+    if (!whatsappFormData.name || !whatsappFormData.api_url || !whatsappFormData.sender_id) {
+      toast.error('Please fill in Name, API URL and Sender ID');
+      return;
+    }
+
+    if (!editingConfig && !whatsappFormData.auth_token) {
       toast.error('Please enter the Auth Token');
       return;
     }
     
     setSaving(true);
     try {
-      await whatsappAPI.saveConfig(whatsappFormData);
-      toast.success('WhatsApp configuration saved successfully');
+      if (editingConfig) {
+        await whatsappAPI.updateConfig(editingConfig, whatsappFormData);
+        toast.success('WhatsApp config updated successfully');
+      } else {
+        await whatsappAPI.saveConfig(whatsappFormData);
+        toast.success('WhatsApp config created successfully');
+      }
+      setEditingConfig(null);
+      setWhatsappFormData(defaultWaForm);
+      setShowAdvanced(false);
       fetchConfigs();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to save WhatsApp configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEditConfig = (config) => {
+    setEditingConfig(config.id);
+    setWhatsappFormData({
+      name: config.name || '',
+      api_url: config.api_url || '',
+      auth_token: '',
+      sender_id: config.sender_id || '',
+      http_method: config.http_method || 'GET',
+      field_action: config.field_action || 'action',
+      field_sender_id: config.field_sender_id || 'senderId',
+      field_auth_token: config.field_auth_token || 'authToken',
+      field_message: config.field_message || 'messageText',
+      field_receiver: config.field_receiver || 'receiverId',
+      field_file_url: config.field_file_url || 'fileUrl',
+      field_file_caption: config.field_file_caption || 'fileCaption',
+      action_send: config.action_send || 'send',
+      action_send_file: config.action_send_file || 'sendFile',
+      is_active: config.is_active !== false
+    });
+    setShowAdvanced(true);
+  };
+
+  const handleDeleteConfig = async (id) => {
+    if (!window.confirm('Delete this WhatsApp config?')) return;
+    try {
+      await whatsappAPI.deleteConfig(id);
+      toast.success('Config deleted');
+      fetchConfigs();
+    } catch (error) {
+      toast.error('Failed to delete config');
+    }
+  };
+
+  const handleActivateConfig = async (id) => {
+    try {
+      await whatsappAPI.activateConfig(id);
+      toast.success('Config activated');
+      fetchConfigs();
+    } catch (error) {
+      toast.error('Failed to activate config');
     }
   };
 
@@ -222,8 +296,8 @@ export const Settings = () => {
               <MessageCircle className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <CardTitle>WhatsApp API Configuration</CardTitle>
-              <CardDescription>Configure WhatsApp messaging for OTP & order notifications</CardDescription>
+              <CardTitle>WhatsApp API Configurations</CardTitle>
+              <CardDescription>Manage multiple WhatsApp API configs. Active config is used for all messages.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -237,23 +311,76 @@ export const Settings = () => {
             </Alert>
           )}
 
-          {whatsappConfig && whatsappConfig.id !== 'default' && (
-            <Alert className="mb-6 bg-emerald-50 border-emerald-200">
-              <CheckCircle className="h-4 w-4 text-emerald-600" />
-              <AlertDescription className="text-emerald-800">
-                WhatsApp API configured: {whatsappConfig.sender_id}
-              </AlertDescription>
-            </Alert>
+          {/* Existing Configs List */}
+          {whatsappConfigs.length > 0 && (
+            <div className="mb-6 space-y-3" data-testid="whatsapp-configs-list">
+              {whatsappConfigs.map((cfg) => (
+                <div key={cfg.id} className={`p-4 rounded-lg border ${cfg.is_active ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{cfg.name || 'Unnamed Config'}</span>
+                        {cfg.is_active && (
+                          <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-medium">Active</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">{cfg.api_url}</p>
+                      <p className="text-xs text-slate-400">Sender: {cfg.sender_id} | Method: {cfg.http_method || 'GET'}</p>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        {!cfg.is_active && (
+                          <Button size="sm" variant="ghost" onClick={() => handleActivateConfig(cfg.id)} title="Set as Active" data-testid={`activate-config-${cfg.id}`}>
+                            <ToggleLeft className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => handleEditConfig(cfg)} title="Edit" data-testid={`edit-config-${cfg.id}`}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleDeleteConfig(cfg.id)} className="text-red-500 hover:text-red-700" title="Delete" data-testid={`delete-config-${cfg.id}`}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
 
-          <form onSubmit={handleSaveWhatsApp} className="space-y-4">
+          {/* Config Form */}
+          <form onSubmit={handleSaveWhatsApp} className="space-y-4" data-testid="whatsapp-config-form">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">
+                {editingConfig ? 'Edit Config' : 'Add New Config'}
+              </h3>
+              {editingConfig && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingConfig(null); setWhatsappFormData(defaultWaForm); setShowAdvanced(false); }}>
+                  Cancel Edit
+                </Button>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="wa_name">Config Name *</Label>
+              <Input
+                id="wa_name"
+                value={whatsappFormData.name}
+                onChange={(e) => setWhatsappFormData({ ...whatsappFormData, name: e.target.value })}
+                placeholder="e.g., BotMasterSender, Twilio, etc."
+                required
+                disabled={!isAdmin}
+                data-testid="whatsapp-name-input"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="api_url">API URL *</Label>
               <Input
                 id="api_url"
                 value={whatsappFormData.api_url}
                 onChange={(e) => setWhatsappFormData({ ...whatsappFormData, api_url: e.target.value })}
-                placeholder="https://api.botmastersender.com/api/v1/"
+                placeholder="https://api.example.com/api/v1/"
                 required
                 disabled={!isAdmin}
                 data-testid="whatsapp-url-input"
@@ -275,26 +402,115 @@ export const Settings = () => {
               <div className="space-y-2">
                 <Label htmlFor="auth_token">
                   <Lock className="w-4 h-4 inline mr-1" />
-                  Auth Token *
+                  Auth Token {editingConfig ? '(leave blank to keep)' : '*'}
                 </Label>
                 <Input
                   id="auth_token"
                   type="password"
                   value={whatsappFormData.auth_token}
                   onChange={(e) => setWhatsappFormData({ ...whatsappFormData, auth_token: e.target.value })}
-                  placeholder="Enter auth token"
-                  required
+                  placeholder={editingConfig ? 'Leave blank to keep existing' : 'Enter auth token'}
+                  required={!editingConfig}
                   disabled={!isAdmin}
                   data-testid="whatsapp-token-input"
                 />
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="http_method">HTTP Method</Label>
+                <select
+                  id="http_method"
+                  className="w-full h-10 px-3 border rounded-md text-sm bg-white"
+                  value={whatsappFormData.http_method}
+                  onChange={(e) => setWhatsappFormData({ ...whatsappFormData, http_method: e.target.value })}
+                  disabled={!isAdmin}
+                  data-testid="whatsapp-method-select"
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={whatsappFormData.is_active}
+                    onChange={(e) => setWhatsappFormData({ ...whatsappFormData, is_active: e.target.checked })}
+                    className="w-4 h-4"
+                    disabled={!isAdmin}
+                  />
+                  <span className="text-sm text-slate-600">Set as Active Config</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Advanced Field Mappings */}
+            <div className="border-t border-slate-200 pt-3">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 font-medium"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                data-testid="toggle-advanced-fields"
+              >
+                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                Advanced: API Field Name Mappings
+              </button>
+              {showAdvanced && (
+                <div className="mt-4 space-y-4 p-4 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500">
+                    Map your API's field names. Change these if your API uses different parameter names.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Action Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_action} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_action: e.target.value })} placeholder="action" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Sender ID Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_sender_id} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_sender_id: e.target.value })} placeholder="senderId" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Auth Token Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_auth_token} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_auth_token: e.target.value })} placeholder="authToken" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Message Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_message} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_message: e.target.value })} placeholder="messageText" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Receiver Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_receiver} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_receiver: e.target.value })} placeholder="receiverId" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">File URL Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_file_url} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_file_url: e.target.value })} placeholder="fileUrl" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">File Caption Field Name</Label>
+                      <Input size="sm" value={whatsappFormData.field_file_caption} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, field_file_caption: e.target.value })} placeholder="fileCaption" disabled={!isAdmin} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-slate-200 pt-3 mt-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Send Text Action Value</Label>
+                      <Input size="sm" value={whatsappFormData.action_send} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, action_send: e.target.value })} placeholder="send" disabled={!isAdmin} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Send File Action Value</Label>
+                      <Input size="sm" value={whatsappFormData.action_send_file} onChange={(e) => setWhatsappFormData({ ...whatsappFormData, action_send_file: e.target.value })} placeholder="sendFile" disabled={!isAdmin} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {isAdmin && (
               <div className="flex items-center gap-3 pt-2">
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving} data-testid="save-whatsapp-config-btn">
                   {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                  Save WhatsApp Config
+                  {editingConfig ? 'Update Config' : 'Add Config'}
                 </Button>
               </div>
             )}
@@ -303,7 +519,7 @@ export const Settings = () => {
           {/* Test WhatsApp */}
           {isAdmin && (
             <div className="mt-6 pt-6 border-t border-slate-200">
-              <Label className="mb-2 block">Test WhatsApp Integration</Label>
+              <Label className="mb-2 block">Test Active WhatsApp Config</Label>
               <div className="flex gap-2">
                 <Input
                   placeholder="Enter mobile number to test"

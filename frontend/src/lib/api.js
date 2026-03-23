@@ -224,7 +224,11 @@ export const expenseCategoriesAPI = {
 // WhatsApp Config APIs
 export const whatsappAPI = {
   getConfig: () => api.get('/whatsapp-config'),
+  getAllConfigs: () => api.get('/whatsapp-configs'),
   saveConfig: (data) => api.post('/whatsapp-config', data),
+  updateConfig: (id, data) => api.put(`/whatsapp-config/${id}`, data),
+  deleteConfig: (id) => api.delete(`/whatsapp-config/${id}`),
+  activateConfig: (id) => api.put(`/whatsapp-config/${id}/activate`),
   testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
 };
 

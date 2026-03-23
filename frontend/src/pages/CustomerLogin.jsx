@@ -18,7 +18,15 @@ const CustomerLogin = () => {
   const [otpStep, setOtpStep] = useState('phone'); // 'phone' or 'verify'
   const [otpTimer, setOtpTimer] = useState(0);
   const [formData, setFormData] = useState({ phone: '', password: '', otp: '' });
+  const [company, setCompany] = useState(null);
   const otpRefs = useRef([]);
+
+  useEffect(() => {
+    // Fetch company settings for branding
+    axios.get(`${API_URL}/api/public/company-settings`).then(res => {
+      setCompany(res.data);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (otpTimer <= 0) return;
@@ -87,10 +95,22 @@ const CustomerLogin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 flex flex-col">
       <div className="px-6 pt-12 pb-8 text-center">
-        <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-600/30">
-          <LogIn className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>Welcome Back</h1>
+        {company?.logo_url ? (
+          <img 
+            src={`${API_URL}${company.logo_url}`} 
+            alt={company?.company_name || 'Company'} 
+            className="w-20 h-20 object-contain mx-auto mb-4 rounded-2xl bg-white p-1 shadow-lg"
+            data-testid="company-logo"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        ) : (
+          <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-600/30">
+            <LogIn className="w-8 h-8 text-white" />
+          </div>
+        )}
+        <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }} data-testid="company-name-heading">
+          {company?.company_name || 'Welcome Back'}
+        </h1>
         <p className="text-slate-400 mt-1">Login to your account</p>
       </div>
 
@@ -230,9 +250,6 @@ const CustomerLogin = () => {
             Don't have an account?{' '}
             <Link to="/register" className="text-emerald-600 font-semibold hover:underline">Register Now</Link>
           </p>
-        </div>
-        <div className="mt-6 text-center">
-          <Link to="/admin/login" className="text-xs text-slate-400 hover:text-slate-600">Admin Login</Link>
         </div>
       </div>
     </div>

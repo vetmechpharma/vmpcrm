@@ -216,20 +216,11 @@ async def send_daily_reminder_summary():
             
             # Send WhatsApp
             try:
-                async with httpx.AsyncClient() as http_client:
-                    params = {
-                        'action': 'send',
-                        'senderId': wa_config['sender_id'],
-                        'authToken': wa_config['auth_token'],
-                        'messageText': message,
-                        'receiverId': admin_phone
-                    }
-                    response = await http_client.get(wa_config['api_url'], params=params, timeout=30)
-                    
-                    if response.status_code == 200:
-                        logger.info(f"Daily reminder sent to admin: {admin_phone}")
-                    else:
-                        logger.error(f"Failed to send daily reminder: {response.text}")
+                response = await send_wa_msg(admin_phone, message, config=wa_config)
+                if response and response.status_code == 200:
+                    logger.info(f"Daily reminder sent to admin: {admin_phone}")
+                else:
+                    logger.error(f"Failed to send daily reminder: {response.text if response else 'no_response'}")
             except Exception as e:
                 logger.error(f"Error sending daily reminder: {str(e)}")
             
@@ -322,26 +313,11 @@ async def send_birthday_anniversary_greetings():
                     # Send WhatsApp
                     if wa_config and contact.get('phone'):
                         try:
-                            async with httpx.AsyncClient() as http_client:
-                                if image_url:
-                                    params = {
-                                        'action': 'send',
-                                        'senderId': wa_config['sender_id'],
-                                        'authToken': wa_config['auth_token'],
-                                        'messageText': message,
-                                        'mediaUrl': image_url,
-                                        'receiverId': contact['phone']
-                                    }
-                                else:
-                                    params = {
-                                        'action': 'send',
-                                        'senderId': wa_config['sender_id'],
-                                        'authToken': wa_config['auth_token'],
-                                        'messageText': message,
-                                        'receiverId': contact['phone']
-                                    }
-                                resp = await http_client.get(wa_config['api_url'], params=params, timeout=30)
-                                logger.info(f"WhatsApp greeting sent to {contact['name']} ({contact['phone']}): {resp.status_code}")
+                            if image_url:
+                                resp = await send_wa_msg(contact['phone'], message, file_url=image_url, file_caption=message, config=wa_config)
+                            else:
+                                resp = await send_wa_msg(contact['phone'], message, config=wa_config)
+                            logger.info(f"WhatsApp greeting sent to {contact['name']} ({contact['phone']}): {resp.status_code if resp else 'no_response'}")
                         except Exception as we:
                             logger.error(f"WhatsApp greeting failed for {contact['name']}: {we}")
 
@@ -1290,14 +1266,40 @@ class OrderResponse(BaseModel):
 # ============== WHATSAPP CONFIG MODELS ==============
 
 class WhatsAppConfigCreate(BaseModel):
+    name: str = "Default Config"
     api_url: str
     auth_token: str
     sender_id: str
+    http_method: str = "GET"
+    # Dynamic field name mappings
+    field_action: str = "action"
+    field_sender_id: str = "senderId"
+    field_auth_token: str = "authToken"
+    field_message: str = "messageText"
+    field_receiver: str = "receiverId"
+    field_file_url: str = "fileUrl"
+    field_file_caption: str = "fileCaption"
+    # Action values
+    action_send: str = "send"
+    action_send_file: str = "sendFile"
+    is_active: bool = True
 
 class WhatsAppConfigResponse(BaseModel):
     id: str
+    name: str = "Default Config"
     api_url: str
     sender_id: str
+    http_method: str = "GET"
+    field_action: Optional[str] = "action"
+    field_sender_id: Optional[str] = "senderId"
+    field_auth_token: Optional[str] = "authToken"
+    field_message: Optional[str] = "messageText"
+    field_receiver: Optional[str] = "receiverId"
+    field_file_url: Optional[str] = "fileUrl"
+    field_file_caption: Optional[str] = "fileCaption"
+    action_send: Optional[str] = "send"
+    action_send_file: Optional[str] = "sendFile"
+    is_active: bool = True
     updated_at: datetime
 
 # ============== TRANSPORT MODELS ==============
@@ -3903,8 +3905,8 @@ async def export_items_pdf(
     subtitle = ' | '.join(subtitle_parts) if subtitle_parts else 'All Items'
     
     # Column config
-    col_widths = [10, 22, 55, 85, 18, 22, 35, 35]
-    headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
+    col_widths = [10, 22, 55, 70, 18, 22, 30, 30, 30]
+    headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer', 'Special Offer 2']
     
     # Single continuous document
     pdf = FPDF(orientation='L', format='A4')
@@ -3949,27 +3951,32 @@ async def export_items_pdf(
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_doctors') or ''
             elif role == 'medical':
                 rate = item.get('rate_medicals') or item.get('rate', 0) or 0
                 offer = item.get('offer_medicals') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_medicals') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_medicals') or ''
             elif role == 'agency':
                 rate = item.get('rate_agencies') or item.get('rate', 0) or 0
                 offer = item.get('offer_agencies') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_agencies') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_agencies') or ''
             else:
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_doctors') or ''
             
             pdf.cell(col_widths[0], row_h, str(serial), 1, 0, 'C', fill)
             pdf.cell(col_widths[1], row_h, str(item.get('item_code', ''))[:12], 1, 0, 'C', fill)
             pdf.cell(col_widths[2], row_h, str(item.get('item_name', ''))[:32], 1, 0, 'L', fill)
-            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:55], 1, 0, 'L', fill)
+            pdf.cell(col_widths[3], row_h, str(item.get('composition', '') or '')[:45], 1, 0, 'L', fill)
             pdf.cell(col_widths[4], row_h, f"{item.get('mrp', 0):.0f}", 1, 0, 'R', fill)
             pdf.cell(col_widths[5], row_h, f"{rate:.0f}" if rate else '', 1, 0, 'R', fill)
-            pdf.cell(col_widths[6], row_h, str(offer)[:20], 1, 0, 'L', fill)
-            pdf.cell(col_widths[7], row_h, str(sp_offer)[:20], 1, 0, 'L', fill)
+            pdf.cell(col_widths[6], row_h, str(offer)[:18], 1, 0, 'L', fill)
+            pdf.cell(col_widths[7], row_h, str(sp_offer)[:18], 1, 0, 'L', fill)
+            pdf.cell(col_widths[8], row_h, str(sp_offer_2)[:18], 1, 0, 'L', fill)
             pdf.ln()
     
     # Total count at end
@@ -4041,7 +4048,7 @@ async def export_items_excel(
     ws = wb.create_sheet(sheet_name)
     row_num = 1
     
-    col_headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer']
+    col_headers = ['S.No', 'Item Code', 'Item Name', 'Composition', 'MRP', 'Rate', 'Offer', 'Special Offer', 'Special Offer 2']
     col_count = len(col_headers)
     serial = 0
     
@@ -4064,29 +4071,33 @@ async def export_items_excel(
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_doctors') or ''
             elif role == 'medical':
                 rate = item.get('rate_medicals') or item.get('rate', 0) or 0
                 offer = item.get('offer_medicals') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_medicals') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_medicals') or ''
             elif role == 'agency':
                 rate = item.get('rate_agencies') or item.get('rate', 0) or 0
                 offer = item.get('offer_agencies') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_agencies') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_agencies') or ''
             else:
                 rate = item.get('rate_doctors') or item.get('rate', 0) or 0
                 offer = item.get('offer_doctors') or item.get('offer', '') or ''
                 sp_offer = item.get('special_offer_doctors') or item.get('special_offer', '') or ''
+                sp_offer_2 = item.get('special_offer_2_doctors') or ''
             
             values = [serial, item.get('item_code', ''), item.get('item_name', ''),
                       item.get('composition', '') or '', item.get('mrp', 0),
-                      rate, offer, sp_offer]
+                      rate, offer, sp_offer, sp_offer_2]
             for col, val in enumerate(values, 1):
                 cell = ws.cell(row=row_num, column=col, value=val)
                 cell.border = thin_border
             row_num += 1
     
     # Column widths
-    for col, w in enumerate([6, 14, 28, 45, 10, 10, 22, 22], 1):
+    for col, w in enumerate([6, 14, 28, 45, 10, 10, 22, 22, 22], 1):
         ws.column_dimensions[chr(64 + col)].width = w
     
     output = BytesIO()
@@ -4230,23 +4241,15 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
         raise HTTPException(status_code=400, detail="Customer phone not available")
     
     wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': wa_mobile
-    }
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(config['api_url'], params=params)
-            if response.status_code == 200:
-                await log_whatsapp_message(wa_mobile, 'payment_receipt', message, 'success', recipient_name=payment.get('customer_name', ''))
-                return {"message": "Receipt sent via WhatsApp", "balance": balance}
-            else:
-                logger.error(f"WhatsApp receipt failed: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code}")
+        response = await send_wa_msg(wa_mobile, message, config=config)
+        if response and response.status_code == 200:
+            await log_whatsapp_message(wa_mobile, 'payment_receipt', message, 'success', recipient_name=payment.get('customer_name', ''))
+            return {"message": "Receipt sent via WhatsApp", "balance": balance}
+        else:
+            logger.error(f"WhatsApp receipt failed: {response.status_code if response else 'no_response'}")
+            raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code if response else 'no_response'}")
     except HTTPException:
         raise
     except Exception as e:
@@ -4470,23 +4473,15 @@ async def send_ledger_whatsapp(
         raise HTTPException(status_code=400, detail="WhatsApp not configured")
     
     wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': wa_mobile
-    }
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(config['api_url'], params=params)
-            if response.status_code == 200:
-                await log_whatsapp_message(wa_mobile, 'ledger_statement', message, 'success', recipient_name=cust['name'])
-                return {"message": "Ledger sent via WhatsApp", "balance": ledger['closing_balance']}
-            else:
-                logger.error(f"WhatsApp ledger failed: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code}")
+        response = await send_wa_msg(wa_mobile, message, config=config)
+        if response and response.status_code == 200:
+            await log_whatsapp_message(wa_mobile, 'ledger_statement', message, 'success', recipient_name=cust['name'])
+            return {"message": "Ledger sent via WhatsApp", "balance": ledger['closing_balance']}
+        else:
+            logger.error(f"WhatsApp ledger failed: {response.status_code if response else 'no_response'}")
+            raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code if response else 'no_response'}")
     except HTTPException:
         raise
     except Exception as e:
@@ -4571,9 +4566,9 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
     headers = [
         "Item Code*", "Item Name*", "Main Categories", "Subcategories", 
         "Composition", "MRP*", "GST %",
-        "Rate Doctors", "Offer Doctors", "Special Offer Doctors",
-        "Rate Medicals", "Offer Medicals", "Special Offer Medicals",
-        "Rate Agencies", "Offer Agencies", "Special Offer Agencies"
+        "Rate Doctors", "Offer Doctors", "Special Offer Doctors", "Special Offer 2 Doctors",
+        "Rate Medicals", "Offer Medicals", "Special Offer Medicals", "Special Offer 2 Medicals",
+        "Rate Agencies", "Offer Agencies", "Special Offer Agencies", "Special Offer 2 Agencies"
     ]
     
     # Style for headers
@@ -4594,9 +4589,9 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
     
     # Add sample data rows
     sample_data = [
-        ["ITM-0001", "Paracetamol 500mg", "Large Animals, Poultry", "Injection, Powder", "Paracetamol IP 500mg", "50.00", "12", "35.00", "Buy 10 Get 1 Free", "", "32.00", "", "", "30.00", "", ""],
-        ["ITM-0002", "Vitamin D3 1000IU", "Pets", "Liquids", "Cholecalciferol 1000IU", "250.00", "5", "180.00", "", "", "175.00", "", "", "170.00", "", ""],
-        ["", "Sample Item 3", "Large Animals", "Bolus", "Sample composition", "100.00", "18", "75.00", "", "", "70.00", "", "", "65.00", "", ""],
+        ["ITM-0001", "Paracetamol 500mg", "Large Animals, Poultry", "Injection, Powder", "Paracetamol IP 500mg", "50.00", "12", "35.00", "Buy 10 Get 1 Free", "", "", "32.00", "", "", "", "30.00", "", "", ""],
+        ["ITM-0002", "Vitamin D3 1000IU", "Pets", "Liquids", "Cholecalciferol 1000IU", "250.00", "5", "180.00", "", "", "", "175.00", "", "", "", "170.00", "", "", ""],
+        ["", "Sample Item 3", "Large Animals", "Bolus", "Sample composition", "100.00", "18", "75.00", "", "", "", "70.00", "", "", "", "65.00", "", "", ""],
     ]
     
     for row_num, row_data in enumerate(sample_data, 2):
@@ -4619,9 +4614,9 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
         ["- Subcategories: Comma-separated (e.g., 'Injection, Powder, Liquids')"],
         ["- Composition: Product composition text"],
         ["- GST %: GST percentage (number, default 0)"],
-        ["- Rate Doctors / Offer Doctors / Special Offer Doctors: Pricing for Doctor customers"],
-        ["- Rate Medicals / Offer Medicals / Special Offer Medicals: Pricing for Medical Store customers"],
-        ["- Rate Agencies / Offer Agencies / Special Offer Agencies: Pricing for Agency customers"],
+        ["- Rate Doctors / Offer Doctors / Special Offer Doctors / Special Offer 2 Doctors: Pricing for Doctor customers"],
+        ["- Rate Medicals / Offer Medicals / Special Offer Medicals / Special Offer 2 Medicals: Pricing for Medical Store customers"],
+        ["- Rate Agencies / Offer Agencies / Special Offer Agencies / Special Offer 2 Agencies: Pricing for Agency customers"],
         [""],
         ["Notes:"],
         ["- Images can be added manually after import"],
@@ -4636,7 +4631,7 @@ async def get_import_template(current_user: dict = Depends(get_current_user)):
             cell.font = Font(bold=True, size=14)
     
     # Adjust column widths
-    column_widths = [15, 25, 30, 30, 35, 12, 10, 14, 20, 20, 14, 20, 20, 14, 20, 20]
+    column_widths = [15, 25, 30, 30, 35, 12, 10, 14, 20, 20, 20, 14, 20, 20, 20, 14, 20, 20, 20]
     for i, width in enumerate(column_widths, 1):
         col_letter = chr(64 + i) if i <= 26 else chr(64 + (i - 1) // 26) + chr(64 + (i - 1) % 26 + 1)
         ws.column_dimensions[col_letter].width = width
@@ -4677,12 +4672,15 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
             'Rate Doctors': 'rate_doctors',
             'Offer Doctors': 'offer_doctors',
             'Special Offer Doctors': 'special_offer_doctors',
+            'Special Offer 2 Doctors': 'special_offer_2_doctors',
             'Rate Medicals': 'rate_medicals',
             'Offer Medicals': 'offer_medicals',
             'Special Offer Medicals': 'special_offer_medicals',
+            'Special Offer 2 Medicals': 'special_offer_2_medicals',
             'Rate Agencies': 'rate_agencies',
             'Offer Agencies': 'offer_agencies',
             'Special Offer Agencies': 'special_offer_agencies',
+            'Special Offer 2 Agencies': 'special_offer_2_agencies',
             # Legacy support
             'Rate': 'rate',
             'Offer': 'offer',
@@ -4749,6 +4747,11 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                 offer_agencies = str(row.get('offer_agencies', '')) if pd.notna(row.get('offer_agencies')) else ''
                 special_offer_agencies = str(row.get('special_offer_agencies', '')) if pd.notna(row.get('special_offer_agencies')) else ''
                 
+                # Parse Special Offer 2 fields
+                special_offer_2_doctors = str(row.get('special_offer_2_doctors', '')) if pd.notna(row.get('special_offer_2_doctors')) else ''
+                special_offer_2_medicals = str(row.get('special_offer_2_medicals', '')) if pd.notna(row.get('special_offer_2_medicals')) else ''
+                special_offer_2_agencies = str(row.get('special_offer_2_agencies', '')) if pd.notna(row.get('special_offer_2_agencies')) else ''
+                
                 # Legacy fallback: if old Rate/Offer/Special Offer columns exist, use as defaults
                 legacy_rate = float(row.get('rate', 0)) if pd.notna(row.get('rate')) else 0
                 legacy_offer = str(row.get('offer', '')) if pd.notna(row.get('offer')) else ''
@@ -4785,12 +4788,15 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                         'rate_doctors': rate_doctors,
                         'offer_doctors': offer_doctors or legacy_offer,
                         'special_offer_doctors': special_offer_doctors or legacy_special_offer,
+                        'special_offer_2_doctors': special_offer_2_doctors,
                         'rate_medicals': rate_medicals,
                         'offer_medicals': offer_medicals or legacy_offer,
                         'special_offer_medicals': special_offer_medicals or legacy_special_offer,
+                        'special_offer_2_medicals': special_offer_2_medicals,
                         'rate_agencies': rate_agencies,
                         'offer_agencies': offer_agencies or legacy_offer,
                         'special_offer_agencies': special_offer_agencies or legacy_special_offer,
+                        'special_offer_2_agencies': special_offer_2_agencies,
                         'updated_at': now.isoformat()
                     }
                     await db.items.update_one({'item_code': item_code}, {'$set': update_data})
@@ -4816,12 +4822,15 @@ async def bulk_import_items(file: UploadFile = File(...), current_user: dict = D
                         'rate_doctors': rate_doctors,
                         'offer_doctors': offer_doctors or legacy_offer,
                         'special_offer_doctors': special_offer_doctors or legacy_special_offer,
+                        'special_offer_2_doctors': special_offer_2_doctors,
                         'rate_medicals': rate_medicals,
                         'offer_medicals': offer_medicals or legacy_offer,
                         'special_offer_medicals': special_offer_medicals or legacy_special_offer,
+                        'special_offer_2_medicals': special_offer_2_medicals,
                         'rate_agencies': rate_agencies,
                         'offer_agencies': offer_agencies or legacy_offer,
                         'special_offer_agencies': special_offer_agencies or legacy_special_offer,
+                        'special_offer_2_agencies': special_offer_2_agencies,
                         'has_image': default_image is not None,
                         'image_webp': default_image,
                         'custom_fields': [],
@@ -5207,22 +5216,13 @@ async def customer_send_otp(request: CustomerOTPRequest):
             # Ensure mobile has 91 prefix for India
             wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
             
-            params = {
-                'action': 'send',
-                'senderId': config['sender_id'],
-                'authToken': config['auth_token'],
-                'messageText': message,
-                'receiverId': wa_mobile
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(config['api_url'], params=params)
-                if response.status_code == 200:
-                    await log_whatsapp_message(wa_mobile, 'otp', message, 'success')
-                    logger.info(f"OTP sent successfully to {wa_mobile}")
-                else:
-                    await log_whatsapp_message(wa_mobile, 'otp', message, 'failed', error_message=f"Status: {response.status_code}")
-                    logger.error(f"WhatsApp OTP failed: {response.status_code} - {response.text}")
+            response = await send_wa_msg(wa_mobile, message, config=config)
+            if response and response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'otp', message, 'success')
+                logger.info(f"OTP sent successfully to {wa_mobile}")
+            else:
+                await log_whatsapp_message(wa_mobile, 'otp', message, 'failed', error_message=f"Status: {response.status_code if response else 'no_response'}")
+                logger.error(f"WhatsApp OTP failed: {response.status_code if response else 'no_response'}")
         except Exception as e:
             logger.error(f"WhatsApp OTP error: {str(e)}")
             await log_whatsapp_message(clean_phone, 'otp', f"OTP: {otp}", 'failed', error_message=str(e))
@@ -6192,20 +6192,11 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
             # Ensure mobile has 91 prefix for India
             wa_mobile = customer['phone'] if customer['phone'].startswith('91') else f"91{customer['phone'][-10:]}"
             
-            params = {
-                'action': 'send',
-                'senderId': config['sender_id'],
-                'authToken': config['auth_token'],
-                'messageText': message,
-                'receiverId': wa_mobile
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(config['api_url'], params=params)
-                if response.status_code == 200:
-                    await log_whatsapp_message(wa_mobile, 'account_status', message, 'success', recipient_name=customer['name'])
-                else:
-                    logger.error(f"WhatsApp notification failed: {response.status_code}")
+            response = await send_wa_msg(wa_mobile, message, config=config)
+            if response and response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'account_status', message, 'success', recipient_name=customer['name'])
+            else:
+                logger.error(f"WhatsApp notification failed: {response.status_code if response else 'no_response'}")
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     
@@ -6362,22 +6353,13 @@ async def send_new_password_to_customer(customer_id: str, current_user: dict = D
             
             wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
             
-            params = {
-                'action': 'send',
-                'senderId': config['sender_id'],
-                'authToken': config['auth_token'],
-                'messageText': message,
-                'receiverId': wa_mobile
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(config['api_url'], params=params)
-                if response.status_code == 200:
-                    await log_whatsapp_message(wa_mobile, 'password_reset', message, 'success', recipient_name=customer.get('name'))
-                    return {"message": "New password sent via WhatsApp successfully", "password_sent": True}
-                else:
-                    logger.error(f"WhatsApp password send failed: {response.status_code}")
-                    return {"message": "Password updated but WhatsApp delivery failed. Please share password manually.", "password": new_password, "password_sent": False}
+            response = await send_wa_msg(wa_mobile, message, config=config)
+            if response and response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'password_reset', message, 'success', recipient_name=customer.get('name'))
+                return {"message": "New password sent via WhatsApp successfully", "password_sent": True}
+            else:
+                logger.error(f"WhatsApp password send failed: {response.status_code if response else 'no_response'}")
+                return {"message": "Password updated but WhatsApp delivery failed. Please share password manually.", "password": new_password, "password_sent": False}
         except Exception as e:
             logger.error(f"WhatsApp password send error: {str(e)}")
             return {"message": "Password updated but WhatsApp delivery failed. Please share password manually.", "password": new_password, "password_sent": False}
@@ -6537,21 +6519,12 @@ async def update_ticket_status(ticket_id: str, status: str, current_user: dict =
                 # Send WhatsApp
                 wa_mobile = ticket['customer_phone'] if ticket['customer_phone'].startswith('91') else f"91{ticket['customer_phone'][-10:]}"
                 
-                params = {
-                    'action': 'send',
-                    'senderId': config['sender_id'],
-                    'authToken': config['auth_token'],
-                    'messageText': message,
-                    'receiverId': wa_mobile
-                }
-                
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    response = await client.get(config['api_url'], params=params)
-                    if response.status_code == 200:
-                        await log_whatsapp_message(wa_mobile, 'ticket_status', message, 'success', recipient_name=customer_name)
-                        logger.info(f"Ticket status notification sent to {wa_mobile}")
-                    else:
-                        logger.error(f"WhatsApp notification failed: {response.status_code}")
+                response = await send_wa_msg(wa_mobile, message, config=config)
+                if response and response.status_code == 200:
+                    await log_whatsapp_message(wa_mobile, 'ticket_status', message, 'success', recipient_name=customer_name)
+                    logger.info(f"Ticket status notification sent to {wa_mobile}")
+                else:
+                    logger.error(f"WhatsApp notification failed: {response.status_code if response else 'no_response'}")
                         
             except Exception as e:
                 logger.error(f"WhatsApp notification error: {str(e)}")
@@ -6598,19 +6571,10 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
             # Ensure mobile has 91 prefix for India
             wa_mobile = ticket['customer_phone'] if ticket['customer_phone'].startswith('91') else f"91{ticket['customer_phone'][-10:]}"
             
-            params = {
-                'action': 'send',
-                'senderId': config['sender_id'],
-                'authToken': config['auth_token'],
-                'messageText': message,
-                'receiverId': wa_mobile
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(config['api_url'], params=params)
-                if response.status_code == 200:
-                    await log_whatsapp_message(wa_mobile, 'ticket_reply', message, 'success', recipient_name=customer_name)
-                    logger.info(f"Ticket reply notification sent to {wa_mobile}")
+            response = await send_wa_msg(wa_mobile, message, config=config)
+            if response and response.status_code == 200:
+                await log_whatsapp_message(wa_mobile, 'ticket_reply', message, 'success', recipient_name=customer_name)
+                logger.info(f"Ticket reply notification sent to {wa_mobile}")
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     
@@ -6700,16 +6664,106 @@ async def delete_ticket(ticket_id: str, current_user: dict = Depends(get_current
 # ============== OTP & ORDER ROUTES ==============
 
 async def get_whatsapp_config():
-    """Get WhatsApp config from database"""
-    config = await db.whatsapp_config.find_one({}, {'_id': 0})
+    """Get active WhatsApp config from database with field mapping defaults"""
+    config = await db.whatsapp_config.find_one({'is_active': True}, {'_id': 0})
+    if not config:
+        # Fallback: try any config
+        config = await db.whatsapp_config.find_one({}, {'_id': 0})
     if not config:
         # Default config
         return {
             'api_url': 'https://api.botmastersender.com/api/v1/',
             'auth_token': '1d97fa5b-b9f8-4b1c-9479-cae962594d5f',
-            'sender_id': '919944472488'
+            'sender_id': '919944472488',
+            'http_method': 'GET',
+            'field_action': 'action',
+            'field_sender_id': 'senderId',
+            'field_auth_token': 'authToken',
+            'field_message': 'messageText',
+            'field_receiver': 'receiverId',
+            'field_file_url': 'fileUrl',
+            'field_file_caption': 'fileCaption',
+            'action_send': 'send',
+            'action_send_file': 'sendFile',
         }
+    # Ensure field mapping defaults
+    defaults = {
+        'http_method': 'GET',
+        'field_action': 'action',
+        'field_sender_id': 'senderId',
+        'field_auth_token': 'authToken',
+        'field_message': 'messageText',
+        'field_receiver': 'receiverId',
+        'field_file_url': 'fileUrl',
+        'field_file_caption': 'fileCaption',
+        'action_send': 'send',
+        'action_send_file': 'sendFile',
+    }
+    for k, v in defaults.items():
+        if k not in config or not config[k]:
+            config[k] = v
     return config
+
+
+def build_wa_params(config, message=None, receiver=None, file_url=None, file_caption=None):
+    """Build WhatsApp API params dynamically from config field mappings"""
+    params = {}
+    fa = config.get('field_action', 'action')
+    if fa:
+        if file_url:
+            params[fa] = config.get('action_send_file', 'sendFile')
+        else:
+            params[fa] = config.get('action_send', 'send')
+    fsi = config.get('field_sender_id', 'senderId')
+    if fsi:
+        params[fsi] = config.get('sender_id', '')
+    fat = config.get('field_auth_token', 'authToken')
+    if fat:
+        params[fat] = config.get('auth_token', '')
+    fr = config.get('field_receiver', 'receiverId')
+    if fr:
+        params[fr] = receiver
+    if file_url:
+        ffu = config.get('field_file_url', 'fileUrl')
+        if ffu:
+            params[ffu] = file_url
+        ffc = config.get('field_file_caption', 'fileCaption')
+        if ffc:
+            params[ffc] = file_caption or message
+    else:
+        fm = config.get('field_message', 'messageText')
+        if fm:
+            params[fm] = message
+    return params
+
+
+async def execute_wa_request(config, params):
+    """Execute WhatsApp API request using config method (GET or POST)"""
+    method = config.get('http_method', 'GET').upper()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        if method == 'POST':
+            response = await client.post(config['api_url'], json=params)
+        else:
+            response = await client.get(config['api_url'], params=params)
+        return response
+
+
+async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_caption: str = None, config=None):
+    """Universal WhatsApp message sender using dynamic config"""
+    if not config:
+        config = await get_whatsapp_config()
+    if not config or not config.get('api_url'):
+        return None
+    clean_receiver = ''.join(filter(str.isdigit, str(receiver)))
+    if not clean_receiver.startswith('91'):
+        clean_receiver = f"91{clean_receiver[-10:]}"
+    params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
+    try:
+        response = await execute_wa_request(config, params)
+        return response
+    except Exception as e:
+        logger.error(f"WhatsApp send error: {e}")
+        return None
 
 async def log_whatsapp_message(
     recipient_phone: str,
@@ -6751,21 +6805,17 @@ async def send_whatsapp_otp(mobile: str, otp: str):
     
     message = f"Your VMP CRM verification code is: {otp}. Valid for 5 minutes."
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
+        response = await send_wa_msg(clean_mobile, message, config=config)
+        if response and response.status_code == 200:
             logger.info(f"WhatsApp OTP sent to {clean_mobile}: {response.status_code}")
-            status = 'success' if response.status_code == 200 else 'failed'
-            await log_whatsapp_message(clean_mobile, 'otp', message, status)
-            return response.status_code == 200
+            await log_whatsapp_message(clean_mobile, 'otp', message, 'success')
+            return True
+        else:
+            status_code = response.status_code if response else 'no_response'
+            logger.error(f"WhatsApp OTP failed: {status_code}")
+            await log_whatsapp_message(clean_mobile, 'otp', message, 'failed', error_message=f"Status {status_code}")
+            return True  # Return True to allow flow to continue even if WhatsApp fails
     except Exception as e:
         logger.error(f"WhatsApp OTP error: {str(e)}")
         await log_whatsapp_message(clean_mobile, 'otp', message, 'failed', error_message=str(e))
@@ -7224,75 +7274,56 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Check if campaign has uploaded image
                     if campaign.get('has_image', False):
-                        image_url_to_send = f"https://mrvet-offline-test.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                        image_url_to_send = f"https://mr-reports-admin.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"https://mrvet-offline-test.preview.emergentagent.com/api/items/{item['id']}/image"
+                                image_url_to_send = f"https://mr-reports-admin.preview.emergentagent.com/api/items/{item['id']}/image"
                                 break
                     
                     if image_url_to_send:
-                        # Send image with caption
-                        # BotMasterSender uses 'sendFile' action for media
-                        params = {
-                            'action': 'sendFile',
-                            'senderId': config['sender_id'],
-                            'authToken': config['auth_token'],
-                            'fileUrl': image_url_to_send,
-                            'fileCaption': message,
-                            'receiverId': wa_mobile
-                        }
+                        response = await send_wa_msg(wa_mobile, message, file_url=image_url_to_send, file_caption=message, config=config)
                     else:
-                        # Send text-only message
-                        params = {
-                            'action': 'send',
-                            'senderId': config['sender_id'],
-                            'authToken': config['auth_token'],
-                            'messageText': message,
-                            'receiverId': wa_mobile
-                        }
+                        response = await send_wa_msg(wa_mobile, message, config=config)
                     
-                    async with httpx.AsyncClient(timeout=30.0) as client:
-                        response = await client.get(config['api_url'], params=params)
+                    if response and response.status_code == 200:
+                        await db.campaign_logs.update_one(
+                            {'id': log['id']},
+                            {'$set': {
+                                'status': 'sent',
+                                'sent_at': datetime.now(timezone.utc).isoformat(),
+                                'recipient_name': recipient.get('name'),
+                                'recipient_phone': wa_mobile,
+                                'recipient_type': recipient.get('type')
+                            }}
+                        )
+                        await db.marketing_campaigns.update_one(
+                            {'id': campaign_id},
+                            {'$inc': {'sent_count': 1, 'pending_count': -1}}
+                        )
                         
-                        if response.status_code == 200:
-                            await db.campaign_logs.update_one(
-                                {'id': log['id']},
-                                {'$set': {
-                                    'status': 'sent',
-                                    'sent_at': datetime.now(timezone.utc).isoformat(),
-                                    'recipient_name': recipient.get('name'),
-                                    'recipient_phone': wa_mobile,
-                                    'recipient_type': recipient.get('type')
-                                }}
-                            )
-                            await db.marketing_campaigns.update_one(
-                                {'id': campaign_id},
-                                {'$inc': {'sent_count': 1, 'pending_count': -1}}
-                            )
-                            
-                            # Log to WhatsApp logs
-                            await log_whatsapp_message(
-                                wa_mobile, 'marketing', message[:200], 'success',
-                                recipient_name=recipient.get('name')
-                            )
-                        else:
-                            error_msg = f"Status {response.status_code}"
-                            await db.campaign_logs.update_one(
-                                {'id': log['id']},
-                                {'$set': {
-                                    'status': 'failed',
-                                    'error_message': error_msg,
-                                    'recipient_name': recipient.get('name'),
-                                    'recipient_phone': wa_mobile,
-                                    'recipient_type': recipient.get('type')
-                                }}
-                            )
-                            await db.marketing_campaigns.update_one(
-                                {'id': campaign_id},
-                                {'$inc': {'failed_count': 1, 'pending_count': -1}}
-                            )
+                        # Log to WhatsApp logs
+                        await log_whatsapp_message(
+                            wa_mobile, 'marketing', message[:200], 'success',
+                            recipient_name=recipient.get('name')
+                        )
+                    else:
+                        error_msg = f"Status {response.status_code if response else 'no_response'}"
+                        await db.campaign_logs.update_one(
+                            {'id': log['id']},
+                            {'$set': {
+                                'status': 'failed',
+                                'error_message': error_msg,
+                                'recipient_name': recipient.get('name'),
+                                'recipient_phone': wa_mobile,
+                                'recipient_type': recipient.get('type')
+                            }}
+                        )
+                        await db.marketing_campaigns.update_one(
+                            {'id': campaign_id},
+                            {'$inc': {'failed_count': 1, 'pending_count': -1}}
+                        )
                     
                     # Small delay between messages in same batch
                     await asyncio.sleep(2)
@@ -7409,17 +7440,9 @@ Regards,
 *{company_name}*
 📞 +{company_phone}"""
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
+        response = await send_wa_msg(clean_mobile, message, config=config)
+        if response:
             logger.info(f"Order confirmation sent to {clean_mobile}")
             status = 'success' if response.status_code == 200 else 'failed'
             await log_whatsapp_message(clean_mobile, 'order_confirmation', message, status, recipient_name=doctor_name)
@@ -7793,17 +7816,9 @@ Regards,
     if not message:
         return
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
+        response = await send_wa_msg(clean_mobile, message, config=config)
+        if response:
             logger.info(f"Order status update ({new_status}) sent to {clean_mobile}")
             status = 'success' if response.status_code == 200 else 'failed'
             await log_whatsapp_message(clean_mobile, f'status_{new_status}', message, status, recipient_name=doctor_name)
@@ -7881,17 +7896,9 @@ async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
 
 *Payment:* {payment_text}"""
             
-            params = {
-                'action': 'send',
-                'senderId': config['sender_id'],
-                'authToken': config['auth_token'],
-                'messageText': transporter_message,
-                'receiverId': clean_transporter_mobile
-            }
-            
             try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(config['api_url'], params=params, timeout=30)
+                response = await send_wa_msg(clean_transporter_mobile, transporter_message, config=config)
+                if response:
                     logger.info(f"Ready to despatch notification sent to transporter {clean_transporter_mobile}")
                     status = 'success' if response.status_code == 200 else 'failed'
                     await log_whatsapp_message(clean_transporter_mobile, 'ready_to_despatch_transporter', transporter_message, status, recipient_name=transport_name)
@@ -7946,17 +7953,9 @@ Regards,
 *{company_name}*
 📞 +{company_phone}"""
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
+        response = await send_wa_msg(clean_mobile, message, config=config)
+        if response:
             logger.info(f"Out of stock notification sent to {clean_mobile} for order {order_number}")
             status = 'success' if response.status_code == 200 else 'failed'
             await log_whatsapp_message(clean_mobile, 'out_of_stock', message, status, recipient_name=doctor_name)
@@ -7999,21 +7998,14 @@ Regards,
 *{company_name}*
 📞 +{company_phone}"""
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
+        response = await send_wa_msg(clean_mobile, message, config=config)
+        if response:
             logger.info(f"Stock arrived notification sent to {clean_mobile} for item {item_code}")
             status = 'success' if response.status_code == 200 else 'failed'
             await log_whatsapp_message(clean_mobile, 'stock_arrived', message, status, recipient_name=doctor_name)
             return response.status_code == 200
+        return False
     except Exception as e:
         logger.error(f"WhatsApp stock arrived notification error: {str(e)}")
         await log_whatsapp_message(clean_mobile, 'stock_arrived', message, 'failed', recipient_name=doctor_name, error_message=str(e))
@@ -9935,27 +9927,13 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
     
     # Send WhatsApp
     try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            params = {
-                'action': 'send',
-                'senderId': wa_config['sender_id'],
-                'authToken': wa_config['auth_token'],
-                'messageText': message,
-                'receiverId': admin_phone
-            }
-            response = await client.get(
-                wa_config['api_url'],
-                params=params,
-                timeout=30.0
-            )
-            
-            if response.status_code == 200:
-                logger.info(f"Reminder summary sent to admin: {admin_phone}")
-                return {"message": "Reminder summary sent successfully", "sent": True, "phone": admin_phone}
-            else:
-                logger.error(f"Failed to send reminder summary: {response.text}")
-                raise HTTPException(status_code=500, detail="Failed to send WhatsApp message")
+        response = await send_wa_msg(admin_phone, message, config=wa_config)
+        if response and response.status_code == 200:
+            logger.info(f"Reminder summary sent to admin: {admin_phone}")
+            return {"message": "Reminder summary sent successfully", "sent": True, "phone": admin_phone}
+        else:
+            logger.error(f"Failed to send reminder summary: {response.text if response else 'no_response'}")
+            raise HTTPException(status_code=500, detail="Failed to send WhatsApp message")
     except HTTPException:
         raise
     except Exception as e:
@@ -9964,86 +9942,157 @@ async def send_whatsapp_reminder_summary(current_user: dict = Depends(get_curren
 
 # ============== WHATSAPP CONFIG ROUTES ==============
 
-@api_router.post("/whatsapp-config", response_model=WhatsAppConfigResponse)
-async def save_whatsapp_config(config: WhatsAppConfigCreate, current_user: dict = Depends(get_current_user)):
+@api_router.post("/whatsapp-config")
+async def save_whatsapp_config_route(config: WhatsAppConfigCreate, current_user: dict = Depends(get_current_user)):
     if current_user['role'] != 'admin':
         raise HTTPException(status_code=403, detail="Only admins can configure WhatsApp settings")
     
     config_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     
-    # Delete existing config (only one allowed)
-    await db.whatsapp_config.delete_many({})
+    # If this config should be active, deactivate all others
+    if config.is_active:
+        await db.whatsapp_config.update_many({}, {'$set': {'is_active': False}})
     
     config_doc = {
         'id': config_id,
+        'name': config.name,
         'api_url': config.api_url,
         'auth_token': config.auth_token,
         'sender_id': config.sender_id,
+        'http_method': config.http_method,
+        'field_action': config.field_action,
+        'field_sender_id': config.field_sender_id,
+        'field_auth_token': config.field_auth_token,
+        'field_message': config.field_message,
+        'field_receiver': config.field_receiver,
+        'field_file_url': config.field_file_url,
+        'field_file_caption': config.field_file_caption,
+        'action_send': config.action_send,
+        'action_send_file': config.action_send_file,
+        'is_active': config.is_active,
         'updated_at': now.isoformat()
     }
     
     await db.whatsapp_config.insert_one(config_doc)
-    
-    return WhatsAppConfigResponse(
-        id=config_id,
-        api_url=config.api_url,
-        sender_id=config.sender_id,
-        updated_at=now
-    )
+    config_doc.pop('_id', None)
+    config_doc.pop('auth_token', None)
+    config_doc['updated_at'] = now
+    return config_doc
 
-@api_router.get("/whatsapp-config", response_model=Optional[WhatsAppConfigResponse])
+@api_router.get("/whatsapp-configs")
+async def get_all_whatsapp_configs(current_user: dict = Depends(get_current_user)):
+    """Get all WhatsApp configs (without auth tokens)"""
+    configs = await db.whatsapp_config.find({}, {'_id': 0, 'auth_token': 0}).sort('updated_at', -1).to_list(50)
+    for c in configs:
+        if isinstance(c.get('updated_at'), str):
+            c['updated_at'] = datetime.fromisoformat(c['updated_at'].replace('Z', '+00:00')).isoformat()
+    return configs
+
+@api_router.get("/whatsapp-config")
 async def get_whatsapp_config_route(current_user: dict = Depends(get_current_user)):
-    config = await db.whatsapp_config.find_one({}, {'_id': 0, 'auth_token': 0})
+    """Get active WhatsApp config (backward compatible)"""
+    config = await db.whatsapp_config.find_one({'is_active': True}, {'_id': 0, 'auth_token': 0})
     if not config:
-        # Return default config info (without token)
-        return WhatsAppConfigResponse(
-            id='default',
-            api_url='https://api.botmastersender.com/api/v1/',
-            sender_id='919944472488',
-            updated_at=datetime.now(timezone.utc)
-        )
+        config = await db.whatsapp_config.find_one({}, {'_id': 0, 'auth_token': 0})
+    if not config:
+        return {
+            'id': 'default',
+            'name': 'Default Config',
+            'api_url': 'https://api.botmastersender.com/api/v1/',
+            'sender_id': '919944472488',
+            'http_method': 'GET',
+            'field_action': 'action',
+            'field_sender_id': 'senderId',
+            'field_auth_token': 'authToken',
+            'field_message': 'messageText',
+            'field_receiver': 'receiverId',
+            'field_file_url': 'fileUrl',
+            'field_file_caption': 'fileCaption',
+            'action_send': 'send',
+            'action_send_file': 'sendFile',
+            'is_active': True,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }
+    if isinstance(config.get('updated_at'), str):
+        config['updated_at'] = datetime.fromisoformat(config['updated_at'].replace('Z', '+00:00')).isoformat()
+    return config
+
+@api_router.put("/whatsapp-config/{config_id}")
+async def update_whatsapp_config_route(config_id: str, config: WhatsAppConfigCreate, current_user: dict = Depends(get_current_user)):
+    """Update an existing WhatsApp config"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can configure WhatsApp settings")
     
-    updated_at = config['updated_at']
-    if isinstance(updated_at, str):
-        updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+    existing = await db.whatsapp_config.find_one({'id': config_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Config not found")
     
-    return WhatsAppConfigResponse(
-        id=config['id'],
-        api_url=config['api_url'],
-        sender_id=config['sender_id'],
-        updated_at=updated_at
-    )
+    now = datetime.now(timezone.utc)
+    
+    if config.is_active:
+        await db.whatsapp_config.update_many({'id': {'$ne': config_id}}, {'$set': {'is_active': False}})
+    
+    update_data = {
+        'name': config.name,
+        'api_url': config.api_url,
+        'sender_id': config.sender_id,
+        'http_method': config.http_method,
+        'field_action': config.field_action,
+        'field_sender_id': config.field_sender_id,
+        'field_auth_token': config.field_auth_token,
+        'field_message': config.field_message,
+        'field_receiver': config.field_receiver,
+        'field_file_url': config.field_file_url,
+        'field_file_caption': config.field_file_caption,
+        'action_send': config.action_send,
+        'action_send_file': config.action_send_file,
+        'is_active': config.is_active,
+        'updated_at': now.isoformat()
+    }
+    if config.auth_token:
+        update_data['auth_token'] = config.auth_token
+    
+    await db.whatsapp_config.update_one({'id': config_id}, {'$set': update_data})
+    return {"message": "Config updated successfully"}
+
+@api_router.delete("/whatsapp-config/{config_id}")
+async def delete_whatsapp_config_route(config_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a WhatsApp config"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can configure WhatsApp settings")
+    result = await db.whatsapp_config.delete_one({'id': config_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Config not found")
+    return {"message": "Config deleted successfully"}
+
+@api_router.put("/whatsapp-config/{config_id}/activate")
+async def activate_whatsapp_config(config_id: str, current_user: dict = Depends(get_current_user)):
+    """Set a config as active"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can configure WhatsApp settings")
+    existing = await db.whatsapp_config.find_one({'id': config_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Config not found")
+    await db.whatsapp_config.update_many({}, {'$set': {'is_active': False}})
+    await db.whatsapp_config.update_one({'id': config_id}, {'$set': {'is_active': True}})
+    return {"message": "Config activated successfully"}
 
 @api_router.post("/whatsapp-config/test")
-async def test_whatsapp_config(mobile: str, current_user: dict = Depends(get_current_user)):
+async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(get_current_user)):
     """Send a test message to verify WhatsApp configuration"""
     if current_user['role'] != 'admin':
         raise HTTPException(status_code=403, detail="Only admins can test WhatsApp")
     
     config = await get_whatsapp_config()
-    
-    clean_mobile = ''.join(filter(str.isdigit, mobile))
-    if not clean_mobile.startswith('91'):
-        clean_mobile = f"91{clean_mobile[-10:]}"
-    
     message = "Test message from VMP CRM. WhatsApp integration is working!"
     
-    params = {
-        'action': 'send',
-        'senderId': config['sender_id'],
-        'authToken': config['auth_token'],
-        'messageText': message,
-        'receiverId': clean_mobile
-    }
-    
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(config['api_url'], params=params, timeout=30)
-            if response.status_code == 200:
-                return {"message": "Test message sent successfully", "status": "success"}
-            else:
-                return {"message": f"API returned status {response.status_code}", "status": "failed", "response": response.text}
+        response = await send_wa_msg(mobile, message, config=config)
+        if response and response.status_code == 200:
+            return {"message": "Test message sent successfully", "status": "success"}
+        else:
+            return {"message": f"API returned status {response.status_code if response else 'no_response'}", "status": "failed", "response": response.text if response else ''}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
 
@@ -10345,19 +10394,10 @@ async def perform_scheduled_backup(triggered_by: str = "System"):
                               f"Filename: {filename}"
                     
                     wa_mobile = wa_number if wa_number.startswith('91') else f"91{wa_number[-10:]}"
-                    params = {
-                        'action': 'send',
-                        'senderId': config['sender_id'],
-                        'authToken': config['auth_token'],
-                        'messageText': message,
-                        'receiverId': wa_mobile
-                    }
-                    
-                    async with httpx.AsyncClient(timeout=30.0) as http_client:
-                        response = await http_client.get(config['api_url'], params=params)
-                        if response.status_code == 200:
-                            sent_whatsapp = True
-                            logger.info(f"Backup notification sent via WhatsApp to {wa_mobile}")
+                    response = await send_wa_msg(wa_mobile, message, config=config)
+                    if response and response.status_code == 200:
+                        sent_whatsapp = True
+                        logger.info(f"Backup notification sent via WhatsApp to {wa_mobile}")
                 except Exception as e:
                     logger.error(f"Failed to send WhatsApp backup notification: {str(e)}")
         

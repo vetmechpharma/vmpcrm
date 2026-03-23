@@ -3596,6 +3596,36 @@ async def get_items(
     
     return result
 
+@api_router.get("/items/offers/active")
+async def get_active_offers(role: Optional[str] = None):
+    """Get items with active offers - public endpoint for dashboards"""
+    items = await db.items.find({'out_of_stock': {'$ne': True}}, {
+        '_id': 0, 'image_webp': 0, 'custom_fields': 0
+    }).to_list(500)
+    
+    offers = []
+    for item in items:
+        offer_key = f'offer_{role}s' if role else 'offer'
+        special_key = f'special_offer_{role}s' if role else 'special_offer'
+        rate_key = f'rate_{role}s' if role else 'rate'
+        
+        offer_text = item.get(offer_key) or item.get('offer') or ''
+        special_text = item.get(special_key) or item.get('special_offer') or ''
+        
+        if offer_text or special_text:
+            has_image = await db.items.find_one({'id': item['id'], 'image_webp': {'$ne': None}}, {'_id': 1})
+            offers.append({
+                'id': item['id'],
+                'item_name': item.get('item_name', ''),
+                'item_code': item.get('item_code', ''),
+                'mrp': item.get('mrp', 0),
+                'rate': item.get(rate_key) or item.get('rate', 0),
+                'offer': offer_text,
+                'special_offer': special_text,
+                'image_url': f"/api/items/{item['id']}/image" if has_image else None,
+            })
+    return offers
+
 @api_router.get("/items/{item_id}", response_model=ItemResponse)
 async def get_item(item_id: str, current_user: dict = Depends(get_current_user)):
     item = await db.items.find_one({'id': item_id}, {'_id': 0, 'image_webp': 0})

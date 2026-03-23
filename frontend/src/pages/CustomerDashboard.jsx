@@ -14,6 +14,7 @@ import {
   Bell
 } from 'lucide-react';
 import axios from 'axios';
+import { OffersCarousel } from '../components/OffersCarousel';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -87,11 +88,14 @@ const CustomerDashboard = () => {
       {/* Welcome Section */}
       <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-600/20">
         <p className="text-emerald-100 text-sm">Welcome back,</p>
-        <h1 className="text-xl font-bold mt-1" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <h1 className="text-xl font-bold mt-1" style={{ fontFamily: 'Poppins, sans-serif' }}>
           {customer?.name}
         </h1>
         <p className="text-emerald-200 text-sm mt-1 capitalize">{customer?.role} • {customer?.customer_code}</p>
       </div>
+
+      {/* Current Offers */}
+      <OffersCarousel role={customer?.role} />
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">

@@ -5,6 +5,7 @@ import { useMRAuth } from '../../context/MRAuthContext';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Loader2, Users, ClipboardList, CalendarCheck, Layers, AlertTriangle, MapPin } from 'lucide-react';
+import { OffersCarousel } from '../../components/OffersCarousel';
 
 export default function MRDashboard() {
   const { mr } = useMRAuth();
@@ -53,6 +54,9 @@ export default function MRDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Current Offers */}
+      <OffersCarousel role="doctor" />
 
       {/* Quick Actions */}
       <Card>

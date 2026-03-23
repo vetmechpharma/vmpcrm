@@ -98,6 +98,8 @@ export default function MROrders() {
         gst: item.gst || 0,
         outOfStock: false,
         previousQty: '1',
+        offer: item.offer_doctors || item.offer || '',
+        special_offer: item.special_offer_doctors || item.special_offer || '',
       }]);
     }
     setItemSearch('');
@@ -321,17 +323,27 @@ export default function MROrders() {
 
               {/* Search Results */}
               {itemSearch && (
-                <div className="border rounded-lg max-h-40 overflow-y-auto">
-                  {filteredItems.length > 0 ? filteredItems.slice(0, 10).map(item => (
-                    <div key={item.id} className="p-2 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
-                      onClick={() => addItemToOrder(item)} data-testid={`mr-order-add-${item.id}`}>
-                      <div>
-                        <p className="font-medium text-sm">{item.name || item.item_name}</p>
-                        <p className="text-xs text-slate-500">{item.item_code} | MRP: ₹{item.mrp || 0}</p>
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {filteredItems.length > 0 ? filteredItems.slice(0, 10).map(item => {
+                    const offer = item.offer_doctors || item.offer || '';
+                    const special = item.special_offer_doctors || item.special_offer || '';
+                    return (
+                      <div key={item.id} className="p-3 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
+                        onClick={() => addItemToOrder(item)} data-testid={`mr-order-add-${item.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{item.name || item.item_name}</p>
+                          <p className="text-xs text-slate-500">{item.item_code} | MRP: ₹{item.mrp || 0}</p>
+                          {(offer || special) && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{offer}</span>}
+                              {special && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{special}</span>}
+                            </div>
+                          )}
+                        </div>
+                        <Plus className="w-4 h-4 text-green-600 shrink-0 ml-2" />
                       </div>
-                      <Plus className="w-4 h-4 text-green-600 shrink-0" />
-                    </div>
-                  )) : (
+                    );
+                  }) : (
                     <p className="p-3 text-sm text-slate-400 text-center">No items found</p>
                   )}
                 </div>
@@ -359,6 +371,12 @@ export default function MROrders() {
                               {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
                             </div>
+                            {(item.offer || item.special_offer) && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {item.offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{item.offer}</span>}
+                                {item.special_offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{item.special_offer}</span>}
+                              </div>
+                            )}
                           </div>
                           {!item.outOfStock ? (
                             <div className="flex items-center gap-2 flex-shrink-0">

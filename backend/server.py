@@ -829,6 +829,7 @@ class ItemCreate(BaseModel):
     custom_fields: Optional[List[CustomField]] = []
     image_base64: Optional[str] = None  # Base64 encoded image
     out_of_stock: Optional[bool] = False
+    is_hidden: Optional[bool] = False  # Global hide - hidden items won't show to MR/customers
 
 class ItemUpdate(BaseModel):
     item_name: Optional[str] = None
@@ -864,6 +865,7 @@ class ItemUpdate(BaseModel):
     custom_fields: Optional[List[CustomField]] = None
     image_base64: Optional[str] = None
     out_of_stock: Optional[bool] = None
+    is_hidden: Optional[bool] = None  # Global hide
 
 class ItemResponse(BaseModel):
     id: str
@@ -899,6 +901,8 @@ class ItemResponse(BaseModel):
     special_offer: Optional[str] = None
     custom_fields: List[CustomField] = []
     image_url: Optional[str] = None
+    out_of_stock: Optional[bool] = False
+    is_hidden: Optional[bool] = False
     created_at: datetime
 
 class CategoryResponse(BaseModel):
@@ -1101,6 +1105,7 @@ class TicketResponse(BaseModel):
 
 class CompanySettingsCreate(BaseModel):
     company_name: str
+    company_short_name: Optional[str] = None  # Short name for messages (e.g., VMPPL)
     address: str
     email: EmailStr
     phone: Optional[str] = None
@@ -1116,6 +1121,7 @@ class CompanySettingsCreate(BaseModel):
 class CompanySettingsResponse(BaseModel):
     id: str
     company_name: str
+    company_short_name: Optional[str] = None
     address: str
     email: str
     phone: Optional[str] = None
@@ -3518,6 +3524,8 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         'custom_fields': [cf.model_dump() for cf in (item_data.custom_fields or [])],
         'image_webp': processed_image,
         'has_image': processed_image is not None,
+        'out_of_stock': item_data.out_of_stock or False,
+        'is_hidden': item_data.is_hidden or False,
         'created_at': now.isoformat(),
         'updated_at': now.isoformat(),
         'created_by': current_user['id']
@@ -3555,6 +3563,8 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
         special_offer=item_data.special_offer,
         custom_fields=item_data.custom_fields or [],
         image_url=f"/api/items/{item_id}/image" if processed_image else None,
+        out_of_stock=item_data.out_of_stock or False,
+        is_hidden=item_data.is_hidden or False,
         created_at=now
     )
 
@@ -3635,6 +3645,8 @@ async def get_items(
             special_offer=item.get('special_offer'),
             custom_fields=custom_fields,
             image_url=f"/api/items/{item['id']}/image" if has_image else None,
+            out_of_stock=item.get('out_of_stock', False),
+            is_hidden=item.get('is_hidden', False),
             created_at=created_at
         ))
     
@@ -3643,7 +3655,7 @@ async def get_items(
 @api_router.get("/items/offers/active")
 async def get_active_offers(role: Optional[str] = None):
     """Get items with active Special Offer 2 - for dashboard scrolling"""
-    items = await db.items.find({'out_of_stock': {'$ne': True}}, {
+    items = await db.items.find({'out_of_stock': {'$ne': True}, 'is_hidden': {'$ne': True}}, {
         '_id': 0, 'image_webp': 0, 'custom_fields': 0
     }).to_list(500)
     
@@ -3718,6 +3730,8 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         special_offer_2_agencies_desc=item.get('special_offer_2_agencies_desc'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item['id']}/image" if has_image else None,
+        out_of_stock=item.get('out_of_stock', False),
+        is_hidden=item.get('is_hidden', False),
         created_at=created_at
     )
 
@@ -3798,6 +3812,8 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         special_offer_2_agencies_desc=updated_item.get('special_offer_2_agencies_desc'),
         custom_fields=custom_fields,
         image_url=f"/api/items/{item_id}/image" if has_image else None,
+        out_of_stock=updated_item.get('out_of_stock', False),
+        is_hidden=updated_item.get('is_hidden', False),
         created_at=created_at
     )
 
@@ -3824,6 +3840,15 @@ async def toggle_item_stock(item_id: str, data: dict, current_user: dict = Depen
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Item not found")
     return {"message": "Stock status updated", "out_of_stock": out_of_stock}
+
+@api_router.patch("/items/{item_id}/visibility")
+async def toggle_item_visibility(item_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Toggle is_hidden status for an item (global hide)"""
+    is_hidden = data.get('is_hidden', False)
+    result = await db.items.update_one({'id': item_id}, {'$set': {'is_hidden': is_hidden}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"message": "Visibility updated", "is_hidden": is_hidden}
 
 # ============== SUBCATEGORY ORDER & ITEM EXPORT ==============
 
@@ -4894,6 +4919,7 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
     settings_doc = {
         'id': settings_id,
         'company_name': settings.company_name,
+        'company_short_name': settings.company_short_name,
         'address': settings.address,
         'email': settings.email,
         'phone': settings.phone,
@@ -4912,6 +4938,7 @@ async def save_company_settings(settings: CompanySettingsCreate, current_user: d
     return CompanySettingsResponse(
         id=settings_id,
         company_name=settings.company_name,
+        company_short_name=settings.company_short_name,
         address=settings.address,
         email=settings.email,
         phone=settings.phone,
@@ -4941,6 +4968,7 @@ async def get_company_settings(current_user: dict = Depends(get_current_user)):
     return CompanySettingsResponse(
         id=settings['id'],
         company_name=settings['company_name'],
+        company_short_name=settings.get('company_short_name'),
         address=settings['address'],
         email=settings['email'],
         phone=settings.get('phone'),
@@ -4985,6 +5013,7 @@ async def get_public_company_settings():
     
     return {
         'company_name': settings['company_name'],
+        'company_short_name': settings.get('company_short_name'),
         'address': settings['address'],
         'email': settings['email'],
         'phone': settings.get('phone'),
@@ -5000,7 +5029,7 @@ async def get_public_company_settings():
 @api_router.get("/public/items")
 async def get_public_items(main_category: Optional[str] = None, subcategory: Optional[str] = None):
     """Get all items with category filters for public showcase"""
-    query = {}
+    query = {'is_hidden': {'$ne': True}}
     if main_category:
         query['main_categories'] = main_category
     if subcategory:
@@ -5212,6 +5241,13 @@ async def customer_send_otp(request: CustomerOTPRequest):
         try:
             purpose_text = "registration" if request.purpose == "register" else "password reset"
             message = f"Your VMP CRM verification code for {purpose_text} is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
+            tmpl = await get_wa_template('otp')
+            if tmpl:
+                short_name, _ = await get_company_short_name()
+                try:
+                    message = tmpl.format(otp=otp, company_short_name=short_name)
+                except Exception:
+                    pass
             
             # Ensure mobile has 91 prefix for India
             wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
@@ -5567,7 +5603,7 @@ async def get_customer_items(
     customer: dict = Depends(get_current_customer)
 ):
     """Get items with role-based pricing for logged-in customer"""
-    query = {'out_of_stock': {'$ne': True}}
+    query = {'out_of_stock': {'$ne': True}, 'is_hidden': {'$ne': True}}
     if main_category:
         query['main_categories'] = main_category
     if subcategory:
@@ -6184,10 +6220,14 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
             if approval.status == 'approved':
-                message = f"Great news, {customer['name']}!\n\nYour VMP CRM account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
+                message = await render_wa_template('account_approved', customer_name=customer['name'], customer_code=customer['customer_code'])
+                if not message:
+                    message = f"Great news, {customer['name']}!\n\nYour account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
             else:
                 reason = approval.rejection_reason or "Please contact support for more details."
-                message = f"Hello {customer['name']},\n\nUnfortunately, your VMP CRM registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance."
+                message = await render_wa_template('account_declined', customer_name=customer['name'], reason=reason)
+                if not message:
+                    message = f"Hello {customer['name']},\n\nUnfortunately, your registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance."
             
             # Ensure mobile has 91 prefix for India
             wa_mobile = customer['phone'] if customer['phone'].startswith('91') else f"91{customer['phone'][-10:]}"
@@ -6344,12 +6384,16 @@ async def send_new_password_to_customer(customer_id: str, current_user: dict = D
     config = await get_whatsapp_config()
     if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
         try:
-            message = f"Hello {customer.get('name', 'Customer')}!\n\n" \
-                      f"Your VMP CRM portal login credentials:\n\n" \
-                      f"*Phone:* {clean_phone}\n" \
-                      f"*Password:* {new_password}\n\n" \
-                      f"Login at the customer portal to view products and place orders.\n\n" \
-                      f"Please change your password after first login for security."
+            rendered = await render_wa_template('password_reset', customer_name=customer.get('name', 'Customer'), new_password=new_password)
+            if rendered:
+                message = rendered
+            else:
+                message = f"Hello {customer.get('name', 'Customer')}!\n\n" \
+                          f"Your portal login credentials:\n\n" \
+                          f"*Phone:* {clean_phone}\n" \
+                          f"*Password:* {new_password}\n\n" \
+                          f"Login at the customer portal to view products and place orders.\n\n" \
+                          f"Please change your password after first login for security."
             
             wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
             
@@ -6804,6 +6848,13 @@ async def send_whatsapp_otp(mobile: str, otp: str):
         clean_mobile = f"91{clean_mobile[-10:]}"
     
     message = f"Your VMP CRM verification code is: {otp}. Valid for 5 minutes."
+    tmpl = await get_wa_template('otp')
+    if tmpl:
+        short_name, _ = await get_company_short_name()
+        try:
+            message = tmpl.format(otp=otp, company_short_name=short_name)
+        except Exception:
+            pass
     
     try:
         response = await send_wa_msg(clean_mobile, message, config=config)
@@ -10086,6 +10137,10 @@ async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(g
     
     config = await get_whatsapp_config()
     message = "Test message from VMP CRM. WhatsApp integration is working!"
+    tmpl = await get_wa_template('test_message')
+    if tmpl:
+        short_name, _ = await get_company_short_name()
+        message = tmpl.format(company_short_name=short_name)
     
     try:
         response = await send_wa_msg(mobile, message, config=config)
@@ -10096,7 +10151,278 @@ async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(g
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
 
-# ============== WHATSAPP LOGS ROUTES ==============
+# ============== MESSAGE TEMPLATES (WhatsApp & Email) ==============
+
+DEFAULT_WA_TEMPLATES = {
+    'otp': {
+        'key': 'otp',
+        'name': 'OTP Verification',
+        'category': 'whatsapp',
+        'variables': ['otp', 'company_short_name'],
+        'template': 'Your {company_short_name} verification code is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone.',
+    },
+    'order_confirmation': {
+        'key': 'order_confirmation',
+        'name': 'Order Confirmation',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'item_count', 'items_text', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been received!\n\n*Items:*\n{items_text}\n\nWe will process your order shortly.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'status_confirmed': {
+        'key': 'status_confirmed',
+        'name': 'Order Confirmed',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *CONFIRMED*!\n\nWe are preparing your order for dispatch.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'status_processing': {
+        'key': 'status_processing',
+        'name': 'Order Processing',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* is now being *PROCESSED*!\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'status_ready': {
+        'key': 'status_ready',
+        'name': 'Ready to Dispatch',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'items_text', 'transport_name', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* is *READY TO DISPATCH*!\n\n*Items:*\n{items_text}\n\n*Transport:* {transport_name}\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'status_dispatched': {
+        'key': 'status_dispatched',
+        'name': 'Order Dispatched',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *DISPATCHED*!\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'status_delivered': {
+        'key': 'status_delivered',
+        'name': 'Order Delivered',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *DELIVERED*!\n\nThank you for your business.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'payment_receipt': {
+        'key': 'payment_receipt',
+        'name': 'Payment Receipt',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'amount', 'payment_mode', 'balance', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nPayment of Rs. {amount} received via {payment_mode}.\n\nOutstanding balance: Rs. {balance}\n\nThank you!\n\n*{company_short_name}*\n+{company_phone}',
+    },
+    'out_of_stock': {
+        'key': 'out_of_stock',
+        'name': 'Out of Stock Notice',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'items_text', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nSome items in your order *{order_number}* are currently *OUT OF STOCK*:\n\n{items_text}\n\nWe will notify you when they are available.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'stock_arrived': {
+        'key': 'stock_arrived',
+        'name': 'Stock Arrived',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'item_name', 'item_code', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\n*{item_name}* ({item_code}) is now back in stock!\n\nYou can place your order now.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'account_approved': {
+        'key': 'account_approved',
+        'name': 'Account Approved',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'customer_code', 'company_short_name'],
+        'template': 'Great news, {customer_name}!\n\nYour {company_short_name} account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer_code}',
+    },
+    'account_declined': {
+        'key': 'account_declined',
+        'name': 'Account Declined',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'reason', 'company_short_name'],
+        'template': 'Hello {customer_name},\n\nUnfortunately, your {company_short_name} registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance.',
+    },
+    'password_reset': {
+        'key': 'password_reset',
+        'name': 'Password Reset',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'new_password', 'company_short_name'],
+        'template': 'Hello {customer_name},\n\nYour {company_short_name} portal login credentials:\n\nPassword: {new_password}\n\nPlease change your password after logging in.',
+    },
+    'test_message': {
+        'key': 'test_message',
+        'name': 'Test Message',
+        'category': 'whatsapp',
+        'variables': ['company_short_name'],
+        'template': 'Test message from {company_short_name}. WhatsApp integration is working!',
+    },
+}
+
+DEFAULT_EMAIL_TEMPLATES = {
+    'order_confirmation_email': {
+        'key': 'order_confirmation_email',
+        'name': 'Order Confirmation Email',
+        'category': 'email',
+        'variables': ['customer_name', 'order_number', 'items_html', 'company_name', 'company_short_name'],
+        'subject': 'Order {order_number} - Confirmation | {company_short_name}',
+        'template': '<h2>Hello {customer_name},</h2><p>Your order <strong>{order_number}</strong> has been received.</p>{items_html}<p>We will process your order shortly.</p><p>Regards,<br/><strong>{company_name}</strong></p>',
+    },
+    'payment_receipt_email': {
+        'key': 'payment_receipt_email',
+        'name': 'Payment Receipt Email',
+        'category': 'email',
+        'variables': ['customer_name', 'amount', 'payment_mode', 'balance', 'company_name', 'company_short_name'],
+        'subject': 'Payment Receipt | {company_short_name}',
+        'template': '<h2>Hello {customer_name},</h2><p>Payment of <strong>Rs. {amount}</strong> received via {payment_mode}.</p><p>Outstanding balance: Rs. {balance}</p><p>Thank you!</p><p>Regards,<br/><strong>{company_name}</strong></p>',
+    },
+    'account_approved_email': {
+        'key': 'account_approved_email',
+        'name': 'Account Approved Email',
+        'category': 'email',
+        'variables': ['customer_name', 'customer_code', 'company_name', 'company_short_name'],
+        'subject': 'Account Approved | {company_short_name}',
+        'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p>Regards,<br/><strong>{company_name}</strong></p>',
+    },
+}
+
+
+async def get_company_short_name():
+    """Get company short name from settings, fallback to company name"""
+    company = await db.company_settings.find_one({}, {'_id': 0, 'company_short_name': 1, 'company_name': 1, 'phone': 1})
+    if not company:
+        return 'CRM', ''
+    short = company.get('company_short_name') or company.get('company_name', 'CRM')
+    phone = company.get('phone', '')
+    return short, phone
+
+
+async def get_wa_template(key: str):
+    """Get WhatsApp template from DB, fallback to default"""
+    tmpl = await db.message_templates.find_one({'key': key, 'category': 'whatsapp'}, {'_id': 0})
+    if tmpl:
+        return tmpl.get('template', '')
+    default = DEFAULT_WA_TEMPLATES.get(key)
+    if default:
+        return default['template']
+    return ''
+
+
+async def get_email_template(key: str):
+    """Get email template from DB, fallback to default"""
+    tmpl = await db.message_templates.find_one({'key': key, 'category': 'email'}, {'_id': 0})
+    if tmpl:
+        return tmpl.get('template', ''), tmpl.get('subject', '')
+    default = DEFAULT_EMAIL_TEMPLATES.get(key)
+    if default:
+        return default['template'], default.get('subject', '')
+    return '', ''
+
+
+async def render_wa_template(key: str, **kwargs):
+    """Render a WhatsApp template with variables"""
+    tmpl = await get_wa_template(key)
+    if not tmpl:
+        return ''
+    short_name, phone = await get_company_short_name()
+    kwargs.setdefault('company_short_name', short_name)
+    kwargs.setdefault('company_phone', phone)
+    try:
+        return tmpl.format(**kwargs)
+    except KeyError:
+        # If template has variables not in kwargs, do partial format
+        for k, v in kwargs.items():
+            tmpl = tmpl.replace('{' + k + '}', str(v))
+        return tmpl
+
+
+@api_router.get("/message-templates")
+async def get_all_templates(category: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Get all message templates"""
+    query = {}
+    if category:
+        query['category'] = category
+    templates = await db.message_templates.find(query, {'_id': 0}).to_list(100)
+    
+    # Merge with defaults for missing templates
+    all_defaults = {**DEFAULT_WA_TEMPLATES, **DEFAULT_EMAIL_TEMPLATES}
+    existing_keys = {t['key'] for t in templates}
+    
+    for key, default in all_defaults.items():
+        if category and default['category'] != category:
+            continue
+        if key not in existing_keys:
+            templates.append({**default, 'is_default': True})
+    
+    return templates
+
+
+@api_router.put("/message-templates/{template_key}")
+async def update_template(template_key: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Update a message template"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can edit templates")
+    
+    all_defaults = {**DEFAULT_WA_TEMPLATES, **DEFAULT_EMAIL_TEMPLATES}
+    default = all_defaults.get(template_key)
+    
+    update_doc = {
+        'key': template_key,
+        'name': data.get('name', default['name'] if default else template_key),
+        'category': data.get('category', default['category'] if default else 'whatsapp'),
+        'variables': data.get('variables', default['variables'] if default else []),
+        'template': data.get('template', ''),
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    if update_doc['category'] == 'email':
+        update_doc['subject'] = data.get('subject', '')
+    
+    await db.message_templates.update_one(
+        {'key': template_key},
+        {'$set': update_doc},
+        upsert=True
+    )
+    return {"message": "Template updated", "key": template_key}
+
+
+@api_router.post("/message-templates/{template_key}/reset")
+async def reset_template(template_key: str, current_user: dict = Depends(get_current_user)):
+    """Reset a template to default"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can reset templates")
+    await db.message_templates.delete_one({'key': template_key})
+    return {"message": "Template reset to default"}
+
+
+# ============== ITEM IMAGES ZIP DOWNLOAD ==============
+
+@api_router.get("/items/images/download")
+async def download_item_images_zip(current_user: dict = Depends(get_current_user)):
+    """Download all item images as a ZIP file"""
+    import zipfile
+    import io
+    
+    items = await db.items.find(
+        {'image_webp': {'$ne': None}},
+        {'item_code': 1, 'item_name': 1, 'image_webp': 1, '_id': 0}
+    ).to_list(5000)
+    
+    if not items:
+        raise HTTPException(status_code=404, detail="No item images found")
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for item in items:
+            if item.get('image_webp'):
+                try:
+                    image_data = base64.b64decode(item['image_webp'])
+                    safe_code = str(item.get('item_code', 'unknown')).replace('/', '_').replace('\\', '_')
+                    filename = f"{safe_code}.webp"
+                    zf.writestr(filename, image_data)
+                except Exception as e:
+                    logger.error(f"Error adding image for {item.get('item_code')}: {e}")
+    
+    zip_buffer.seek(0)
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=item_images.zip"}
+    )
 
 @api_router.get("/whatsapp-logs")
 async def get_whatsapp_logs(
@@ -10884,7 +11210,7 @@ async def get_mr_visual_aid_deck(deck_id: str, mr: dict = Depends(get_current_mr
 @api_router.get("/mr/items")
 async def get_mr_items(search: Optional[str] = None, category: Optional[str] = None, mr: dict = Depends(get_current_mr)):
     """Get items available for MR ordering"""
-    q = {'out_of_stock': {'$ne': True}}
+    q = {'out_of_stock': {'$ne': True}, 'is_hidden': {'$ne': True}}
     if search:
         q['$or'] = [
             {'item_name': {'$regex': search, '$options': 'i'}},

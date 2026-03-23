@@ -148,6 +148,8 @@ export const itemsAPI = {
   delete: (id) => api.delete(`/items/${id}`),
   deleteImage: (id) => api.delete(`/items/${id}/image`),
   toggleStock: (id, outOfStock) => api.patch(`/items/${id}/stock`, { out_of_stock: outOfStock }),
+  toggleVisibility: (id, isHidden) => api.patch(`/items/${id}/visibility`, { is_hidden: isHidden }),
+  downloadImages: () => api.get('/items/images/download', { responseType: 'blob' }),
   getCategories: () => api.get('/item-categories'),
   // Bulk import
   getImportTemplate: () => api.get('/items/import/template', { responseType: 'blob' }),
@@ -170,6 +172,13 @@ export const itemsAPI = {
 export const companyAPI = {
   getSettings: () => api.get('/company-settings'),
   saveSettings: (data) => api.post('/company-settings', data),
+};
+
+// Message Templates APIs
+export const templatesAPI = {
+  getAll: (category) => api.get('/message-templates', { params: category ? { category } : {} }),
+  update: (key, data) => api.put(`/message-templates/${key}`, data),
+  reset: (key) => api.post(`/message-templates/${key}/reset`),
 };
 
 // Orders APIs

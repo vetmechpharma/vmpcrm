@@ -23,6 +23,7 @@ export const CompanySettings = () => {
 
   const [formData, setFormData] = useState({
     company_name: '',
+    company_short_name: '',
     address: '',
     email: '',
     phone: '',
@@ -48,6 +49,7 @@ export const CompanySettings = () => {
       if (response.data) {
         setFormData({
           company_name: response.data.company_name || '',
+          company_short_name: response.data.company_short_name || '',
           address: response.data.address || '',
           email: response.data.email || '',
           phone: response.data.phone || '',
@@ -269,6 +271,17 @@ export const CompanySettings = () => {
                         required
                         data-testid="company-name-input"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company_short_name">Company Short Name</Label>
+                      <Input
+                        id="company_short_name"
+                        value={formData.company_short_name}
+                        onChange={(e) => setFormData({ ...formData, company_short_name: e.target.value })}
+                        placeholder="e.g., VMPPL"
+                        data-testid="company-short-name-input"
+                      />
+                      <p className="text-xs text-slate-500">Used in WhatsApp & Email messages as the sender name</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email *</Label>

@@ -39,6 +39,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import { MRManagement } from './pages/MRManagement';
 import { VisualAids } from './pages/VisualAids';
 import { MRReports } from './pages/MRReports';
+import { MessageTemplates } from './pages/MessageTemplates';
 import { MRAuthProvider, useMRAuth } from './context/MRAuthContext';
 import MRLogin from './pages/mrvet/MRLogin';
 import MRLayout from './pages/mrvet/MRLayout';
@@ -321,6 +322,14 @@ function AppRoutes() {
         element={
           <AdminProtectedRoute>
             <DatabaseBackup />
+          </AdminProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin/message-templates" 
+        element={
+          <AdminProtectedRoute>
+            <MessageTemplates />
           </AdminProtectedRoute>
         } 
       />

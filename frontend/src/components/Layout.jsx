@@ -60,6 +60,7 @@ const companySubItems = [
   { path: '/admin/email-logs', icon: Mail, label: 'Email Logs', perm: 'email_logs' },
   { path: '/admin/whatsapp-logs', icon: MessageSquare, label: 'WhatsApp Logs', perm: 'whatsapp_logs' },
   { path: '/admin/smtp-settings', icon: Settings, label: 'SMTP Settings', perm: 'smtp_settings' },
+  { path: '/admin/message-templates', icon: MessageSquare, label: 'Message Templates', perm: 'smtp_settings' },
   { path: '/admin/database-backup', icon: Database, label: 'Database Backup', perm: 'backup' },
 ];
 

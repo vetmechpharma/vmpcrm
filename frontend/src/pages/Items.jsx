@@ -28,7 +28,10 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
-  Settings2
+  Settings2,
+  EyeOff,
+  Eye,
+  Archive
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { formatDate } from '../lib/utils';
@@ -507,6 +510,31 @@ export const Items = () => {
     } catch { toast.error('Failed to update stock status'); }
   };
 
+  const toggleVisibility = async (e, item) => {
+    e.stopPropagation();
+    const newVal = !item.is_hidden;
+    try {
+      await itemsAPI.toggleVisibility(item.id, newVal);
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_hidden: newVal } : i));
+      if (selectedItem?.id === item.id) setSelectedItem(prev => ({ ...prev, is_hidden: newVal }));
+      toast.success(newVal ? 'Item hidden from MR & Customers' : 'Item visible to MR & Customers');
+    } catch { toast.error('Failed to update visibility'); }
+  };
+
+  const handleDownloadImages = async () => {
+    try {
+      toast.info('Preparing ZIP download...');
+      const res = await itemsAPI.downloadImages();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'item_images.zip';
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Images downloaded!');
+    } catch { toast.error('Failed to download images'); }
+  };
+
   const isFormMode = isEditing || isCreating;
 
   return (
@@ -518,6 +546,10 @@ export const Items = () => {
           <p className="text-slate-500 mt-1">Manage your product inventory</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleDownloadImages} data-testid="download-images-btn">
+            <Archive className="w-4 h-4 mr-2" />
+            Download Images
+          </Button>
           <Button variant="outline" onClick={() => setShowExportModal(true)} data-testid="export-items-btn">
             <FileText className="w-4 h-4 mr-2" />
             Export
@@ -570,18 +602,27 @@ export const Items = () => {
                     onClick={() => handleSelectItem(item)}
                     className={`p-3 cursor-pointer transition-colors hover:bg-slate-50 ${
                       selectedItem?.id === item.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
-                    } ${item.out_of_stock ? 'opacity-60' : ''}`}
+                    } ${item.out_of_stock ? 'opacity-60' : ''} ${item.is_hidden ? 'opacity-40 bg-slate-50' : ''}`}
                     data-testid={`item-row-${item.id}`}
                   >
                     <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={!item.out_of_stock}
-                        onCheckedChange={() => toggleOutOfStock({ stopPropagation: () => {} }, item)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-shrink-0"
-                        data-testid={`stock-toggle-${item.id}`}
-                        title={item.out_of_stock ? 'Out of Stock — click to mark In Stock' : 'In Stock — click to mark Out of Stock'}
-                      />
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        <Checkbox
+                          checked={!item.out_of_stock}
+                          onCheckedChange={() => toggleOutOfStock({ stopPropagation: () => {} }, item)}
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`stock-toggle-${item.id}`}
+                          title={item.out_of_stock ? 'Out of Stock — click to mark In Stock' : 'In Stock — click to mark Out of Stock'}
+                        />
+                        <button
+                          onClick={(e) => toggleVisibility(e, item)}
+                          className={`p-0.5 rounded ${item.is_hidden ? 'text-red-400' : 'text-slate-400'} hover:text-slate-700`}
+                          title={item.is_hidden ? 'Hidden — click to show' : 'Visible — click to hide'}
+                          data-testid={`visibility-toggle-${item.id}`}
+                        >
+                          {item.is_hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                       {item.image_url ? (
                         <img 
                           src={`${API_URL}${item.image_url}`} 
@@ -607,6 +648,7 @@ export const Items = () => {
                       <div className="text-right">
                         <p className="font-semibold text-slate-900">MRP: ₹{item.mrp}</p>
                         {item.out_of_stock && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">Out of Stock</span>}
+                        {item.is_hidden && <span className="text-xs px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded font-medium">Hidden</span>}
                       </div>
                     </div>
                   </div>

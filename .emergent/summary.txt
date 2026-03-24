@@ -1,101 +1,113 @@
 <analysis>**original_problem_statement:**
-The user requested the development of a new, major module: a Representative App (MR App) for the company's field sales representatives. This app should function as a separate, installable Progressive Web App (PWA) with offline capabilities.
+The user has provided a new set of feature requests and bug reports after the previous agent completed its work.
+
+**Initial Requests (from message 5):**
+1.  Fix failing WhatsApp marketing.
+2.  Update the customer login page to display the company logo and name from the database.
+3.  Remove the Admin Login link from the customer login page.
+4.  Update item import/export functionality.
+5.  Allow for configurable WhatsApp API settings (multiple providers/endpoints).
+6.  Restrict WhatsApp testing to specific numbers:  / .
+
+**Subsequent Requests (from message 259 & 451-455 & 622):**
+1.  **Item Visibility**: Add a global hide/show option for items.
+2.  **Image Backup**: Add an option to download all item images as a ZIP file.
+3.  **Template Editing**: Create an editable template system for all WhatsApp and Email messages, removing the hardcoded VMP CRM text. Add a Company Short Name field for use in message signatures.
+4.  **Web Push Notifications**: Implement web push notifications for both admins and end-users for various events (order status, greetings, announcements).
+5.  **Email Parity**: Implement email sending for all events that currently trigger WhatsApp notifications (orders, greetings, etc.).
+6.  **Ledger Improvements**:
+    *   Change the WhatsApp ledger message to a summary text with a full PDF statement attached.
+    *   Implement an automated task to send ledger statements on the 27th of every month to all parties with an outstanding balance.
+7.  **Bug Fix**: WhatsApp marketing messages for product promotion / announcements with image attachments are marked as 'completed' but are not being received by users.
+8.  **PWA Icons**: Change the application icons for both the MR panel and the end-user panel, as requested with uploaded images.
+9.  **Installation Script**: The user inquired about the possibility of creating an installation script for deploying the application on an external VPS, which the agent confirmed is possible.
 
 **PRODUCT REQUIREMENTS:**
-*   **MR Management (Admin):** Admins must be able to create/edit/delete MR accounts and assign them specific sales territories (states and districts).
-*   **Territory-Based Access (MR):** MRs can only view and interact with customers (Doctors, Medicals, Agencies) within their assigned territories.
-*   **Visual Aid Presentations (Admin & MR):** Admins can create decks of visual aids by uploading images (slides). MRs can then present these decks to customers in a full-screen slideshow mode within the app.
-*   **Field Activity Tracking (MR & Admin):** MRs must be able to log customer visits and schedule follow-ups. This data should be visible to admins in a dedicated MR Reports section.
-*   **MR Ordering System (MR & Admin):**
-    *   MRs can place orders on behalf of customers. The order form in the MR app must match the functionality of the main CRM's order form, including item search, text-based quantity input (e.g., 10+5), an out-of-stock toggle, and notes.
-    *   Orders placed by MRs should appear in the main admin order list, clearly marked as originating from an MR.
-    *   MRs can request to cancel an order, which an admin must then approve or reject.
-*   **PWA & Offline Support:** The entire MR App must be an installable PWA that works offline. Data created offline (like new orders or visits) should sync automatically when the connection is restored.
-*   **Bug Fix:** A critical bug was reported where uploaded slide images were not displaying, making the Visual Aids feature unusable.
+- All features and bug fixes requested by the user in the latest message need to be implemented.
+- The critical technical debt of refactoring  remains.
+- The UI logic for follow-ups needs to be refactored.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack CRM application. In this session, a complete MR (Medical Representative) module was built, and a pre-existing bug with slide image uploads was fixed.
+A full-stack CRM with Admin, Customer, and Medical Representative (MR) modules. The previous session successfully implemented a large number of features and bug fixes.
 
-*   **MR Module (Backend):** The monolithic  was expanded to include:
-    *   CRUD endpoints for managing MRs, Visual Aid Decks, and Slides.
-    *   A separate authentication system for MRs ().
-    *   Dozens of new endpoints to power the MR panel, including fetching territory-filtered data, logging visits, and a complete ordering system with cancellation flows.
-*   **MR Module (Admin Frontend):**
-    *   New pages were created for ,  (for creating presentation decks), and a placeholder for .
-    *   The main  page was updated to display orders originating from MRs and to handle their cancellation requests.
-*   **MR Panel (PWA Frontend at ):**
-    *   A completely new, secure frontend application for MRs, with its own layout and authentication.
-    *   Includes a , territory-scoped  list,  browser, a full-screen  presenter, and pages for , , and .
-    *   The  page was completely rewritten to be a feature-rich form, matching the admin panel's functionality.
-*   **PWA Infrastructure:** The foundational elements for the PWA have been created, including the service worker (), , and PWA icons. The MR app layout () has been updated to register the service worker and include necessary meta tags.
-*   **Bug Fix:** The issue preventing slide images from displaying was traced to a missing  call after image processing in . This has been fixed, and all slide-related features are now functional.
+**Key accomplishments from the last session:**
+1.  **Dynamic WhatsApp Configuration:** The backend was refactored to support multiple, switchable WhatsApp API configurations with dynamic field mapping (e.g.,  vs ). A UI was built in the admin settings to manage these configurations.
+2.  **Customer Login Branding:** The customer login page now dynamically fetches and displays the company name from the database. The Admin Login link has been removed.
+3.  **Item Import/Export Update:** The item import/export templates and processing logic were updated to include the Special Offer 2 fields.
+4.  **Item Visibility Control:** A global  flag was added to items. A toggle button was added to the admin Items page, and hidden items are now filtered out from all customer, MR, and public-facing views.
+5.  **Company Short Name:** A Company Short Name field was added to the Company Settings page, intended for use in message templates.
+6.  **Message Template Editor:** A new Message Templates page was created in the admin panel, allowing admins to edit the content of various system-generated WhatsApp and email messages using a rich text editor with variable support (e.g., ). Many hardcoded messages in the backend were replaced to use this new system.
+7.  **Image Backup:** A Download All Images button was added to the Items page, which generates and downloads a ZIP file of all product images.
+8.  **Web Push Notifications:** A complete Web Push notification system was implemented using  and VAPID keys. This includes:
+    *   Backend infrastructure to store push subscriptions and send notifications.
+    *   Automatic subscription prompts for Admins, Customers, and MRs.
+    *   Integration with key events: new customer registration, new order creation, and order status updates.
+    *   A Send Push Notification option was added to the marketing campaign creation page.
 
 **Last working item**:
--   **Last item agent was working**: The agent was implementing two major user requests simultaneously:
-    1.  Rewriting the MR order page () to replicate the advanced features of the admin's manual order form.
-    2.  Setting up the infrastructure for PWA/Offline support for the entire MR panel.
-    The agent finished writing the code for both of these tasks but did not get to test the implementation.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both
+-   **Last item agent was working**: The agent just completed a major feature batch including the Web Push Notification system and several other enhancements requested by the user. The user then immediately provided a new list of requirements and bug reports.
+-   **Status**: NONE
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: NA
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Test and Finalize MR Order Form & PWA Implementation (CRITICAL, P0)**
-    -   **Attempted fixes:** The code for the rewritten order form and the basic PWA setup has been created.
-    -   **Next debug checklist:**
-        1.  Thoroughly test the new MR order form: customer search, item search, quantity input (e.g., 10+5), out-of-stock toggle, and notes.
-        2.  Confirm that an order placed from the MR app appears correctly in the admin  page with the MR source badge.
-        3.  Verify the PWA Install prompt appears and the app can be installed.
-        4.  Test basic offline functionality: disconnect the network and confirm the app loads from the cache.
-        5.  Implement and test the background sync logic in  for offline order creation.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will complete the user's latest and most complex feature requests, delivering a functional and resilient field sales application.
-    -   **Status**: NOT STARTED
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None
-
--   **Issue 2: OTP delivery via WhatsApp is failing. (BLOCKER, P1)**
-    -   **Attempted fixes:** This is a carry-over issue. The problem was identified as a  from the external  API, indicating an issue outside the application's code.
+-   **Issue 1: WhatsApp Marketing Image Attachment Bug (P0, BLOCKER)**
+    -   Description: Campaigns of type product promotion or announcement that include an image are marked as 'completed', but the messages are not being delivered to the recipients. Text-only campaigns and greetings work fine.
+    -   Next debug checklist:
+        1.  Examine the  helper and the marketing campaign processing logic in  ( function).
+        2.  Focus on how  and  are handled. The logic for sending files () might be different from text messages ().
+        3.  Inspect the  API documentation (if available) or logs to see the expected format for image attachments.
+        4.  Create a test campaign with an image and trace the execution path and API call parameters.
+    -   Why fix this issue and what will be achieved with the fix?: This is a critical bug blocking a core marketing feature. Fixing it will re-enable promotional campaigns with images.
+    -   Status: NOT STARTED
+    -   Is recurring issue?: N
+    -   Should Test frontend/backend/both after fix?: Backend
+-   **Issue 2: OTP delivery via WhatsApp is failing (P2, BLOCKED)**
+    -   **Attempted fixes:** This is a carry-over issue. The problem was identified as a  from the external  API.
     -   **Next debug checklist:**
         1.  Inform the user that the error is with the external service.
         2.  Advise them to check their  API credentials and account status.
     -   **Why fix this issue and what will be achieved with the fix?**: Unblocks the customer OTP login feature.
     -   **Status**: BLOCKED
-    -   **Is recurring issue?**: N
+    -   **Is recurring issue?**: Y
     -   **Should Test frontend/backend/both after fix?**: Backend
     -   **Blocked on other issue**: User action (verifying 3rd party API credentials).
 
 **In progress Task List**:
--   **Task 1: Implement Full Offline Sync Logic in Service Worker (P0)**
-    -   **Where to resume:** The file  exists but contains only boilerplate. The core caching and sync logic needs to be implemented.
-    -   **What will be achieved with this?**: This will enable true offline functionality, allowing MRs to place orders or log visits without an internet connection, with data syncing automatically once they are back online.
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: Blocked by the testing of the basic PWA setup in Issue 1.
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks:**
-    -   (P0) **Refactor :** This is the most critical piece of technical debt. The single file is now dangerously large and complex, slowing down development and increasing the risk of bugs. It must be broken into a modular, router-based structure.
-    -   (P1) **Build  Page:** The  page needs to be implemented to display analytics on MR visits and activities.
-    -   (P1) **Stock/Inventory Management:** Implement item quantity tracking, manage stock levels, and set up low-stock alerts.
-    -   (P1) **Refactor Follow-up UI:** Extract the duplicated follow-up logic from , , and  into a reusable component.
+    -   (P0) **Implement Email Parity**: Replicate WhatsApp functionality for email notifications across all relevant events (order status, greetings, etc.). This will involve creating email templates and integrating them into existing workflows.
+    -   (P1) **Ledger System Improvements**:
+        -   Modify the send ledger via WhatsApp feature to send a text summary and a full PDF statement.
+        -   Create a scheduled background task to automatically send ledger statements on the 27th of each month to customers with outstanding balances.
+    -   (P1) **Update PWA Icons**: Replace the existing PWA icons for the MR and Customer apps with the new ones provided by the user. This will involve updating , , and the icon files in .
+    -   (P1) **Refactor :** This is the most critical piece of technical debt. The single file is now over 11,900 lines and must be broken into a modular, router-based structure.
+    -   (P2) **Stock/Inventory Management:** Implement item quantity tracking, manage stock levels, and set up low-stock alerts.
+    -   (P2) **Refactor Follow-up UI:** Extract the duplicated follow-up logic from , , and  into a reusable component.
 -   **Future Tasks:**
     -   (P2) Sales reports with charts.
     -   (P2) Broader data import/export functionality.
     -   (P2) Sales target management for MRs.
+    -   (P2) Create the  deployment script as discussed with the user.
 
 **Completed work in this session**
--   **MR Module (Phases 1-3)**: Built the entire Representative App from scratch, including admin management pages, a separate PWA for MRs, visual aid presentations, and a complete ordering system.
--   **Ledger Enhancements**: Implemented the display of ledger balances on customer pages and added a WhatsApp sharing option for statements.
--   **Critical Bug Fix (Slide Images)**: Resolved a file-handling bug in  that caused uploaded slide images to be empty, making the visual aid feature functional.
--   **Issue Investigation (Reminders Page)**: Confirmed that the broken Reminders page reported in the previous handoff was actually working correctly.
+-   **WhatsApp Config System**: Implemented a dynamic, multi-provider WhatsApp configuration system on the backend and a full CRUD UI on the frontend ().
+-   **Customer Login Branding**: Updated  to show company name and removed the admin login link.
+-   **Item Import/Export Enhancement**: Added Special Offer 2 fields to PDF/Excel exports and the import template/parser.
+-   **Item Visibility Feature**: Added  functionality to items, with a toggle in  and filtering across all relevant endpoints.
+-   **Company Short Name**: Added a  field to company settings.
+-   **Message Template Editor**: Created a new  page and backend CRUD to allow admin editing of system messages.
+-   **Image ZIP Backup**: Added a Download All Images feature.
+-   **Web Push Notifications**: Integrated a full Web Push notification system for admins, customers, and MRs, linked to key application events.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Monolithic  file (CRITICAL, P0)**: This high-priority refactoring task remains pending and has become significantly more urgent after the addition of the entire MR module.
--   **Issue 2: Duplicated UI logic**: The , , and  files still contain nearly identical code for the follow-up system that needs to be refactored.
+-   **Issue 1: Monolithic  file (CRITICAL, P0)**: This high-priority refactoring task remains pending.
+-   **Issue 2: Duplicated UI logic**: The , , and  files still contain nearly identical code for the follow-up system.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -104,78 +116,100 @@ A full-stack CRM application. In this session, a complete MR (Medical Representa
 
 
 **Key Technical Concepts**
--   **Progressive Web App (PWA):** The MR panel () is built as a PWA using a service worker () and a  file to provide offline access and installability.
--   **Dual Authentication Systems:** The app now manages two separate JWTs:  for admin/customer sessions and  for representative sessions, each with its own context provider.
--   **Image Processing (Pillow):** The backend uses the Pillow library to process uploaded images. A bug fix in this area involving  buffer positioning was critical.
+-   **Dynamic PWA Manifest Loading**
+-   **Scoped Service Workers**
+-   **Resilient PWA Authentication**
+-   **Backend Data Self-Healing**
+-   **Dynamic WhatsApp API Configuration**: Backend logic to handle multiple API providers with different endpoint structures and field names, managed via a new database collection ().
+-   **Web Push Notifications (VAPID)**: End-to-end implementation using  on the backend and the browser's Push API on the frontend. A new  collection stores user subscription data.
+-   **Dynamic Message Templating**: A new  collection stores editable message content, which the backend fetches and formats with dynamic variables before sending.
 
 **key DB schema**
--   ** (New):** 
--   ** (New):** 
--   ** (New):** 
--   ** (Modified):** Now includes  (optional), , and .
+-   ** (Modified):**
+    -    (Boolean): New field to control item visibility globally.
+-   ** (Heavily Modified):**
+    -   Now a collection instead of a single document.
+    -    (String),  (Boolean).
+    -   New fields for dynamic API mapping (e.g., , , , , etc.).
+-   ** (Modified):**
+    -    (String): New field for a concise company name.
+-   ** (New):**
+    -    (String): Unique identifier (e.g., 'otp', 'order_confirmation').
+    -    (String): 'whatsapp' or 'email'.
+    -    (String, for email).
+    -    (String): The template content with placeholders like .
+-   ** (New):**
+    -    (String),  (String).
+    -    (Object): The subscription object from the browser's Push API.
 
 **changes in tech stack**
--   No new dependencies were added, but the application now utilizes core web technologies for PWA functionality (Service Workers, Web App Manifest).
+-   ****: Added as a new backend dependency for sending Web Push notifications.
 
 **All files of reference**
-*   **Primary focus for next task:**
-    *    (Test the new form)
-    *    (Implement caching/sync logic)
-    *    (Verify PWA registration)
-*   **Key new files from this session:**
-    *    (Heavily modified)
-    *   All files within 
+*   **Bug/Feature Focus:**
+    *    (Marketing image bug, Ledger improvements, Email parity)
+    *    (UI for marketing)
+    *    &  (PWA icons)
+*   **Key new/modified files:**
     *   
     *   
+    *    (new)
+    *    (new)
+    *    & 
 
 **Areas that need refactoring**:
--   ** (CRITICAL, P0)**: Top priority. The monolithic structure is unsustainable.
--   **, , **: These pages share duplicated UI logic for follow-ups that should be extracted into a reusable component.
+-   ** (CRITICAL, P0)**: The monolithic structure is a major liability. Refactoring is essential for maintainability.
+-   **, , **: Duplicated UI logic for follow-ups.
 
 **key api endpoints**
-*   **MR Auth & Data:** , , 
-*   **Visual Aids:** , 
-*   **MR Orders:** , 
-*   **Admin Order Management:** 
+*   : (NEW) Toggles the  flag for an item.
+*   : (NEW) Downloads a ZIP file of all item images.
+*   , : (NEW) CRUD endpoints for the message template editor.
+*   , : (NEW) Endpoints for managing PWA push notification subscriptions.
+*   : (NEW) Provides the VAPID key to the frontend.
 
 **Critical Info for New Agent**
--   Your immediate priority is to test the latest work, which was not validated. This includes the completely rewritten **MR Order Form** and the initial **PWA setup**.
--   The PWA's service worker () is currently just a skeleton. You will need to implement the actual caching strategies (e.g., network-first for APIs, cache-first for static assets) and the background sync mechanism for offline functionality.
--   Once the current feature is complete, you must strongly advocate for refactoring . The application's stability is at risk due to the size and complexity of this single file.
+-   The immediate priority is to fix the **WhatsApp marketing image attachment bug**. This is a regression or a flaw in the initial implementation that is blocking a key user feature.
+-   After fixing the bug, proceed with the user's other new requests: Email parity, Ledger improvements, and PWA icon changes.
+-   The user has explicitly asked for the possibility and ways to do things. When they ask a question, provide a clear, structured answer explaining the options, pros, and cons before asking if they want to proceed with implementation.
+-   The  file has grown even larger and refactoring it should be proposed to the user as a high-priority task to ensure the project's long-term stability.
 
 **documents and test reports created in this job**
--   /app/test_reports/iteration_3.json
--   /app/test_reports/iteration_2.json
--   /app/test_reports/iteration_1.json
+-   /app/memory/PRD.md (Updated with all completed features)
+-   /app/test_reports/iteration_36.json (Test report for Web Push Notifications)
+-   /app/test_reports/iteration_35.json (Test report for Item Visibility, Templates, etc.)
 
 **Last 10 User Messages and any pending HUMAN messages**
-10.  **(IN PROGRESS)**
-9.  (Agent successfully debugged and fixed the slide image issue).
-8.  
-7.  (User provides screenshot of broken slide images).
-6.   **(COMPLETED)**
-5.  (User provides requirements for MR app Phase 2 and 3).
-4.   **(COMPLETED)**
-3.   **(COMPLETED)**
-2.  (User confirms Reminders page is working).
-1.  (User confirms Ledger Balance is showing).
+10. User provides a large list of new features and bug fixes: email parity, ledger improvements, automated statements, WhatsApp image bug, and new PWA icons. **(NOT STARTED)**
+9. proceed - User confirms to proceed with the push notification implementation. **(COMPLETED)**
+8. User confirms yes to admin panel push notifications and adding a Send Push button to the marketing page. **(COMPLETED)**
+7. Web Push adds real-time phone notifications for free - User selects the Web Push option. **(COMPLETED)**
+6. User asks if mobile notifications are possible for order status, greetings, and announcements. **(ADDRESSED)**
+5. User asks if an installation script can be created for a VPS. **(ADDRESSED)**
+4. User confirms global hide, Company Short Name field, and a rich editor for templates. **(COMPLETED)**
+3. User provides another list of new features: item hiding, image zip download, editable templates with a company short name, and email template editing. **(COMPLETED)**
+2. User provides feedback on the previous implementation: fix WhatsApp marketing, update login page, and update item import/export. **(COMPLETED)**
+1.  **(ADDRESSED)**
 
 **Project Health Check:**
--   **Broken**: The external WhatsApp OTP integration is still considered broken pending user action on their API keys.
+-   **Broken**:
+    -   WhatsApp marketing with image attachments is not working.
+    -   The external WhatsApp OTP integration ( API) is still blocked pending user action on their API keys.
 -   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **Custom SMTP:** For emails.
--   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(OTP endpoint is experiencing  issues)**.
+-   **WhatsApp API (BotMasterSender):** Used for OTP and notifications. **(Marketing image endpoint failing, OTP endpoint failing)**.
+-   **pywebpush**: For Web Push Notifications (New).
 -   **openpyxl:** For reading/writing  files.
 -   **apscheduler:** For scheduling background tasks.
 -   **fpdf2:** For server-side PDF generation.
 
 **Testing status**
--   **Testing agent used after significant changes:** YES (Used 3 times for major feature milestones).
+-   **Testing agent used after significant changes:** YES. Used successfully to verify the last two feature batches.
 -   **Troubleshoot agent used after agent stuck in loop:** NO
 -   **Test files created:** None
--   **Known regressions:** None.
+-   **Known regressions:** WhatsApp marketing with image attachments appears to be a new regression or previously undiscovered bug.
 
 **Credentials to test flow:**
 -   **Admin Email:** 
@@ -184,8 +218,7 @@ A full-stack CRM application. In this session, a complete MR (Medical Representa
 -   **MR Password:** 
 -   **Test Customer Phone:** 
 -   **Test Customer Password:** 
+-   **WhatsApp Test Numbers**: , 
 
 **What agent forgot to execute**
--   The agent did not implement the detailed logic within the service worker () for caching and background sync; only the file and registration were set up.
--   The  page is still a placeholder and needs to be built.
--   The critical refactoring of  and the frontend follow-up UI components remains pending.</analysis>
+-   The previous agent completed all planned work before finishing. The current list of tasks and bugs was provided by the user in a new message after the agent had already finished.</analysis>

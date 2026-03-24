@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
+import { useAutoSubscribe } from '../../hooks/usePushNotifications';
 
 const navItems = [
   { path: '/mrvet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -28,6 +29,9 @@ export default function MRLayout() {
   const [installBannerDismissed, setInstallBannerDismissed] = useState(
     () => sessionStorage.getItem('mr-install-dismissed') === 'true'
   );
+
+  // Auto-subscribe MR to push notifications
+  useAutoSubscribe('mr');
   const { isOnline, offlineCount, syncing, syncOfflineData, canInstall, installApp } = usePWA();
 
   const handleLogout = () => { logout(); navigate('/mrvet/login'); };

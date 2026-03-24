@@ -30,6 +30,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from fpdf import FPDF
 from india_locations import get_all_states, get_districts_by_state
+from pywebpush import webpush, WebPushException
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -43,6 +44,11 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'vmp-crm-secret-key-2024')
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
+
+# VAPID Settings for Web Push
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@vmpcrm.com')
 
 # Create the main app
 app = FastAPI(title="VMP CRM API")
@@ -358,6 +364,23 @@ async def send_birthday_anniversary_greetings():
                         'message': message,
                         'sent_at': datetime.now(timezone.utc).isoformat()
                     })
+
+                    # Send push notification for birthday/anniversary
+                    try:
+                        greeting_label = 'Birthday' if contact['type'] == 'birthday' else 'Anniversary'
+                        portal_cust = await db.portal_customers.find_one({
+                            '$or': [
+                                {'linked_record_id': contact.get('entity_id')},
+                                {'phone': contact.get('phone')}
+                            ]
+                        }, {'_id': 0, 'id': 1})
+                        if portal_cust:
+                            await send_push_to_user(portal_cust['id'], 'customer',
+                                f'Happy {greeting_label}!',
+                                message[:100],
+                                '/', f'greeting-{contact["type"]}')
+                    except Exception as pe:
+                        logger.error(f"Push greeting failed for {contact['name']}: {pe}")
 
                 except Exception as ce:
                     logger.error(f"Error sending greeting to {contact['name']}: {ce}")
@@ -1040,6 +1063,7 @@ class MarketingCampaignCreate(BaseModel):
     scheduled_at: Optional[str] = None  # ISO datetime for scheduling
     batch_size: int = 10  # Messages per batch
     batch_delay_seconds: int = 60  # Delay between batches (to avoid ban)
+    send_push: Optional[bool] = False  # Also send as push notification
 
 class MarketingCampaignResponse(BaseModel):
     id: str
@@ -5366,6 +5390,12 @@ async def customer_register(request: CustomerRegister):
     
     await db.portal_customers.insert_one(customer_doc)
     
+    # Notify admins of new registration
+    try:
+        asyncio.create_task(_notify_admin_new_registration(request.name, request.role))
+    except Exception:
+        pass
+    
     # Clear OTP
     del customer_otp_store[otp_key]
     
@@ -5401,6 +5431,10 @@ async def customer_register(request: CustomerRegister):
         transport_name=transport_name,
         created_at=now
     )
+
+# Push notification to admins for new registration - run in background
+async def _notify_admin_new_registration(name, role):
+    await send_push_to_admins('New Customer Registration', f'{name} ({role}) registered - pending approval', '/admin/customers', 'new-registration')
 
 @api_router.post("/customer/login")
 async def customer_login(request: CustomerLogin):
@@ -7180,7 +7214,8 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
         'completed_at': None,
         'created_at': now.isoformat(),
         'created_by': current_user['name'],
-        'company_name': company_name
+        'company_name': company_name,
+        'send_push': campaign.send_push or False
     }
     
     await db.marketing_campaigns.insert_one(campaign_doc)
@@ -7404,6 +7439,17 @@ async def process_marketing_campaign(campaign_id: str):
             }}
         )
         logger.info(f"Marketing campaign {campaign_id} completed")
+        
+        # Send push notifications if enabled
+        campaign_doc = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0})
+        if campaign_doc and campaign_doc.get('send_push'):
+            try:
+                push_title = campaign_doc.get('name', 'New Announcement')
+                push_body = campaign_doc.get('message', '')[:150]
+                push_sent = await send_push_to_all_customers(push_title, push_body, '/', 'campaign')
+                logger.info(f"Push notifications sent for campaign {campaign_id}: {push_sent} devices")
+            except Exception as pe:
+                logger.error(f"Push notification error for campaign {campaign_id}: {pe}")
         
     except Exception as e:
         logger.error(f"Marketing campaign {campaign_id} failed: {e}")
@@ -8393,6 +8439,15 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
         [item.dict() for item in order_data.items]
     )
     
+    # Push notification to admins for new order
+    background_tasks.add_task(
+        send_push_to_admins,
+        'New Order Received',
+        f'Order {order_number} from {entity_name}',
+        '/admin/orders',
+        'new-order'
+    )
+    
     return {
         "message": "Order created successfully",
         "order_number": order_number,
@@ -8595,6 +8650,21 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
             background_tasks.add_task(send_whatsapp_ready_to_despatch, order, update_data)
         else:
             background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
+    
+    # Send push notification to customer
+    status_labels = {'confirmed': 'Confirmed', 'processing': 'Processing', 'ready_to_despatch': 'Ready to Dispatch', 'shipped': 'Dispatched', 'delivered': 'Delivered', 'cancelled': 'Cancelled'}
+    status_label = status_labels.get(new_status, new_status.title())
+    doctor_id = order.get('doctor_id')
+    if doctor_id:
+        # Find portal customer linked to this doctor
+        portal_customer = await db.portal_customers.find_one({'linked_record_id': doctor_id}, {'_id': 0, 'id': 1})
+        if portal_customer:
+            background_tasks.add_task(
+                send_push_to_user, portal_customer['id'], 'customer',
+                f'Order {status_label}',
+                f'Your order {order.get("order_number", "")} is now {status_label}',
+                f'/orders', f'order-{new_status}'
+            )
     
     return {"message": f"Order status updated to {new_status}"}
 
@@ -10423,6 +10493,194 @@ async def download_item_images_zip(current_user: dict = Depends(get_current_user
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=item_images.zip"}
     )
+
+# ============== WEB PUSH NOTIFICATIONS ==============
+
+async def send_push_notification(subscription_info: dict, title: str, body: str, url: str = '/', icon: str = '/icons/icon-192x192.png', tag: str = None):
+    """Send a push notification to a single subscription"""
+    if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+        logger.warning("VAPID keys not configured, skipping push notification")
+        return False
+    
+    payload = json.dumps({
+        'title': title,
+        'body': body,
+        'url': url,
+        'icon': icon,
+        'tag': tag or 'notification',
+        'timestamp': datetime.now(timezone.utc).isoformat()
+    })
+    
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=payload,
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": VAPID_SUBJECT}
+        )
+        return True
+    except WebPushException as e:
+        logger.error(f"Push notification failed: {e}")
+        if e.response and e.response.status_code in (404, 410):
+            # Subscription expired or invalid - remove it
+            await db.push_subscriptions.delete_one({'endpoint': subscription_info.get('endpoint')})
+            logger.info(f"Removed invalid push subscription: {subscription_info.get('endpoint', '')[:50]}")
+        return False
+    except Exception as e:
+        logger.error(f"Push notification error: {e}")
+        return False
+
+
+async def send_push_to_user(user_id: str, user_type: str, title: str, body: str, url: str = '/', tag: str = None):
+    """Send push notification to all subscriptions of a user"""
+    subs = await db.push_subscriptions.find({
+        'user_id': user_id,
+        'user_type': user_type
+    }, {'_id': 0}).to_list(10)
+    
+    sent = 0
+    for sub in subs:
+        sub_info = sub.get('subscription')
+        if sub_info:
+            ok = await send_push_notification(sub_info, title, body, url, tag=tag)
+            if ok:
+                sent += 1
+    return sent
+
+
+async def send_push_to_role(role: str, title: str, body: str, url: str = '/', tag: str = None):
+    """Send push notification to all users of a role (admin, customer, mr)"""
+    subs = await db.push_subscriptions.find({
+        'user_type': role
+    }, {'_id': 0}).to_list(500)
+    
+    sent = 0
+    for sub in subs:
+        sub_info = sub.get('subscription')
+        if sub_info:
+            ok = await send_push_notification(sub_info, title, body, url, tag=tag)
+            if ok:
+                sent += 1
+    return sent
+
+
+async def send_push_to_all_customers(title: str, body: str, url: str = '/', tag: str = None):
+    """Send push to all customer subscriptions"""
+    return await send_push_to_role('customer', title, body, url, tag)
+
+
+async def send_push_to_admins(title: str, body: str, url: str = '/admin', tag: str = None):
+    """Send push to all admin subscriptions"""
+    return await send_push_to_role('admin', title, body, url, tag)
+
+
+@api_router.get("/push/vapid-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for push subscription"""
+    return {"public_key": VAPID_PUBLIC_KEY}
+
+
+@api_router.post("/push/subscribe")
+async def subscribe_push(data: dict, current_user: dict = Depends(get_current_user)):
+    """Subscribe to push notifications"""
+    subscription = data.get('subscription')
+    user_type = data.get('user_type', 'admin')  # admin, customer, mr
+    
+    if not subscription or not subscription.get('endpoint'):
+        raise HTTPException(status_code=400, detail="Invalid subscription")
+    
+    user_id = current_user.get('user_id') or current_user.get('id') or str(current_user.get('email', ''))
+    
+    # Upsert subscription
+    await db.push_subscriptions.update_one(
+        {'endpoint': subscription['endpoint']},
+        {'$set': {
+            'user_id': user_id,
+            'user_type': user_type,
+            'subscription': subscription,
+            'user_name': current_user.get('name') or current_user.get('email', ''),
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    return {"message": "Subscribed to push notifications"}
+
+
+@api_router.post("/push/unsubscribe")
+async def unsubscribe_push(data: dict, current_user: dict = Depends(get_current_user)):
+    """Unsubscribe from push notifications"""
+    endpoint = data.get('endpoint')
+    if endpoint:
+        await db.push_subscriptions.delete_one({'endpoint': endpoint})
+    return {"message": "Unsubscribed from push notifications"}
+
+
+@api_router.post("/push/send")
+async def send_push_admin(data: dict, current_user: dict = Depends(get_current_user)):
+    """Admin: Send push notification to specific audience"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can send push notifications")
+    
+    title = data.get('title', 'Notification')
+    body = data.get('body', '')
+    url = data.get('url', '/')
+    audience = data.get('audience', 'all')  # all, customers, admins, mr
+    
+    sent = 0
+    if audience == 'customers' or audience == 'all':
+        sent += await send_push_to_role('customer', title, body, url, tag='admin-push')
+    if audience == 'admins' or audience == 'all':
+        sent += await send_push_to_role('admin', title, body, url, tag='admin-push')
+    if audience == 'mr' or audience == 'all':
+        sent += await send_push_to_role('mr', title, body, url, tag='admin-push')
+    
+    return {"message": f"Push notification sent to {sent} devices", "sent_count": sent}
+
+
+@api_router.get("/push/subscriptions")
+async def get_push_subscriptions(current_user: dict = Depends(get_current_user)):
+    """Get push subscription stats"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins")
+    
+    pipeline = [
+        {'$group': {'_id': '$user_type', 'count': {'$sum': 1}}}
+    ]
+    stats = await db.push_subscriptions.aggregate(pipeline).to_list(10)
+    return {s['_id']: s['count'] for s in stats}
+
+
+@api_router.post("/customer/push/subscribe")
+async def customer_subscribe_push(data: dict, request: Request):
+    """Customer subscribe to push (uses customer token)"""
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = auth_header.split(' ')[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        customer_id = payload.get('customer_id') or payload.get('id', '')
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    subscription = data.get('subscription')
+    if not subscription or not subscription.get('endpoint'):
+        raise HTTPException(status_code=400, detail="Invalid subscription")
+    
+    await db.push_subscriptions.update_one(
+        {'endpoint': subscription['endpoint']},
+        {'$set': {
+            'user_id': customer_id,
+            'user_type': 'customer',
+            'subscription': subscription,
+            'user_name': payload.get('name', ''),
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    return {"message": "Subscribed to push notifications"}
+
 
 @api_router.get("/whatsapp-logs")
 async def get_whatsapp_logs(

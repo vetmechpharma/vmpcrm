@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { OffersCarousel } from '../components/OffersCarousel';
+import { useAutoSubscribe } from '../hooks/usePushNotifications';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -23,6 +24,9 @@ const CustomerDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Auto-subscribe customer to push notifications
+  useAutoSubscribe('customer');
 
   useEffect(() => {
     fetchDashboardData();

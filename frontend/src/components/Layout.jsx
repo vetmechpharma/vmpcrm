@@ -35,6 +35,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAutoSubscribe } from '../hooks/usePushNotifications';
 
 const mainNavItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', perm: null },
@@ -78,6 +79,9 @@ export const Layout = ({ children }) => {
   const [companyExpanded, setCompanyExpanded] = useState(false);
   const [mrExpanded, setMrExpanded] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+
+  // Auto-subscribe admin to push notifications
+  useAutoSubscribe('admin');
 
   useEffect(() => {
     const isCompanySubPath = companySubItems.some(item => location.pathname === item.path);

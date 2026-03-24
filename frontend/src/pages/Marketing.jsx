@@ -97,6 +97,7 @@ export const Marketing = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [batchSize, setBatchSize] = useState(10);
   const [batchDelay, setBatchDelay] = useState(60);
+  const [sendPush, setSendPush] = useState(false);
   
   // Campaigns History
   const [campaigns, setCampaigns] = useState([]);
@@ -273,7 +274,8 @@ export const Marketing = () => {
         image_base64: imageBase64,
         scheduled_at: scheduledAt || null,
         batch_size: batchSize,
-        batch_delay_seconds: batchDelay
+        batch_delay_seconds: batchDelay,
+        send_push: sendPush
       };
 
       const response = await marketingAPI.createCampaign(campaignData);
@@ -738,6 +740,21 @@ export const Marketing = () => {
                   <div className="text-sm text-amber-800">
                     <strong>Anti-Ban Protection:</strong> Messages are sent in batches with delays to avoid WhatsApp restrictions. Each message includes a unique reference number.
                   </div>
+                </div>
+
+                {/* Push Notification Option */}
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <input
+                    type="checkbox"
+                    id="send-push"
+                    checked={sendPush}
+                    onChange={(e) => setSendPush(e.target.checked)}
+                    className="w-4 h-4 rounded border-blue-300"
+                    data-testid="send-push-checkbox"
+                  />
+                  <label htmlFor="send-push" className="text-sm text-blue-800 cursor-pointer">
+                    <strong>Also send as Push Notification</strong> — Send to all customers who have enabled notifications on their device
+                  </label>
                 </div>
 
                 {/* Action Buttons */}

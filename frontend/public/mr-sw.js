@@ -248,3 +248,37 @@ self.addEventListener('message', async (event) => {
     });
   }
 });
+
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+  let data = { title: 'Notification', body: '', url: '/mrvet/', icon: '/icons/mr-icon-192x192.png' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {
+    if (event.data) data.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icons/mr-icon-192x192.png',
+      badge: '/icons/mr-icon-72x72.png',
+      tag: data.tag || 'mr-notification',
+      data: { url: data.url || '/mrvet/' },
+      vibrate: [200, 100, 200]
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/mrvet/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wc) => {
+      for (const c of wc) {
+        if (c.url.includes('/mrvet') && 'focus' in c) { c.navigate(url); return c.focus(); }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});

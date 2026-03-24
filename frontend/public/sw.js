@@ -46,3 +46,43 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+  let data = { title: 'Notification', body: '', url: '/', icon: '/icons/icon-192x192.png' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {
+    if (event.data) data.body = event.data.text();
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: '/icons/icon-72x72.png',
+      tag: data.tag || 'notification',
+      data: { url: data.url || '/' },
+      vibrate: [200, 100, 200],
+      requireInteraction: false
+    })
+  );
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});

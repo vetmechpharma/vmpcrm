@@ -4,10 +4,11 @@
 A full-stack CRM system for a veterinary pharmaceutical company. Includes an Admin Panel, Customer Portal, and Medical Representative (MR) PWA module.
 
 ## Architecture
-- **Backend**: FastAPI + MongoDB (server.py - monolithic, ~11,700 lines)
+- **Backend**: FastAPI + MongoDB (server.py - monolithic, ~12,000 lines)
 - **Frontend**: React + TailwindCSS + Shadcn/UI
 - **MR Module**: Separate PWA with offline sync
 - **Customer Portal**: Login, orders, ledger, support
+- **Push Notifications**: Web Push via pywebpush + VAPID
 
 ## Core Features Implemented
 
@@ -20,71 +21,56 @@ A full-stack CRM system for a veterinary pharmaceutical company. Includes an Adm
 - [x] Orders management (manual + customer + MR orders)
 - [x] Payments with WhatsApp receipts
 - [x] Expenses tracking
-- [x] Marketing campaigns (WhatsApp)
+- [x] Marketing campaigns (WhatsApp + **Push Notifications**)
 - [x] **Dynamic WhatsApp Config** - multiple configs with customizable API field mappings
 - [x] **Message Templates Editor** - edit all WhatsApp & Email templates with variable insertion
-- [x] **Company Short Name** - used in all messages instead of hardcoded "VMP CRM"
+- [x] **Company Short Name** - used in all messages instead of hardcoded names
+- [x] **Web Push Notifications** - admin receives push for new orders, new registrations
 - [x] Item import/export (Excel/PDF) with Special Offer 2 fields
 - [x] Reminders, Greeting Templates
 - [x] User/Role management
 - [x] SMTP & WhatsApp settings
 - [x] Database backup
 - [x] MR Management & Reports
-- [x] Visual Aids
-- [x] Support tickets
-- [x] Company settings with logo, login customization
+- [x] Visual Aids, Support tickets, Company settings
 
 ### Customer Portal
 - [x] Registration & login (password + OTP)
 - [x] **Dynamic company branding** on login page (logo + name from admin DB)
-- [x] **No admin login link** on customer login page
+- [x] **Web Push Notifications** - order status changes, birthday greetings, product announcements
 - [x] Product catalog with role-based pricing
-- [x] Order placement
-- [x] Ledger/statement view
-- [x] Support tickets
-- [x] Profile management
+- [x] Order placement, Ledger/statement view, Support tickets, Profile
 
 ### MR Module (PWA)
-- [x] Separate installable PWA
-- [x] Offline order sync
-- [x] Customer visits, follow-ups
-- [x] Order creation with editable rates
-- [x] Visual aids & slideshows
-- [x] Session persistence
+- [x] Separate installable PWA with offline order sync
+- [x] **Web Push Notifications** - auto-subscribed
+- [x] Customer visits, follow-ups, Order creation with editable rates, Visual aids
 
-### Special Features
-- [x] Editable Rate/Unit in orders (Admin + MR)
-- [x] Special Offer 2 system for dashboard carousel
-- [x] Role-based pricing (Doctors, Medicals, Agencies)
-- [x] PWA separation (MR app vs User app)
-- [x] Navy blue/green admin theme with Poppins font
+### Push Notification Triggers
+- New order placed → Admin push
+- New customer registration → Admin push
+- Order status change (confirmed/dispatched/delivered) → Customer push
+- Birthday/anniversary greetings → Customer push
+- Marketing campaign (with checkbox) → All customers push
 
 ## Key DB Collections
 - `items` - Products with is_hidden, special_offer_2_* fields
-- `orders`, `payments`, `expenses`
-- `doctors`, `medicals`, `agencies`
-- `portal_customers` - Customer portal accounts
-- `whatsapp_config` - Multiple configs with field mappings
+- `push_subscriptions` - Web Push subscriptions (user_id, user_type, subscription)
 - `message_templates` - Customizable WhatsApp & Email templates
+- `whatsapp_config` - Multiple configs with field mappings
 - `company_settings` - Company info with company_short_name
-- `marketing_campaigns`, `campaign_logs`
-- `mr_users`, `mr_visits`, `mr_followups`
-
-## Pending Issues
-- WhatsApp OTP via BotMasterSender may have intermittent 400 errors (external API)
 
 ## Technical Debt (P0)
-- **server.py refactor** - 11,700+ lines, needs modular router-based architecture
+- **server.py refactor** - 12,000+ lines, needs modular router-based architecture
 - **Duplicated follow-up UI** - Doctors.jsx, Medicals.jsx, Agencies.jsx share code
 
 ## Upcoming Tasks
-- (P1) Stock/Inventory Management - quantity tracking, low-stock alerts
-- (P1) Follow-up UI refactor into shared component
-- (P2) Sales reports with charts
-- (P2) Data import/export (broader)
-- (P2) Sales target management for MRs
+- (P1) Stock/Inventory Management
+- (P1) Follow-up UI refactor
+- (P2) Sales reports with charts, Data import/export, Sales targets
 
 ## Credentials
 - Admin: admin@vmpcrm.com / admin123
 - Test MR: 9876543211 / testpass
 - Test Customer: 9999777766 / test123
+- WhatsApp test numbers: 9486544884 / 9342704047

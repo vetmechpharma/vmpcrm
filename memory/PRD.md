@@ -59,6 +59,8 @@ A full-stack CRM system for a veterinary pharmaceutical company with Admin Panel
 - `GET /api/payment-requests` - Admin views all requests
 - `POST /api/payment-requests/{id}/approve` - Admin approve/reject
 - `GET /api/mr/pending-items/{phone}` - MR gets customer's pending items
+- `GET /api/customer/pending-items` - Customer gets own pending items
+- `POST /api/whatsapp-config/{id}/test` - Per-config WhatsApp test
 
 ## Key DB Collections (New)
 - `payment_requests` - MR payment submissions with status, mr_name, amount, mode

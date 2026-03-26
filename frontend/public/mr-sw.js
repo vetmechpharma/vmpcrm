@@ -14,6 +14,7 @@ const CACHEABLE_API = [
   '/api/mr/visual-aids',
   '/api/mr/items',
   '/api/mr/orders',
+  '/api/mr/outstanding',
 ];
 
 // Install: cache the app shell (index.html)

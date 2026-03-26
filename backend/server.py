@@ -11634,6 +11634,70 @@ async def get_mr_customers(entity_type: Optional[str] = None, search: Optional[s
     
     return results
 
+
+@api_router.get("/mr/outstanding")
+async def get_mr_outstanding(mr: dict = Depends(get_current_mr)):
+    """Get outstanding balances for customers in MR's territory"""
+    state = mr.get('state', '')
+    districts = mr.get('districts', [])
+    loc_q = {'state': state}
+    if districts:
+        loc_q['district'] = {'$in': districts}
+    
+    results = []
+    collections = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}
+    totals = {'doctor': 0, 'medical': 0, 'agency': 0, 'grand_total': 0}
+    
+    for ctype, col_name in collections.items():
+        customers = await db[col_name].find(loc_q, {
+            '_id': 0, 'id': 1, 'name': 1, 'phone': 1, 'district': 1,
+            'opening_balance': 1, 'customer_code': 1
+        }).sort('name', 1).to_list(2000)
+        
+        for cust in customers:
+            cust_id = cust['id']
+            opening_bal = cust.get('opening_balance', 0) or 0
+            
+            inv_pipeline = [
+                {'$match': {'doctor_id': cust_id, 'invoice_value': {'$ne': None}}},
+                {'$group': {'_id': None, 'total': {'$sum': {'$toDouble': '$invoice_value'}}}}
+            ]
+            inv_result = await db.orders.aggregate(inv_pipeline).to_list(1)
+            total_invoiced = inv_result[0]['total'] if inv_result else 0
+            
+            pay_pipeline = [
+                {'$match': {'customer_id': cust_id}},
+                {'$group': {'_id': None, 'total': {'$sum': '$amount'}}}
+            ]
+            pay_result = await db.payments.aggregate(pay_pipeline).to_list(1)
+            total_paid = pay_result[0]['total'] if pay_result else 0
+            
+            outstanding = opening_bal + total_invoiced - total_paid
+            
+            results.append({
+                'customer_id': cust_id,
+                'customer_code': cust.get('customer_code', ''),
+                'customer_name': cust['name'],
+                'customer_phone': cust.get('phone', ''),
+                'district': cust.get('district', ''),
+                'customer_type': ctype,
+                'opening_balance': round(opening_bal, 2),
+                'total_invoiced': round(total_invoiced, 2),
+                'total_paid': round(total_paid, 2),
+                'outstanding': round(outstanding, 2),
+            })
+            if outstanding != 0:
+                totals[ctype] = round(totals[ctype] + outstanding, 2)
+                totals['grand_total'] = round(totals['grand_total'] + outstanding, 2)
+    
+    results.sort(key=lambda x: x['outstanding'], reverse=True)
+    return {
+        'customers': results,
+        'totals': totals,
+        'synced_at': datetime.now(timezone.utc).isoformat()
+    }
+
+
 @api_router.post("/mr/visits")
 async def create_mr_visit(data: dict, mr: dict = Depends(get_current_mr)):
     """Record a visit"""

@@ -104,4 +104,5 @@ export const mrAPI = {
   getOrders: () => mrApi.get('/mr/orders'),
   createOrder: (data) => mrApi.post('/mr/orders', data),
   cancelOrder: (id, data) => mrApi.post(`/mr/orders/${id}/cancel-request`, data),
+  getOutstanding: () => mrApi.get('/mr/outstanding'),
 };

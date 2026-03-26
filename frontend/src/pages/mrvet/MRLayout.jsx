@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet';
 import {
   LayoutDashboard, Users, Layers, ClipboardList, CalendarCheck,
   LogOut, Menu, X, Stethoscope, ShoppingCart, RefreshCw, Wifi, WifiOff,
-  Download, Cloud, CloudOff, Smartphone
+  Download, Cloud, CloudOff, Smartphone, IndianRupee
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { useAutoSubscribe } from '../../hooks/usePushNotifications';
 const navItems = [
   { path: '/mrvet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/mrvet/customers', icon: Users, label: 'Customers' },
+  { path: '/mrvet/outstanding', icon: IndianRupee, label: 'Outstanding' },
   { path: '/mrvet/visual-aids', icon: Layers, label: 'Visual Aids' },
   { path: '/mrvet/visits', icon: ClipboardList, label: 'Visits' },
   { path: '/mrvet/followups', icon: CalendarCheck, label: 'Follow-ups' },

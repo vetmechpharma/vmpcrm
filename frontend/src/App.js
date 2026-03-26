@@ -50,6 +50,7 @@ import MRFollowups from './pages/mrvet/MRFollowups';
 import MRVisualAids from './pages/mrvet/MRVisualAids';
 import MRSlideshow from './pages/mrvet/MRSlideshow';
 import MROrders from './pages/mrvet/MROrders';
+import MROutstanding from './pages/mrvet/MROutstanding';
 import { Toaster } from './components/ui/sonner';
 import './App.css';
 
@@ -136,6 +137,7 @@ function AppRoutes() {
       <Route path="/mrvet" element={<MRProtectedRoute><MRLayout /></MRProtectedRoute>}>
         <Route path="dashboard" element={<MRDashboard />} />
         <Route path="customers" element={<MRCustomers />} />
+        <Route path="outstanding" element={<MROutstanding />} />
         <Route path="visits" element={<MRVisits />} />
         <Route path="followups" element={<MRFollowups />} />
         <Route path="visual-aids" element={<MRVisualAids />} />

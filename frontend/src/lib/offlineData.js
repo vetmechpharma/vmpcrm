@@ -8,6 +8,7 @@ const CACHE_KEYS = {
   dashboard: `${CACHE_PREFIX}dashboard`,
   visits: `${CACHE_PREFIX}visits`,
   followups: `${CACHE_PREFIX}followups`,
+  outstanding: `${CACHE_PREFIX}outstanding`,
 };
 
 // Save data to localStorage with timestamp
@@ -75,6 +76,7 @@ export async function prefetchEssentialData() {
     { fn: () => mrAPI.getItems({}), key: CACHE_KEYS.items },
     { fn: () => mrAPI.getOrders(), key: CACHE_KEYS.orders },
     { fn: () => mrAPI.getDashboard(), key: CACHE_KEYS.dashboard },
+    { fn: () => mrAPI.getOutstanding(), key: CACHE_KEYS.outstanding },
   ];
 
   const results = await Promise.allSettled(
@@ -107,6 +109,23 @@ export function getCachedItems() {
 // Get cached orders
 export function getCachedOrders() {
   return getFromCache(CACHE_KEYS.orders) || [];
+}
+
+// Get cached outstanding data
+export function getCachedOutstanding() {
+  return getFromCache(CACHE_KEYS.outstanding) || null;
+}
+
+// Get cache timestamp for a key
+export function getCacheTimestamp(key) {
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed.timestamp || null;
+  } catch {
+    return null;
+  }
 }
 
 export { CACHE_KEYS, saveToCache, getFromCache };

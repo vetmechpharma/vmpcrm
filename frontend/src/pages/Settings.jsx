@@ -210,6 +210,29 @@ export const Settings = () => {
     }
   };
 
+  const [testingConfigId, setTestingConfigId] = useState(null);
+  const [configTestMobile, setConfigTestMobile] = useState('');
+
+  const handleTestSpecificConfig = async (configId, configName) => {
+    if (!configTestMobile || configTestMobile.length < 10) {
+      toast.error('Enter a valid mobile number to test');
+      return;
+    }
+    setTestingConfigId(configId);
+    try {
+      const res = await whatsappAPI.testSpecificConfig(configId, configTestMobile);
+      if (res.data?.status === 'success') {
+        toast.success(`${configName}: ${res.data.message}`);
+      } else {
+        toast.error(`${configName}: ${res.data?.message || 'Test failed'}`);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || `Failed to test ${configName}`);
+    } finally {
+      setTestingConfigId(null);
+    }
+  };
+
   const handleTestWhatsApp = async () => {
     if (!testMobile || testMobile.length < 10) {
       toast.error('Please enter a valid mobile number');
@@ -314,14 +337,26 @@ export const Settings = () => {
           {/* Existing Configs List */}
           {whatsappConfigs.length > 0 && (
             <div className="mb-6 space-y-3" data-testid="whatsapp-configs-list">
-              {whatsappConfigs.map((cfg) => (
-                <div key={cfg.id} className={`p-4 rounded-lg border ${cfg.is_active ? 'border-green-300 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-slate-500 font-medium">
+                  {whatsappConfigs.length} config{whatsappConfigs.length > 1 ? 's' : ''} configured. Only the <span className="text-green-600">Active</span> config is used for sending.
+                </p>
+              </div>
+              {whatsappConfigs.map((cfg, idx) => (
+                <div key={cfg.id} className={`p-4 rounded-lg border-2 transition-all ${cfg.is_active ? 'border-green-400 bg-green-50 shadow-sm' : 'border-slate-200 bg-white'}`} data-testid={`wa-config-card-${cfg.id}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">API {idx + 1}</span>
                         <span className="font-semibold text-sm">{cfg.name || 'Unnamed Config'}</span>
-                        {cfg.is_active && (
-                          <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-medium">Active</span>
+                        {cfg.is_active ? (
+                          <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                            <ToggleRight className="w-3 h-3" /> Active
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                            <ToggleLeft className="w-3 h-3" /> Inactive
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1">{cfg.api_url}</p>
@@ -330,8 +365,8 @@ export const Settings = () => {
                     {isAdmin && (
                       <div className="flex items-center gap-1">
                         {!cfg.is_active && (
-                          <Button size="sm" variant="ghost" onClick={() => handleActivateConfig(cfg.id)} title="Set as Active" data-testid={`activate-config-${cfg.id}`}>
-                            <ToggleLeft className="w-4 h-4" />
+                          <Button size="sm" variant="outline" onClick={() => handleActivateConfig(cfg.id)} title="Enable this config" className="text-green-600 border-green-300 hover:bg-green-50" data-testid={`activate-config-${cfg.id}`}>
+                            <ToggleLeft className="w-4 h-4 mr-1" /> Enable
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => handleEditConfig(cfg)} title="Edit" data-testid={`edit-config-${cfg.id}`}>
@@ -343,6 +378,29 @@ export const Settings = () => {
                       </div>
                     )}
                   </div>
+                  {/* Per-config test */}
+                  {isAdmin && (
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                      <Input
+                        placeholder="Mobile number"
+                        value={configTestMobile}
+                        onChange={(e) => setConfigTestMobile(e.target.value)}
+                        className="flex-1 h-8 text-sm"
+                        data-testid={`test-input-${cfg.id}`}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleTestSpecificConfig(cfg.id, cfg.name)}
+                        disabled={testingConfigId === cfg.id}
+                        className="h-8 text-xs"
+                        data-testid={`test-btn-${cfg.id}`}
+                      >
+                        {testingConfigId === cfg.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
+                        Test
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

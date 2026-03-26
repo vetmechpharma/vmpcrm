@@ -7058,7 +7058,7 @@ async def execute_wa_request(config, params):
 
 
 async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_caption: str = None, config=None):
-    """Universal WhatsApp message sender using dynamic config"""
+    """Universal WhatsApp message sender using dynamic config. Auto-fallback to text if file send fails."""
     if not config:
         config = await get_whatsapp_config()
     if not config or not config.get('api_url'):
@@ -7069,10 +7069,21 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
     params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
     try:
         response = await execute_wa_request(config, params)
-        if response and response.status_code != 200:
+        if response and response.status_code == 200 and file_url:
+            # Check if the API actually succeeded (some APIs return 200 but with error in body)
+            body = response.text.strip()
+            is_success = '"success":true' in body or '"success": true' in body
+            if not is_success:
+                logger.warning(f"WhatsApp file send failed (body={body[:200]}). Falling back to text-only message.")
+                # Fallback: send as text-only message without the file
+                text_params = build_wa_params(config, message=file_caption or message, receiver=clean_receiver)
+                response = await execute_wa_request(config, text_params)
+                if response:
+                    logger.info(f"WhatsApp text fallback: status={response.status_code}, body={response.text[:200]}")
+            else:
+                logger.info(f"WhatsApp file send success: file_url={file_url[:100]}")
+        elif response and response.status_code != 200:
             logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
-        elif response and file_url:
-            logger.info(f"WhatsApp file send: status={response.status_code}, file_url={file_url[:100]}, body={response.text[:200]}")
         return response
     except Exception as e:
         logger.error(f"WhatsApp send error: {e}")
@@ -7621,26 +7632,47 @@ async def process_marketing_campaign(campaign_id: str):
                         response = await send_wa_msg(wa_mobile, message, config=config)
                     
                     if response and response.status_code == 200:
-                        await db.campaign_logs.update_one(
-                            {'id': log['id']},
-                            {'$set': {
-                                'status': 'sent',
-                                'sent_at': datetime.now(timezone.utc).isoformat(),
-                                'recipient_name': recipient.get('name'),
-                                'recipient_phone': wa_mobile,
-                                'recipient_type': recipient.get('type')
-                            }}
-                        )
-                        await db.marketing_campaigns.update_one(
-                            {'id': campaign_id},
-                            {'$inc': {'sent_count': 1, 'pending_count': -1}}
-                        )
-                        
-                        # Log to WhatsApp logs
-                        await log_whatsapp_message(
-                            wa_mobile, 'marketing', message[:200], 'success',
-                            recipient_name=recipient.get('name')
-                        )
+                        # Verify the API actually succeeded by checking body
+                        body = response.text.strip()
+                        is_success = '"success":true' in body or '"success": true' in body
+                        if is_success:
+                            await db.campaign_logs.update_one(
+                                {'id': log['id']},
+                                {'$set': {
+                                    'status': 'sent',
+                                    'sent_at': datetime.now(timezone.utc).isoformat(),
+                                    'recipient_name': recipient.get('name'),
+                                    'recipient_phone': wa_mobile,
+                                    'recipient_type': recipient.get('type')
+                                }}
+                            )
+                            await db.marketing_campaigns.update_one(
+                                {'id': campaign_id},
+                                {'$inc': {'sent_count': 1, 'pending_count': -1}}
+                            )
+                            
+                            # Log to WhatsApp logs
+                            await log_whatsapp_message(
+                                wa_mobile, 'marketing', message[:200], 'success',
+                                recipient_name=recipient.get('name')
+                            )
+                        else:
+                            error_msg = f"API returned 200 but body indicates failure: {body[:200]}"
+                            logger.warning(f"Campaign {campaign_id} - message to {wa_mobile}: {error_msg}")
+                            await db.campaign_logs.update_one(
+                                {'id': log['id']},
+                                {'$set': {
+                                    'status': 'failed',
+                                    'error_message': error_msg,
+                                    'recipient_name': recipient.get('name'),
+                                    'recipient_phone': wa_mobile,
+                                    'recipient_type': recipient.get('type')
+                                }}
+                            )
+                            await db.marketing_campaigns.update_one(
+                                {'id': campaign_id},
+                                {'$inc': {'failed_count': 1, 'pending_count': -1}}
+                            )
                     else:
                         error_msg = f"Status {response.status_code if response else 'no_response'}"
                         await db.campaign_logs.update_one(
@@ -10622,11 +10654,48 @@ async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(g
     try:
         response = await send_wa_msg(mobile, message, config=config)
         if response and response.status_code == 200:
-            return {"message": "Test message sent successfully", "status": "success"}
+            body = response.text.strip()
+            is_success = '"success":true' in body or '"success": true' in body
+            if is_success:
+                return {"message": "Test message sent successfully", "status": "success", "response": body[:300]}
+            else:
+                return {"message": f"API returned 200 but body: {body[:200]}", "status": "failed", "response": body[:300]}
         else:
             return {"message": f"API returned status {response.status_code if response else 'no_response'}", "status": "failed", "response": response.text if response else ''}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send test message: {str(e)}")
+
+
+@api_router.post("/whatsapp-config/{config_id}/test")
+async def test_specific_whatsapp_config(config_id: str, mobile: str, current_user: dict = Depends(get_current_user)):
+    """Send a test message using a SPECIFIC WhatsApp config (not just active)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can test WhatsApp")
+    config_doc = await db.whatsapp_config.find_one({'id': config_id}, {'_id': 0})
+    if not config_doc:
+        raise HTTPException(status_code=404, detail="Config not found")
+    # Apply defaults
+    defaults = {
+        'http_method': 'GET', 'field_action': 'action', 'field_sender_id': 'senderId',
+        'field_auth_token': 'authToken', 'field_message': 'messageText', 'field_receiver': 'receiverId',
+        'field_file_url': 'fileUrl', 'field_file_caption': 'fileCaption',
+        'action_send': 'send', 'action_send_file': 'sendFile',
+    }
+    for k, v in defaults.items():
+        if k not in config_doc or not config_doc[k]:
+            config_doc[k] = v
+    message = f"Test message from VMP CRM via [{config_doc.get('name', 'Config')}]. WhatsApp integration is working!"
+    try:
+        response = await send_wa_msg(mobile, message, config=config_doc)
+        body = response.text.strip() if response else ''
+        is_success = response and response.status_code == 200 and ('"success":true' in body or '"success": true' in body)
+        if is_success:
+            return {"message": f"Test sent via {config_doc.get('name', 'Config')}!", "status": "success", "response": body[:300]}
+        else:
+            return {"message": f"API response: {body[:200]}", "status": "failed", "response": body[:300]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed: {str(e)}")
+
 
 # ============== MESSAGE TEMPLATES (WhatsApp & Email) ==============
 

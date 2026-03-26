@@ -239,6 +239,7 @@ export const whatsappAPI = {
   deleteConfig: (id) => api.delete(`/whatsapp-config/${id}`),
   activateConfig: (id) => api.put(`/whatsapp-config/${id}/activate`),
   testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
+  testSpecificConfig: (id, mobile) => api.post(`/whatsapp-config/${id}/test?mobile=${mobile}`),
 };
 
 // Fallback OTP APIs

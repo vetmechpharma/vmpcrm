@@ -7,7 +7,7 @@ import { Helmet } from 'react-helmet';
 import {
   LayoutDashboard, Users, Layers, ClipboardList, CalendarCheck,
   LogOut, Menu, X, Stethoscope, ShoppingCart, RefreshCw, Wifi, WifiOff,
-  Download, Cloud, CloudOff, Smartphone, IndianRupee
+  Download, Cloud, CloudOff, Smartphone, IndianRupee, CreditCard
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ const navItems = [
   { path: '/mrvet/visits', icon: ClipboardList, label: 'Visits' },
   { path: '/mrvet/followups', icon: CalendarCheck, label: 'Follow-ups' },
   { path: '/mrvet/orders', icon: ShoppingCart, label: 'Orders' },
+  { path: '/mrvet/payments', icon: CreditCard, label: 'Payments' },
 ];
 
 export default function MRLayout() {

@@ -1294,6 +1294,15 @@ class OrderResponse(BaseModel):
     cancel_requested: Optional[bool] = None
     cancel_requested_by: Optional[str] = None
     cancel_reason: Optional[str] = None
+    # Additional fields
+    notes: Optional[str] = None
+    customer_type: Optional[str] = None
+    created_by: Optional[str] = None
+    # Transfer fields
+    transferred_to_agency_id: Optional[str] = None
+    transferred_to_agency_name: Optional[str] = None
+    transferred_to_agency_phone: Optional[str] = None
+    transferred_at: Optional[str] = None
 
 # ============== WHATSAPP CONFIG MODELS ==============
 
@@ -3344,7 +3353,7 @@ async def get_comprehensive_dashboard_stats(current_user: dict = Depends(get_cur
         combined_by_status[status] = doctors_by_status.get(status, 0) + medicals_by_status.get(status, 0) + agencies_by_status.get(status, 0)
     
     # ============== ORDERS STATS ==============
-    order_statuses = ['pending', 'confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'cancelled']
+    order_statuses = ['pending', 'confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'cancelled', 'transferred']
     order_status_pipeline = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
     order_status_counts = await db.orders.aggregate(order_status_pipeline).to_list(100)
     orders_by_status = {item['_id']: item['count'] for item in order_status_counts if item['_id']}
@@ -8764,13 +8773,19 @@ async def get_orders(
             location=order.get('location'),
             device_info=order.get('device_info'),
             created_at=created_at,
-            # MR Order fields
             source=order.get('source'),
             mr_id=order.get('mr_id'),
             mr_name=order.get('mr_name'),
             cancel_requested=order.get('cancel_requested'),
             cancel_requested_by=order.get('cancel_requested_by'),
-            cancel_reason=order.get('cancel_reason')
+            cancel_reason=order.get('cancel_reason'),
+            notes=order.get('notes'),
+            customer_type=order.get('customer_type'),
+            created_by=order.get('created_by'),
+            transferred_to_agency_id=order.get('transferred_to_agency_id'),
+            transferred_to_agency_name=order.get('transferred_to_agency_name'),
+            transferred_to_agency_phone=order.get('transferred_to_agency_phone'),
+            transferred_at=order.get('transferred_at'),
         ))
     
     return result
@@ -8927,6 +8942,110 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
             )
     
     return {"message": f"Order status updated to {new_status}"}
+
+
+@api_router.post("/orders/{order_id}/transfer")
+async def transfer_order_to_agency(
+    order_id: str,
+    data: dict,
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user)
+):
+    """Transfer an order to an agency - sends WhatsApp to agency and customer"""
+    agency_id = data.get('agency_id')
+    if not agency_id:
+        raise HTTPException(status_code=400, detail="Agency ID required")
+    
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    agency = await db.agencies.find_one({'id': agency_id}, {'_id': 0})
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+    
+    now = datetime.now(timezone.utc)
+    await db.orders.update_one({'id': order_id}, {'$set': {
+        'status': 'transferred',
+        'transferred_to_agency_id': agency_id,
+        'transferred_to_agency_name': agency['name'],
+        'transferred_to_agency_phone': agency.get('phone', ''),
+        'transferred_at': now.isoformat(),
+        'updated_at': now.isoformat(),
+    }})
+    
+    # Build items summary
+    items_summary = ""
+    for item in order.get('items', []):
+        items_summary += f"- {item.get('item_name', '')} x {item.get('quantity', '')}\n"
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = (company or {}).get('company_name', 'VMP CRM')
+    
+    # WhatsApp to Agency - Doctor/Medical details + order info
+    cust_name = order.get('doctor_name', '')
+    cust_phone = order.get('doctor_phone', '')
+    cust_type = (order.get('customer_type', 'doctor')).title()
+    cust_address = order.get('doctor_address', '')
+    
+    agency_msg = (
+        f"*{company_name}*\n"
+        f"*ORDER TRANSFER*\n"
+        f"{'─' * 28}\n"
+        f"Order No: {order.get('order_number', '')}\n"
+        f"{'─' * 28}\n"
+        f"*{cust_type} Details:*\n"
+        f"Name: {cust_name}\n"
+        f"Phone: {cust_phone}\n"
+    )
+    if cust_address:
+        agency_msg += f"Location: {cust_address}\n"
+    
+    agency_msg += (
+        f"{'─' * 28}\n"
+        f"*Order Items:*\n"
+        f"{items_summary}"
+        f"{'─' * 28}\n"
+        f"Please process this order.\n"
+    )
+    
+    # WhatsApp to Customer - confirmation with agency info
+    customer_msg = (
+        f"*{company_name}*\n\n"
+        f"Your order *{order.get('order_number', '')}* has been successfully placed at:\n\n"
+        f"*{agency['name']}*\n"
+        f"Contact: {agency.get('phone', '')}\n\n"
+        f"*Order Details:*\n"
+        f"{items_summary}\n"
+        f"Thank you for your order!\n"
+    )
+    
+    config = await get_whatsapp_config()
+    if config and config.get('api_url') and config.get('auth_token'):
+        # Send to agency
+        agency_phone = agency.get('phone', '')
+        if agency_phone:
+            wa_agency = agency_phone if agency_phone.startswith('91') else f"91{agency_phone[-10:]}"
+            background_tasks.add_task(send_wa_msg, wa_agency, agency_msg, None, None, config)
+        
+        # Send to customer
+        if cust_phone:
+            wa_cust = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
+            background_tasks.add_task(send_wa_msg, wa_cust, customer_msg, None, None, config)
+    
+    # Send email to customer
+    cust_email = order.get('doctor_email', '')
+    if cust_email:
+        email_body = f"""<p>Dear <strong>{cust_name}</strong>,</p>
+<p>Your order <strong>{order.get('order_number', '')}</strong> has been placed at:</p>
+<div style="background:#f0fdf4;padding:16px;border-radius:6px;border-left:4px solid #10b981;margin:16px 0;">
+<p style="margin:0;font-weight:bold;">{agency['name']}</p>
+<p style="margin:4px 0 0 0;">Contact: {agency.get('phone', '')}</p></div>
+<p><strong>Items:</strong></p><ul>{''.join(f"<li>{item.get('item_name','')} x {item.get('quantity','')}</li>" for item in order.get('items', []))}</ul>"""
+        background_tasks.add_task(send_notification_email, cust_email, cust_name, f"Order Transferred - {order.get('order_number','')}", email_body, order.get('doctor_id'), 'order_transfer')
+    
+    return {"message": f"Order transferred to {agency['name']}"}
+
 
 # Keep legacy endpoint for backward compatibility
 @api_router.put("/orders/{order_id}/transport")
@@ -11901,6 +12020,128 @@ async def mr_order_cancel_request(order_id: str, data: dict, mr: dict = Depends(
     }})
     
     return {'message': 'Cancellation request submitted', 'order_id': order_id}
+
+
+# ============== MR PAYMENT REQUESTS ==============
+
+@api_router.post("/mr/payment-requests")
+async def create_mr_payment_request(data: dict, mr: dict = Depends(get_current_mr)):
+    """MR records a payment for admin approval"""
+    customer_id = data.get('customer_id', '')
+    customer_name = data.get('customer_name', '')
+    customer_type = data.get('customer_type', 'doctor')
+    amount = float(data.get('amount', 0))
+    mode = data.get('mode', 'cash')
+    notes = data.get('notes', '')
+    date = data.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
+    
+    if not customer_id or not customer_name:
+        raise HTTPException(status_code=400, detail="Customer required")
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    
+    now = datetime.now(timezone.utc)
+    request_doc = {
+        'id': str(uuid.uuid4()),
+        'customer_id': customer_id,
+        'customer_name': customer_name,
+        'customer_type': customer_type,
+        'customer_phone': data.get('customer_phone', ''),
+        'amount': amount,
+        'mode': mode,
+        'date': date,
+        'notes': notes,
+        'status': 'pending',
+        'mr_id': mr['id'],
+        'mr_name': mr['name'],
+        'created_at': now.isoformat(),
+    }
+    
+    await db.payment_requests.insert_one(request_doc)
+    request_doc.pop('_id', None)
+    
+    # Notify admins
+    try:
+        admins = await db.users.find({'role': 'admin'}, {'_id': 0, 'id': 1}).to_list(10)
+        for admin in admins:
+            await send_push_to_user(admin['id'], 'admin', 'Payment Request',
+                f'{mr["name"]} recorded Rs.{amount:,.0f} from {customer_name}', '/payments', 'payment-request')
+    except Exception as e:
+        logger.error(f"Payment request push notification error: {e}")
+    
+    return {'id': request_doc['id'], 'message': 'Payment request submitted for approval'}
+
+@api_router.get("/mr/payment-requests")
+async def get_mr_payment_requests(mr: dict = Depends(get_current_mr)):
+    """Get payment requests created by this MR"""
+    requests = await db.payment_requests.find({'mr_id': mr['id']}, {'_id': 0}).sort('created_at', -1).to_list(200)
+    return requests
+
+@api_router.get("/payment-requests")
+async def get_all_payment_requests(status: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Admin: Get all payment requests"""
+    q = {}
+    if status:
+        q['status'] = status
+    requests = await db.payment_requests.find(q, {'_id': 0}).sort('created_at', -1).to_list(500)
+    return requests
+
+@api_router.post("/payment-requests/{request_id}/approve")
+async def approve_payment_request(request_id: str, data: dict, current_user: dict = Depends(get_current_user)):
+    """Admin approves or rejects a payment request. On approval, creates actual payment and updates ledger."""
+    req = await db.payment_requests.find_one({'id': request_id}, {'_id': 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Payment request not found")
+    
+    action = data.get('action', '')  # 'approve' or 'reject'
+    now = datetime.now(timezone.utc)
+    
+    if action == 'approve':
+        # Create actual payment
+        payment_id = str(uuid.uuid4())
+        payment_doc = {
+            'id': payment_id,
+            'customer_id': req['customer_id'],
+            'customer_name': req['customer_name'],
+            'customer_type': req['customer_type'],
+            'customer_phone': req.get('customer_phone', ''),
+            'amount': req['amount'],
+            'mode': req['mode'],
+            'date': req['date'],
+            'notes': f"{req.get('notes', '')} [Recorded by MR: {req['mr_name']}]".strip(),
+            'order_id': '',
+            'invoice_number': '',
+            'created_by': current_user['name'],
+            'approved_by': current_user['name'],
+            'mr_recorded': True,
+            'mr_name': req['mr_name'],
+            'mr_id': req['mr_id'],
+            'created_at': now.isoformat(),
+        }
+        await db.payments.insert_one(payment_doc)
+        
+        # Update request status
+        await db.payment_requests.update_one({'id': request_id}, {'$set': {
+            'status': 'approved',
+            'approved_by': current_user['name'],
+            'approved_at': now.isoformat(),
+            'payment_id': payment_id,
+        }})
+        
+        return {'message': f'Payment of Rs.{req["amount"]:,.2f} approved and recorded', 'payment_id': payment_id}
+    
+    elif action == 'reject':
+        reason = data.get('reason', '')
+        await db.payment_requests.update_one({'id': request_id}, {'$set': {
+            'status': 'rejected',
+            'rejected_by': current_user['name'],
+            'rejected_at': now.isoformat(),
+            'rejection_reason': reason,
+        }})
+        return {'message': 'Payment request rejected'}
+    
+    raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
 
 @api_router.post("/orders/{order_id}/approve-cancel")
 async def approve_cancel_order(order_id: str, data: dict, current_user: dict = Depends(get_current_user)):

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { paymentsAPI, doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
+import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Separator } from '../components/ui/separator';
+import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import {
   IndianRupee, Plus, Search, Trash2, Loader2, FileText, Download,
@@ -34,6 +36,12 @@ export const Payments = () => {
   const [filterMode, setFilterMode] = useState('');
   const [paySearch, setPaySearch] = useState('');
   const [sendingWA, setSendingWA] = useState(null);
+
+  // MR Payment Requests
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingId, setRejectingId] = useState(null);
 
   // Ledger
   const [showLedger, setShowLedger] = useState(false);
@@ -70,7 +78,30 @@ export const Payments = () => {
   useEffect(() => {
     if (activeTab === 'outstanding') fetchOutstanding();
     else if (activeTab === 'payments') fetchPayments();
+    else if (activeTab === 'approvals') fetchPendingRequests();
   }, [activeTab, fetchOutstanding, fetchPayments]);
+
+  // Fetch pending requests count on mount
+  useEffect(() => { fetchPendingRequests(); }, []);
+
+  const fetchPendingRequests = async () => {
+    setLoadingRequests(true);
+    try {
+      const res = await api.get('/payment-requests');
+      setPendingRequests(res.data);
+    } catch { toast.error('Failed to load payment requests'); }
+    finally { setLoadingRequests(false); }
+  };
+
+  const handlePaymentAction = async (requestId, action, reason = '') => {
+    try {
+      await api.post(`/payment-requests/${requestId}/approve`, { action, reason });
+      toast.success(action === 'approve' ? 'Payment approved and recorded!' : 'Payment request rejected');
+      fetchPendingRequests();
+      setRejectingId(null);
+      setRejectReason('');
+    } catch { toast.error('Action failed'); }
+  };
 
   const searchCustomers = async (q) => {
     setCustomerSearch(q);
@@ -256,10 +287,14 @@ export const Payments = () => {
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
         {[{ key: 'outstanding', label: 'Outstanding', icon: IndianRupee },
-          { key: 'payments', label: 'Payment History', icon: CreditCard }].map(tab => (
+          { key: 'payments', label: 'Payment History', icon: CreditCard },
+          { key: 'approvals', label: 'MR Approvals', icon: Users }].map(tab => (
           <Button key={tab.key} variant={activeTab === tab.key ? 'default' : 'ghost'} size="sm"
             onClick={() => setActiveTab(tab.key)} data-testid={`tab-${tab.key}`}>
             <tab.icon className="w-4 h-4 mr-1" />{tab.label}
+            {tab.key === 'approvals' && pendingRequests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]">{pendingRequests.filter(r => r.status === 'pending').length}</span>
+            )}
           </Button>
         ))}
       </div>
@@ -374,7 +409,7 @@ export const Payments = () => {
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'payments' ? (
         /* Payment History */
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
@@ -398,6 +433,7 @@ export const Payments = () => {
                   <td className="p-3">
                     <p className="font-medium">{p.customer_name}</p>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${typeBg(p.customer_type)}`}>{typeLabel(p.customer_type)}</span>
+                    {p.mr_name && <p className="text-xs text-indigo-500 mt-0.5">via MR: {p.mr_name}</p>}
                   </td>
                   <td className="p-3 text-center"><span className="px-2 py-0.5 bg-slate-100 rounded text-xs font-medium">{p.mode}</span></td>
                   <td className="p-3 text-right font-bold text-emerald-600">₹{parseFloat(p.amount).toLocaleString('en-IN')}</td>
@@ -422,7 +458,68 @@ export const Payments = () => {
           </table>
           {payments.length === 0 && <p className="text-center py-8 text-slate-400">No payments recorded</p>}
         </div>
-      )}
+      ) : activeTab === 'approvals' ? (
+        <div className="space-y-3">
+          {loadingRequests ? (
+            <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+          ) : pendingRequests.length === 0 ? (
+            <p className="text-center py-16 text-slate-400">No payment requests from MRs</p>
+          ) : (
+            pendingRequests.map(req => (
+              <Card key={req.id} className="border-l-4 border-indigo-200" data-testid={`approval-${req.id}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-800">{req.customer_name}</span>
+                        <Badge className="text-[10px]" variant="outline">{req.customer_type}</Badge>
+                        <Badge className={req.status === 'pending' ? 'bg-amber-100 text-amber-700' : req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                          {req.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-indigo-600 font-medium mt-1">Recorded by MR: {req.mr_name}</p>
+                      <div className="flex gap-3 mt-1 text-xs text-slate-500">
+                        <span>{req.date}</span>
+                        <span>Mode: {req.mode}</span>
+                        {req.customer_phone && <span>Phone: {req.customer_phone}</span>}
+                      </div>
+                      {req.notes && <p className="text-xs text-slate-500 mt-1">Notes: {req.notes}</p>}
+                      {req.status === 'approved' && <p className="text-xs text-emerald-600 mt-1">Approved by: {req.approved_by}</p>}
+                      {req.status === 'rejected' && req.rejection_reason && <p className="text-xs text-red-500 mt-1">Reason: {req.rejection_reason}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xl font-bold text-slate-800">Rs.{Number(req.amount).toLocaleString('en-IN')}</p>
+                      {req.status === 'pending' && (
+                        <div className="flex gap-2 mt-2">
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8"
+                            onClick={() => handlePaymentAction(req.id, 'approve')} data-testid={`approve-${req.id}`}>
+                            Approve
+                          </Button>
+                          {rejectingId === req.id ? (
+                            <div className="flex gap-1">
+                              <Input placeholder="Reason" value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                                className="h-8 text-xs w-24" />
+                              <Button size="sm" variant="destructive" className="h-8"
+                                onClick={() => handlePaymentAction(req.id, 'reject', rejectReason)}>
+                                Reject
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => setRejectingId(req.id)} data-testid={`reject-${req.id}`}>
+                              Reject
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      ) : null}
 
       {/* Record Payment Dialog */}
       <Dialog open={showPayForm} onOpenChange={(open) => { setShowPayForm(open); if (!open) setEditingPayment(null); }}>

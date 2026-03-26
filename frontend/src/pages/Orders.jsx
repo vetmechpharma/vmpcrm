@@ -36,7 +36,8 @@ import {
   Minus,
   Search,
   Printer,
-  MessageSquare
+  MessageSquare,
+  ArrowRightLeft
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 
@@ -47,6 +48,7 @@ const STATUS_CONFIG = {
   shipped: { color: 'bg-indigo-100 text-indigo-700', label: 'Shipped' },
   delivered: { color: 'bg-emerald-100 text-emerald-700', label: 'Delivered' },
   cancelled: { color: 'bg-red-100 text-red-700', label: 'Cancelled' },
+  transferred: { color: 'bg-teal-100 text-teal-700', label: 'Transferred' },
 };
 
 const PAYMENT_MODES = [
@@ -81,6 +83,11 @@ export const Orders = () => {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [companySettings, setCompanySettings] = useState(null);
+  
+  // Transfer to agency
+  const [agencies, setAgencies] = useState([]);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedAgency, setSelectedAgency] = useState('');
   
   const printRef = useRef();
 
@@ -143,6 +150,7 @@ export const Orders = () => {
     fetchTransports();
     fetchItems();
     fetchCompanySettings();
+    fetchAgencies();
   }, [statusFilter]);
 
   const fetchOrders = async () => {
@@ -187,6 +195,35 @@ export const Orders = () => {
     } catch (error) {
       console.error('Failed to fetch items');
     }
+  };
+
+  const fetchAgencies = async () => {
+    try {
+      const response = await agenciesAPI.getAll();
+      setAgencies(response.data);
+    } catch (error) {
+      console.error('Failed to fetch agencies');
+    }
+  };
+
+  const handleTransferOrder = async () => {
+    if (!selectedAgency || !selectedOrder) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/orders/${selectedOrder.id}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ agency_id: selectedAgency }),
+      });
+      if (!res.ok) throw new Error('Transfer failed');
+      toast.success('Order transferred successfully! WhatsApp notifications sent.');
+      setShowTransferModal(false);
+      setSelectedAgency('');
+      fetchOrders();
+    } catch {
+      toast.error('Failed to transfer order');
+    } finally { setSaving(false); }
   };
 
   const openUpdateModal = async (order) => {
@@ -846,13 +883,24 @@ export const Orders = () => {
                           <div>
                             <p className="font-medium text-slate-900">{order.doctor_name || 'Unknown'}</p>
                             <p className="text-sm text-slate-500">{order.doctor_phone}</p>
-                            {order.mr_name && <p className="text-xs text-indigo-500">via {order.mr_name}</p>}
+                            {order.source === 'mr' && order.mr_name && (
+                              <p className="text-xs text-indigo-600 font-medium">Submitted by: {order.mr_name}</p>
+                            )}
+                            {order.source === 'customer_portal' && (
+                              <p className="text-xs text-green-600 font-medium">Self Order</p>
+                            )}
+                            {order.notes && (
+                              <p className="text-xs text-amber-600 mt-0.5 truncate max-w-[200px]" title={order.notes}>Notes: {order.notes}</p>
+                            )}
                           </div>
                         </td>
                         <td><span className="text-sm">{order.items?.length || 0} items</span></td>
                         <td>
                           <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
                           {order.cancel_requested && <Badge className="ml-1 bg-red-50 text-red-600 border border-red-200 text-[10px]">Cancel Req</Badge>}
+                          {order.status === 'transferred' && order.transferred_to_agency_name && (
+                            <p className="text-xs text-teal-600 mt-1">To: {order.transferred_to_agency_name}</p>
+                          )}
                         </td>
                         <td>
                           {order.transport_name ? (
@@ -892,6 +940,13 @@ export const Orders = () => {
                             <Button variant="ghost" size="sm" onClick={() => openUpdateModal(order)} title="Update Status">
                               <Truck className="w-4 h-4" />
                             </Button>
+                            {order.status !== 'transferred' && order.status !== 'delivered' && order.status !== 'cancelled' && (
+                              <Button variant="ghost" size="sm" title="Transfer to Agency" className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                                onClick={() => { setSelectedOrder(order); setSelectedAgency(''); setShowTransferModal(true); }}
+                                data-testid={`transfer-order-${order.id}`}>
+                                <ArrowRightLeft className="w-4 h-4" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => handleDeleteOrder(order.id)} title="Delete Order" className="text-red-500 hover:text-red-700 hover:bg-red-50" data-testid={`delete-order-${order.id}`}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1266,6 +1321,40 @@ export const Orders = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Source & Notes Info */}
+              {(selectedOrder.source || selectedOrder.notes || selectedOrder.status === 'transferred') && (
+                <Card>
+                  <CardContent className="pt-4 space-y-2 text-sm">
+                    {selectedOrder.source === 'mr' && selectedOrder.mr_name && (
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-indigo-100 text-indigo-700">MR Order</Badge>
+                        <span className="font-medium">Submitted by: {selectedOrder.mr_name}</span>
+                      </div>
+                    )}
+                    {selectedOrder.source === 'customer_portal' && (
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-700">Self Order</Badge>
+                        <span className="text-slate-500">Placed via Customer Portal</span>
+                      </div>
+                    )}
+                    {selectedOrder.notes && (
+                      <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                        <p className="text-xs text-amber-600 font-medium mb-1">Order Notes:</p>
+                        <p className="text-slate-700 whitespace-pre-line">{selectedOrder.notes}</p>
+                      </div>
+                    )}
+                    {selectedOrder.status === 'transferred' && selectedOrder.transferred_to_agency_name && (
+                      <div className="bg-teal-50 border border-teal-200 p-3 rounded-lg">
+                        <p className="text-xs text-teal-600 font-medium mb-1">Transferred to Agency:</p>
+                        <p className="font-medium">{selectedOrder.transferred_to_agency_name}</p>
+                        {selectedOrder.transferred_to_agency_phone && <p className="text-slate-500">{selectedOrder.transferred_to_agency_phone}</p>}
+                        {selectedOrder.transferred_at && <p className="text-xs text-slate-400 mt-1">{formatDateTime(selectedOrder.transferred_at)}</p>}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader className="pb-3">
@@ -1892,6 +1981,45 @@ export const Orders = () => {
             </Button>
             <Button onClick={handlePrint} data-testid="print-order-btn">
               <Printer className="w-4 h-4 mr-2" /> Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer to Agency Modal */}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transfer Order to Agency</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedOrder && (
+              <div className="bg-slate-50 p-3 rounded-lg text-sm">
+                <p className="font-medium">{selectedOrder.order_number}</p>
+                <p className="text-slate-600">{selectedOrder.doctor_name} - {selectedOrder.doctor_phone}</p>
+                <p className="text-slate-500">{selectedOrder.items?.length || 0} items</p>
+              </div>
+            )}
+            <div>
+              <Label>Select Agency <span className="text-red-500">*</span></Label>
+              <Select value={selectedAgency} onValueChange={setSelectedAgency}>
+                <SelectTrigger data-testid="transfer-agency-select">
+                  <SelectValue placeholder="Choose agency..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {agencies.map(a => (
+                    <SelectItem key={a.id} value={a.id}>{a.name} {a.phone ? `- ${a.phone}` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-slate-500">The selected agency will receive WhatsApp with customer details and order items. The customer will be notified about the agency transfer.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransferModal(false)}>Cancel</Button>
+            <Button onClick={handleTransferOrder} disabled={!selectedAgency || saving}
+              className="bg-teal-600 hover:bg-teal-700" data-testid="confirm-transfer-btn">
+              {saving ? 'Transferring...' : 'Transfer Order'}
             </Button>
           </DialogFooter>
         </DialogContent>

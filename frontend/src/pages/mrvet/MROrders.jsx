@@ -97,6 +97,15 @@ export default function MROrders() {
 
   const clearCustomer = () => { setSelectedCustomer(null); };
 
+  // Get the role-based rate for the selected customer type
+  const getRoleRate = (item) => {
+    if (!selectedCustomer) return item.rate || 0;
+    const cType = selectedCustomer.entity_type || 'doctor';
+    if (cType === 'medical') return item.rate_medicals || item.rate || 0;
+    if (cType === 'agency') return item.rate_agencies || item.rate || 0;
+    return item.rate_doctors || item.rate || 0;
+  };
+
   // Item management - same pattern as CRM
   const addItemToOrder = (item) => {
     const existingIdx = orderItems.findIndex(i => i.item_id === item.id);
@@ -109,18 +118,21 @@ export default function MROrders() {
       updated[existingIdx].outOfStock = false;
       setOrderItems(updated);
     } else {
+      const roleRate = getRoleRate(item);
+      const cType = selectedCustomer?.entity_type || 'doctor';
       setOrderItems([...orderItems, {
         item_id: item.id,
         item_code: item.item_code || '',
         item_name: item.name || item.item_name || '',
         quantity: '1',
         mrp: item.mrp || 0,
-        rate: item.rate || 0,
+        rate: roleRate,
+        defaultRate: roleRate,
         gst: item.gst || 0,
         outOfStock: false,
         previousQty: '1',
-        offer: item.offer_doctors || item.offer || '',
-        special_offer: item.special_offer_doctors || item.special_offer || '',
+        offer: item[`offer_${cType}s`] || item.offer_doctors || item.offer || '',
+        special_offer: item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '',
       }]);
     }
     setItemSearch('');
@@ -346,14 +358,19 @@ export default function MROrders() {
               {itemSearch && (
                 <div className="border rounded-lg max-h-48 overflow-y-auto">
                   {filteredItems.length > 0 ? filteredItems.slice(0, 10).map(item => {
-                    const offer = item.offer_doctors || item.offer || '';
-                    const special = item.special_offer_doctors || item.special_offer || '';
+                    const cType = selectedCustomer?.entity_type || 'doctor';
+                    const roleRate = getRoleRate(item);
+                    const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
+                    const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
                     return (
                       <div key={item.id} className="p-3 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
                         onClick={() => addItemToOrder(item)} data-testid={`mr-order-add-${item.id}`}>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{item.name || item.item_name}</p>
-                          <p className="text-xs text-slate-500">{item.item_code} | MRP: ₹{item.mrp || 0}</p>
+                          <p className="text-xs text-slate-500">
+                            {item.item_code} | MRP: ₹{item.mrp || 0}
+                            {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
+                          </p>
                           {(offer || special) && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{offer}</span>}
@@ -391,6 +408,7 @@ export default function MROrders() {
                             <div className="flex gap-3 mt-1 text-xs text-slate-600">
                               {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
+                              {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
                             </div>
                             {(item.offer || item.special_offer) && (
                               <div className="flex flex-wrap gap-1 mt-1.5">

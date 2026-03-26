@@ -1,0 +1,86 @@
+{
+  "summary": "Tested 5 new features: Role-based rates, Order notes display, MR payment recording with admin approval, MR name on orders, Order transfer to agency. Backend: 16/17 tests passed (1 minor test assertion issue). Frontend: All features working after Badge import fix.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/mr/orders", "issue": "Response returns minimal object (id, message, order_number, status) instead of full order - not a bug, just API design. Order is correctly created with source='mr', mr_name, and notes."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "bugs_fixed": [
+    {
+      "file": "/app/frontend/src/pages/Payments.jsx",
+      "issue": "Badge component was used but not imported, causing 'Badge is not defined' runtime error when clicking MR Approvals tab",
+      "fix": "Added 'import { Badge } from '../components/ui/badge';' to imports"
+    }
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_new_features_v2.py",
+    "/app/test_reports/pytest/pytest_new_features_v2.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_new_features_v2.py",
+    "/app/frontend/src/pages/Payments.jsx"
+  ],
+  "success_rate": {
+    "backend": "94% (16/17 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "Admin": "Email: admin@vmpcrm.com, Password: admin123",
+    "MR": "Phone: 9876543211, Password: testpass"
+  },
+  "seed_data_creation": "Created test payment requests and orders during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 5 features verified working: 1) Role-based rates: Items have rate_doctors/rate_medicals/rate_agencies fields, MROrders.jsx getRoleRate() function uses correct rate based on customer type. 2) Order notes: Displayed in admin Orders page with 'Notes:' prefix. 3) MR payment recording: MRPayments.jsx page with Record Payment button, creates payment_requests, admin approves/rejects via Payments.jsx MR Approvals tab. 4) MR name: Shows as 'Submitted by: {mr_name}' on MR orders in admin Orders page. 5) Order transfer: Transfer button on non-terminal orders, POST /api/orders/{id}/transfer updates status to 'transferred' with agency details.",
+  "features_tested": {
+    "Admin Login": {
+      "POST /api/auth/login": "PASS - Returns access_token"
+    },
+    "MR Login": {
+      "POST /api/mr/login": "PASS - Returns access_token and mr object"
+    },
+    "Orders Endpoint": {
+      "GET /api/orders returns new fields": "PASS - notes, mr_name, source, customer_type, transferred_to_agency_* fields present"
+    },
+    "Order Transfer": {
+      "GET /api/agencies": "PASS - Returns agency list",
+      "POST /api/orders/{id}/transfer requires agency_id": "PASS - Returns 400 without agency_id",
+      "POST /api/orders/{id}/transfer": "PASS - Updates order status to 'transferred' with agency details",
+      "Transfer button in UI": "PASS - 80 transfer buttons found for non-terminal orders",
+      "Transferred status display": "PASS - Shows 'Transferred' badge and 'To: {agency_name}'"
+    },
+    "MR Payment Requests": {
+      "POST /api/mr/payment-requests": "PASS - Creates payment request",
+      "GET /api/mr/payment-requests": "PASS - Returns MR's requests",
+      "GET /api/payment-requests (admin)": "PASS - Returns all requests",
+      "POST /api/payment-requests/{id}/approve (approve)": "PASS - Creates payment record, updates status",
+      "POST /api/payment-requests/{id}/approve (reject)": "PASS - Updates status to rejected",
+      "MR Payments page UI": "PASS - Record Payment button, form with customer search, amount, mode, notes",
+      "Admin MR Approvals tab": "PASS - Shows pending requests with Approve/Reject buttons"
+    },
+    "MR Name on Orders": {
+      "Admin Orders page shows 'Submitted by: {mr_name}'": "PASS - Found in page content"
+    },
+    "Order Notes Display": {
+      "Admin Orders page shows 'Notes: {notes}'": "PASS - Found in page content"
+    },
+    "Role-based Rates": {
+      "Items have rate_doctors/rate_medicals/rate_agencies": "PASS - Fields present in items",
+      "MR Order form uses getRoleRate()": "PASS - Function in MROrders.jsx selects correct rate based on customer type"
+    },
+    "Validation": {
+      "Payment request requires customer": "PASS - Returns 400",
+      "Payment request requires positive amount": "PASS - Returns 400",
+      "Transfer requires existing order": "PASS - Returns 404",
+      "Transfer requires existing agency": "PASS - Returns 404"
+    }
+  }
+}

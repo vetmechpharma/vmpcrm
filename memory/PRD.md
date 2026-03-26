@@ -6,83 +6,57 @@ A full-stack CRM system for a veterinary pharmaceutical company. Includes an Adm
 ## Architecture
 - **Backend**: FastAPI + MongoDB (server.py - monolithic, ~12,400 lines)
 - **Frontend**: React + TailwindCSS + Shadcn/UI
-- **MR Module**: Separate PWA with offline sync
+- **MR Module**: Separate PWA with offline sync + localStorage caching
 - **Customer Portal**: Login, orders, ledger, support
 - **Push Notifications**: Web Push via pywebpush + VAPID
 
 ## Core Features Implemented
 
 ### Admin Panel
-- [x] Dashboard with stats, charts
-- [x] Doctor/Medical/Agency management with follow-ups
-- [x] Items/Products management with categories, subcategories, images
-- [x] **Item hide/show toggle** - global visibility control
-- [x] **Item images bulk ZIP download** - backup/migration support
-- [x] Orders management (manual + customer + MR orders)
-- [x] Payments with WhatsApp receipts + **Email receipts**
-- [x] Expenses tracking
-- [x] Marketing campaigns (WhatsApp + Push Notifications + **Email**)
-- [x] **Dynamic WhatsApp Config** - multiple configs with customizable API field mappings
-- [x] **Message Templates Editor** - edit all WhatsApp & Email templates with variable insertion
-- [x] **Company Short Name** - used in all messages
-- [x] **Web Push Notifications** - admin receives push for new orders, registrations
-- [x] Item import/export (Excel/PDF) with Special Offer 2 fields
-- [x] Reminders, Greeting Templates
-- [x] User/Role management
-- [x] SMTP & WhatsApp settings
-- [x] Database backup
-- [x] MR Management & Reports
-- [x] Visual Aids, Support tickets, Company settings
+- [x] Dashboard, Doctor/Medical/Agency management, Items, Orders, Payments, Expenses
+- [x] Item hide/show toggle, Images bulk ZIP download
+- [x] Dynamic WhatsApp Config, Message Templates Editor, Company Short Name
+- [x] Marketing campaigns (WhatsApp + Push + Email)
+- [x] Web Push Notifications, Item import/export, Reminders, Greetings
+- [x] User/Role management, SMTP/WhatsApp settings, DB backup, MR Management
 
 ### Customer Portal
-- [x] Registration & login (password + OTP)
-- [x] **Dynamic company branding** on login page (logo + name from admin DB)
-- [x] **Web Push Notifications** - order status changes, birthday greetings, product announcements
-- [x] Product catalog with role-based pricing
-- [x] Order placement, Ledger/statement view, Support tickets, Profile
+- [x] Registration & login, Dynamic branding, Web Push, Product catalog
+- [x] Order placement, Ledger view, Support tickets, Profile
 
 ### MR Module (PWA)
-- [x] Separate installable PWA with offline order sync
-- [x] **Web Push Notifications** - auto-subscribed
-- [x] Customer visits, follow-ups, Order creation with editable rates, Visual aids
+- [x] Installable PWA with offline order sync
+- [x] **Offline Data Caching** - Pre-fetches customers, items, orders, dashboard on app load
+- [x] **localStorage Fallback** - All pages work offline with cached data
+- [x] **Service Worker v3** - Enhanced caching with base URL key dedup
+- [x] Customer visits, follow-ups, Order creation, Visual aids
 
-### Email Parity (NEW - Feb 2026)
-- [x] **Order status updates** - Email sent for confirmed/shipped/delivered/cancelled
-- [x] **Payment receipts** - Email with payment details and balance
-- [x] **Account approval/rejection** - Email to customer on status change
-- [x] **Support ticket status** - Email on ticket status changes
-- [x] **Support ticket replies** - Email when admin replies to ticket
-- [x] **Marketing campaigns** - Email sent alongside WhatsApp to recipients with email
-- [x] **Reusable send_notification_email()** utility with HTML templating, logging, and attachment support
+### Email Parity (Feb 2026)
+- [x] Order status emails, Payment receipts, Account approval/rejection
+- [x] Support ticket status/replies, Marketing campaigns
+- [x] Reusable `send_notification_email()` utility
 
-### Ledger Improvements (NEW - Feb 2026)
-- [x] WhatsApp ledger sends **summary text + PDF attachment** (via temp URL)
-- [x] Email ledger sends **summary + PDF attachment**
-- [x] **Automated monthly statements** - Background task runs on 27th of each month, sends to customers with outstanding balance
-- [x] Reusable `generate_ledger_pdf_bytes()` helper
-- [x] Public `/api/ledger-pdf/{token}` endpoint for WhatsApp PDF download (48h expiry)
+### Ledger Improvements (Feb 2026)
+- [x] WhatsApp/Email ledger with summary text + PDF attachment
+- [x] Automated monthly statements (27th of each month)
+- [x] Public `/api/ledger-pdf/{token}` endpoint (48h expiry)
 
-### PWA Icons (NEW - Feb 2026)
-- [x] Updated customer/main app icons with **VETMECH** branding (192x192, 512x512)
-- [x] Updated MR panel icons with **MR PANEL** branding (192x192, 512x512)
+### PWA Icons (Feb 2026)
+- [x] VETMECH branding for customer app, MR PANEL branding for MR app
 
 ### Bug Fixes
-- [x] **WhatsApp marketing image attachment bug (P0)** - Campaign images were served as base64 text instead of decoded binary data. Fixed with `base64.b64decode()`. Added JPEG format conversion (`?fmt=jpg`) for better external API compatibility.
-- [x] **Hardcoded preview URL** - Replaced with configurable `APP_BASE_URL` environment variable
-- [x] **Missing function definition** - Restored `send_whatsapp_ready_to_despatch()` function
-- [x] **Undefined variable** - Fixed `entity_name` reference in order push notification
+- [x] **WhatsApp marketing image bug (P0)** - base64 text → binary decode fix
+- [x] **MR offline mode (P0)** - Added pre-caching, localStorage fallback, SW v3
+- [x] **Hardcoded preview URL** → configurable APP_BASE_URL
+- [x] **Missing function/variable** - restored send_whatsapp_ready_to_despatch, fixed entity_name
 
 ## Key DB Collections
-- `items` - Products with is_hidden, special_offer_2_* fields
-- `push_subscriptions` - Web Push subscriptions
-- `message_templates` - Customizable WhatsApp & Email templates
-- `whatsapp_config` - Multiple configs with field mappings
-- `company_settings` - Company info with company_short_name
-- `temp_ledger_pdfs` - Temporary PDF storage for WhatsApp ledger delivery (NEW)
+- items, push_subscriptions, message_templates, whatsapp_config, company_settings
+- temp_ledger_pdfs (NEW - for WhatsApp ledger delivery)
 
 ## Technical Debt (P0)
-- **server.py refactor** - 12,400+ lines, needs modular router-based architecture
-- **Duplicated follow-up UI** - Doctors.jsx, Medicals.jsx, Agencies.jsx share code
+- **server.py refactor** - 12,400+ lines, needs modular architecture
+- **Duplicated follow-up UI** - Doctors/Medicals/Agencies share code
 
 ## Upcoming Tasks
 - (P1) Refactor server.py into modular router-based structure
@@ -94,7 +68,7 @@ A full-stack CRM system for a veterinary pharmaceutical company. Includes an Adm
 - (P2) Installation script for VPS deployment
 
 ## Blocked
-- WhatsApp OTP delivery - External API (BotMasterSender) issue, needs user to verify API credentials
+- WhatsApp OTP delivery - External BotMasterSender API issue
 
 ## Credentials
 - Admin: admin@vmpcrm.com / admin123

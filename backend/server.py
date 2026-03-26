@@ -1312,7 +1312,9 @@ class WhatsAppConfigCreate(BaseModel):
     auth_token: str
     sender_id: str
     http_method: str = "GET"
-    # Dynamic field name mappings
+    api_type: str = "query_param"  # 'query_param' (BotMasterSender) or 'rest_api' (AKNexus)
+    instance_id: Optional[str] = None  # Required for rest_api type
+    # Dynamic field name mappings (for query_param type)
     field_action: str = "action"
     field_sender_id: str = "senderId"
     field_auth_token: str = "authToken"
@@ -1320,7 +1322,7 @@ class WhatsAppConfigCreate(BaseModel):
     field_receiver: str = "receiverId"
     field_file_url: str = "fileUrl"
     field_file_caption: str = "fileCaption"
-    # Action values
+    # Action values (for query_param type)
     action_send: str = "send"
     action_send_file: str = "sendFile"
     is_active: bool = True
@@ -1331,6 +1333,8 @@ class WhatsAppConfigResponse(BaseModel):
     api_url: str
     sender_id: str
     http_method: str = "GET"
+    api_type: Optional[str] = "query_param"
+    instance_id: Optional[str] = None
     field_action: Optional[str] = "action"
     field_sender_id: Optional[str] = "senderId"
     field_auth_token: Optional[str] = "authToken"
@@ -7046,19 +7050,51 @@ def build_wa_params(config, message=None, receiver=None, file_url=None, file_cap
     return params
 
 
-async def execute_wa_request(config, params):
+async def execute_wa_request(config, params, headers=None):
     """Execute WhatsApp API request using config method (GET or POST)"""
     method = config.get('http_method', 'GET').upper()
     async with httpx.AsyncClient(timeout=30.0) as client:
         if method == 'POST':
-            response = await client.post(config['api_url'], json=params)
+            response = await client.post(config['api_url'], json=params, headers=headers)
         else:
-            response = await client.get(config['api_url'], params=params)
+            response = await client.get(config['api_url'], params=params, headers=headers)
+        return response
+
+
+async def execute_rest_api_wa(config, receiver, message=None, file_url=None, file_caption=None):
+    """Execute WhatsApp send via REST API type (AKNexus style): POST with Bearer auth"""
+    base_url = config['api_url'].rstrip('/')
+    auth_token = config.get('auth_token', '')
+    instance_id = config.get('instance_id', '')
+    headers = {
+        'Authorization': f'Bearer {auth_token}',
+        'Content-Type': 'application/json',
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        if file_url:
+            # Send image with caption
+            endpoint = f"{base_url}/whatsapp/send/image"
+            payload = {
+                'instance_id': instance_id,
+                'to': receiver,
+                'media_url': file_url,
+                'caption': file_caption or message or '',
+            }
+        else:
+            # Send text message
+            endpoint = f"{base_url}/whatsapp/send/text"
+            payload = {
+                'instance_id': instance_id,
+                'to': receiver,
+                'message': message or '',
+            }
+        logger.info(f"REST API WA send: {endpoint} -> {receiver}")
+        response = await client.post(endpoint, json=payload, headers=headers)
         return response
 
 
 async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_caption: str = None, config=None):
-    """Universal WhatsApp message sender using dynamic config. Auto-fallback to text if file send fails."""
+    """Universal WhatsApp message sender. Supports both query_param (BotMasterSender) and rest_api (AKNexus) types."""
     if not config:
         config = await get_whatsapp_config()
     if not config or not config.get('api_url'):
@@ -7066,25 +7102,38 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
     clean_receiver = ''.join(filter(str.isdigit, str(receiver)))
     if not clean_receiver.startswith('91'):
         clean_receiver = f"91{clean_receiver[-10:]}"
-    params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
+
+    api_type = config.get('api_type', 'query_param')
+
     try:
-        response = await execute_wa_request(config, params)
-        if response and response.status_code == 200 and file_url:
-            # Check if the API actually succeeded (some APIs return 200 but with error in body)
-            body = response.text.strip()
-            is_success = '"success":true' in body or '"success": true' in body
-            if not is_success:
-                logger.warning(f"WhatsApp file send failed (body={body[:200]}). Falling back to text-only message.")
-                # Fallback: send as text-only message without the file
-                text_params = build_wa_params(config, message=file_caption or message, receiver=clean_receiver)
-                response = await execute_wa_request(config, text_params)
-                if response:
-                    logger.info(f"WhatsApp text fallback: status={response.status_code}, body={response.text[:200]}")
-            else:
-                logger.info(f"WhatsApp file send success: file_url={file_url[:100]}")
-        elif response and response.status_code != 200:
-            logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
-        return response
+        if api_type == 'rest_api':
+            # AKNexus-style REST API: POST with Bearer auth
+            response = await execute_rest_api_wa(config, clean_receiver, message, file_url, file_caption)
+            if response:
+                body = response.text.strip()
+                if response.status_code == 200 and ('"status":"success"' in body or '"success":true' in body or '"success": true' in body):
+                    logger.info(f"REST API WA success: {'image' if file_url else 'text'} to {clean_receiver}")
+                else:
+                    logger.warning(f"REST API WA response: status={response.status_code}, body={body[:300]}")
+            return response
+        else:
+            # BotMasterSender-style query param API
+            params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
+            response = await execute_wa_request(config, params)
+            if response and response.status_code == 200 and file_url:
+                body = response.text.strip()
+                is_success = '"success":true' in body or '"success": true' in body
+                if not is_success:
+                    logger.warning(f"WhatsApp file send failed (body={body[:200]}). Falling back to text-only.")
+                    text_params = build_wa_params(config, message=file_caption or message, receiver=clean_receiver)
+                    response = await execute_wa_request(config, text_params)
+                    if response:
+                        logger.info(f"WhatsApp text fallback: status={response.status_code}, body={response.text[:200]}")
+                else:
+                    logger.info(f"WhatsApp file send success: file_url={file_url[:100]}")
+            elif response and response.status_code != 200:
+                logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
+            return response
     except Exception as e:
         logger.error(f"WhatsApp send error: {e}")
         return None
@@ -10521,6 +10570,8 @@ async def save_whatsapp_config_route(config: WhatsAppConfigCreate, current_user:
         'auth_token': config.auth_token,
         'sender_id': config.sender_id,
         'http_method': config.http_method,
+        'api_type': config.api_type,
+        'instance_id': config.instance_id,
         'field_action': config.field_action,
         'field_sender_id': config.field_sender_id,
         'field_auth_token': config.field_auth_token,
@@ -10598,6 +10649,8 @@ async def update_whatsapp_config_route(config_id: str, config: WhatsAppConfigCre
         'api_url': config.api_url,
         'sender_id': config.sender_id,
         'http_method': config.http_method,
+        'api_type': config.api_type,
+        'instance_id': config.instance_id,
         'field_action': config.field_action,
         'field_sender_id': config.field_sender_id,
         'field_auth_token': config.field_auth_token,

@@ -47,6 +47,8 @@ export const Settings = () => {
     auth_token: '',
     sender_id: '',
     http_method: 'GET',
+    api_type: 'query_param',
+    instance_id: '',
     field_action: 'action',
     field_sender_id: 'senderId',
     field_auth_token: 'authToken',
@@ -175,6 +177,8 @@ export const Settings = () => {
       auth_token: '',
       sender_id: config.sender_id || '',
       http_method: config.http_method || 'GET',
+      api_type: config.api_type || 'query_param',
+      instance_id: config.instance_id || '',
       field_action: config.field_action || 'action',
       field_sender_id: config.field_sender_id || 'senderId',
       field_auth_token: config.field_auth_token || 'authToken',
@@ -360,7 +364,14 @@ export const Settings = () => {
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-1">{cfg.api_url}</p>
-                      <p className="text-xs text-slate-400">Sender: {cfg.sender_id} | Method: {cfg.http_method || 'GET'}</p>
+                      <p className="text-xs text-slate-400">
+                        Sender: {cfg.sender_id} | 
+                        {cfg.api_type === 'rest_api' ? (
+                          <> Type: <span className="text-blue-600 font-medium">REST API</span> | Instance: {cfg.instance_id || 'N/A'}</>
+                        ) : (
+                          <> Type: <span className="text-slate-600 font-medium">Query Param</span> | Method: {cfg.http_method || 'GET'}</>
+                        )}
+                      </p>
                     </div>
                     {isAdmin && (
                       <div className="flex items-center gap-1">
@@ -477,17 +488,24 @@ export const Settings = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="http_method">HTTP Method</Label>
+                <Label htmlFor="api_type">API Type *</Label>
                 <select
-                  id="http_method"
+                  id="api_type"
                   className="w-full h-10 px-3 border rounded-md text-sm bg-white"
-                  value={whatsappFormData.http_method}
-                  onChange={(e) => setWhatsappFormData({ ...whatsappFormData, http_method: e.target.value })}
+                  value={whatsappFormData.api_type}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setWhatsappFormData({
+                      ...whatsappFormData,
+                      api_type: newType,
+                      http_method: newType === 'rest_api' ? 'POST' : 'GET',
+                    });
+                  }}
                   disabled={!isAdmin}
-                  data-testid="whatsapp-method-select"
+                  data-testid="whatsapp-api-type-select"
                 >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
+                  <option value="query_param">Query Param API (BotMasterSender)</option>
+                  <option value="rest_api">REST API (AKNexus / Business API)</option>
                 </select>
               </div>
               <div className="flex items-end">
@@ -504,7 +522,45 @@ export const Settings = () => {
               </div>
             </div>
 
-            {/* Advanced Field Mappings */}
+            {whatsappFormData.api_type === 'rest_api' && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                <p className="text-xs text-blue-700 font-medium">REST API Settings (AKNexus)</p>
+                <div className="space-y-2">
+                  <Label htmlFor="instance_id">Instance ID *</Label>
+                  <Input
+                    id="instance_id"
+                    value={whatsappFormData.instance_id}
+                    onChange={(e) => setWhatsappFormData({ ...whatsappFormData, instance_id: e.target.value })}
+                    placeholder="Your WhatsApp instance ID"
+                    disabled={!isAdmin}
+                    data-testid="whatsapp-instance-id-input"
+                  />
+                </div>
+                <p className="text-[10px] text-blue-500">Text: POST /whatsapp/send/text | Image: POST /whatsapp/send/image | Auth: Bearer token</p>
+              </div>
+            )}
+
+            {whatsappFormData.api_type === 'query_param' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="http_method">HTTP Method</Label>
+                  <select
+                    id="http_method"
+                    className="w-full h-10 px-3 border rounded-md text-sm bg-white"
+                    value={whatsappFormData.http_method}
+                    onChange={(e) => setWhatsappFormData({ ...whatsappFormData, http_method: e.target.value })}
+                    disabled={!isAdmin}
+                    data-testid="whatsapp-method-select"
+                  >
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Advanced Field Mappings - only for query_param type */}
+            {whatsappFormData.api_type === 'query_param' && (
             <div className="border-t border-slate-200 pt-3">
               <button
                 type="button"
@@ -563,6 +619,7 @@ export const Settings = () => {
                 </div>
               )}
             </div>
+            )}
 
             {isAdmin && (
               <div className="flex items-center gap-3 pt-2">

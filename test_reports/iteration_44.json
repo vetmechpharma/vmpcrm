@@ -1,0 +1,78 @@
+{
+  "summary": "Tested WhatsApp Multi-Config API feature with dual api_type support (query_param and rest_api). All 13 backend API tests passed. All frontend UI tests passed. The feature correctly supports multiple WhatsApp API configurations with different types, per-config testing, and activation switching.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_whatsapp_multi_config.py",
+    "/app/test_reports/pytest/pytest_whatsapp_multi_config.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_whatsapp_multi_config.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "Admin": "email=admin@vmpcrm.com, password=admin123",
+    "Settings Page": "/admin/smtp-settings"
+  },
+  "seed_data_creation": "Used existing WhatsApp configs: BotMasterSender (query_param, Active) and AKNexus (rest_api, Inactive)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "WhatsApp Multi-Config feature fully tested. Key components verified: 1) Backend: POST/GET/PUT /api/whatsapp-config endpoints support api_type and instance_id fields. 2) Backend: PUT /api/whatsapp-config/{id}/activate switches active config. 3) Backend: POST /api/whatsapp-config/{id}/test tests specific config with body success check. 4) Backend: send_wa_msg handles both query_param (BotMasterSender) and rest_api (AKNexus) types. 5) Frontend: Settings page shows 2 configs with different type badges (REST API in blue, Query Param in slate). 6) Frontend: Enable button on inactive configs, Test button on all configs. 7) Frontend: API Type selector shows Instance ID field for REST API, HTTP Method and Advanced Field Mappings for Query Param.",
+  "features_tested": {
+    "Backend API Tests": {
+      "GET /api/whatsapp-configs": "PASS - Returns configs with api_type and instance_id fields",
+      "GET /api/whatsapp-config": "PASS - Returns active config",
+      "POST /api/whatsapp-config (query_param)": "PASS - Creates config with api_type=query_param",
+      "POST /api/whatsapp-config (rest_api)": "PASS - Creates config with api_type=rest_api and instance_id",
+      "PUT /api/whatsapp-config/{id}": "PASS - Updates api_type and instance_id",
+      "PUT /api/whatsapp-config/{id}/activate": "PASS - Switches active config",
+      "POST /api/whatsapp-config/{id}/test (invalid)": "PASS - Returns 404 for invalid ID",
+      "POST /api/whatsapp-config/{id}/test (query_param)": "PASS - Tests BotMasterSender config",
+      "POST /api/whatsapp-config/{id}/test (rest_api)": "PASS - Tests AKNexus config",
+      "BotMasterSender config type": "PASS - Has api_type=query_param",
+      "AKNexus config type": "PASS - Has api_type=rest_api with instance_id",
+      "Query param type send": "PASS - Uses GET with query parameters",
+      "REST API type send": "PASS - Uses POST with Bearer auth"
+    },
+    "Frontend UI Tests": {
+      "Settings page loads": "PASS - /admin/smtp-settings loads correctly",
+      "WhatsApp configs list": "PASS - Shows 2 config cards",
+      "REST API badge": "PASS - AKNexus shows 'REST API' badge in blue",
+      "Query Param badge": "PASS - Default Config shows 'Query Param' badge",
+      "Instance ID display": "PASS - Shows 'Instance: test-instance-1' for REST API config",
+      "Enable button": "PASS - Shows on inactive AKNexus config",
+      "Test buttons": "PASS - Shows on both configs",
+      "API Type selector": "PASS - Has 'Query Param API' and 'REST API' options",
+      "REST API form fields": "PASS - Shows Instance ID field in blue box when REST API selected",
+      "Query Param form fields": "PASS - Shows HTTP Method and Advanced Field Mappings when Query Param selected"
+    }
+  },
+  "whatsapp_configs": {
+    "BotMasterSender": {
+      "id": "45d35af1-3a75-4e02-8495-5b615664af29",
+      "api_type": "query_param",
+      "is_active": true,
+      "status": "Working (real API)"
+    },
+    "AKNexus": {
+      "id": "4abeeec8-a325-4f08-bb0a-34771d68cfda",
+      "api_type": "rest_api",
+      "instance_id": "test-instance-1",
+      "is_active": false,
+      "status": "Test token only - won't actually send messages"
+    }
+  },
+  "mocked_apis_note": "AKNexus API (rest_api type) has test token only - won't actually send messages. BotMasterSender (query_param type) is real and working for text sends."
+}

@@ -1,0 +1,63 @@
+{
+  "summary": "Tested Customer Portal Pending Items feature. All 6 backend API tests passed. All frontend UI tests passed. The feature correctly displays previously unavailable items from past orders in the Cart tab, allows adding them to cart with 'Add to Cart' button, and shows 'In Cart' status after adding.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_customer_pending_items.py",
+    "/app/test_reports/pytest/pytest_customer_pending_items.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_customer_pending_items.py"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "Customer": "Phone: 9688283839, Password: test123 (DR.DHIVAHAR with 2 pending items)"
+  },
+  "seed_data_creation": "Used existing test data: DR.DHIVAHAR (phone: 9688283839) has 2 pending items (Vitamin D3 1000IU qty 250, Paracetamol 500mg qty 10)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Customer Portal Pending Items feature fully tested and working. Key components verified: 1) Backend: GET /api/customer/pending-items returns pending items for logged-in customer using JWT auth. 2) Frontend (CustomerOrders.jsx): pendingItems state, fetchPendingItems on mount, addPendingToCart function. 3) UI shows 'Previously Unavailable Items (N)' section with amber styling in Cart tab. 4) Section appears both when cart is empty (data-testid='pending-items-empty-cart') and when cart has items (data-testid='pending-items-section'). 5) '+Add to Cart' button adds item to cart and changes to 'In Cart' (disabled). 6) Cart tab count updates after adding pending item. 7) Toast notification shows 'Added {item_name} to cart'. 8) localStorage key for customer data is 'customerData' (not 'customer').",
+  "features_tested": {
+    "Backend API Tests": {
+      "POST /api/customer/login": "PASS - Returns access_token and customer data",
+      "GET /api/customer/pending-items - With valid token": "PASS - Returns 2 pending items for DR.DHIVAHAR",
+      "GET /api/customer/pending-items - Vitamin D3 check": "PASS - Contains Vitamin D3 1000IU (ITM-0002, qty 250)",
+      "GET /api/customer/pending-items - Paracetamol check": "PASS - Contains Paracetamol 500mg (ITM-0001, qty 10)",
+      "GET /api/customer/pending-items - Without token": "PASS - Returns 401/403 Unauthorized",
+      "GET /api/customer/pending-items - Invalid token": "PASS - Returns 401/403 Unauthorized"
+    },
+    "Customer Portal UI Tests": {
+      "Navigate to /portal/orders": "PASS - Page loads correctly",
+      "Cart tab displays pending items section": "PASS - Shows 'Previously Unavailable Items (2)'",
+      "Vitamin D3 1000IU displayed": "PASS - Shows ITM-0002 | Prev Qty: 250 with Add to Cart button",
+      "Paracetamol 500mg displayed": "PASS - Shows ITM-0001 | Prev Qty: 10 with Add to Cart button",
+      "Click Add to Cart": "PASS - Item added to cart, toast notification shown",
+      "Button changes to In Cart": "PASS - Button disabled and shows 'In Cart'",
+      "Cart count updates": "PASS - Cart tab shows 'Cart (1)' after adding item",
+      "Pending items section with cart items": "PASS - Section appears below cart items, before Order Notes"
+    }
+  },
+  "pending_items_test_data": {
+    "customer_with_pending": {
+      "name": "DR.DHIVAHAR",
+      "phone": "9688283839",
+      "customer_code": "DOC-0006",
+      "pending_items": [
+        {"item_name": "Vitamin D3 1000IU", "item_code": "ITM-0002", "quantity": "250"},
+        {"item_name": "Paracetamol 500mg", "item_code": "ITM-0001", "quantity": "10"}
+      ]
+    }
+  }
+}

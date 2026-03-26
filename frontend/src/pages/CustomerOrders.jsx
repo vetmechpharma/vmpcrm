@@ -38,9 +38,12 @@ const CustomerOrders = () => {
   const [showDetail, setShowDetail] = useState(false);
   const [activeTab, setActiveTab] = useState('cart');
   const [orderNote, setOrderNote] = useState('');
+  const [pendingItems, setPendingItems] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(false);
 
   useEffect(() => {
     fetchOrders();
+    fetchPendingItems();
     // Load cart from localStorage if not in context
     if (!cart || cart.length === 0) {
       const savedCart = localStorage.getItem('customerCart');
@@ -66,6 +69,44 @@ const CustomerOrders = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPendingItems = async () => {
+    setLoadingPending(true);
+    try {
+      const token = localStorage.getItem('customerToken');
+      const response = await axios.get(`${API_URL}/api/customer/pending-items`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingItems(response.data || []);
+    } catch {
+      setPendingItems([]);
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  const addPendingToCart = (pItem) => {
+    const alreadyInCart = cart?.some(c => (c.item_id || c.id) === pItem.item_id);
+    if (alreadyInCart) {
+      toast.info('This item is already in your cart');
+      return;
+    }
+    const newItem = {
+      id: pItem.item_id,
+      item_id: pItem.item_id,
+      item_code: pItem.item_code,
+      item_name: pItem.item_name,
+      quantity: 1,
+      quantity_text: String(pItem.quantity),
+      rate: 0,
+      offer: '',
+      special_offer: '',
+    };
+    const newCart = [...(cart || []), newItem];
+    setCart(newCart);
+    localStorage.setItem('customerCart', JSON.stringify(newCart));
+    toast.success(`Added ${pItem.item_name} to cart`);
   };
 
   const updateCartItem = (itemId, qtyText) => {
@@ -250,6 +291,7 @@ const CustomerOrders = () => {
       {activeTab === 'cart' && (
         <div className="space-y-4">
           {!cart || cart.length === 0 ? (
+            <>
             <Card className="rounded-2xl border-0 shadow-sm">
               <CardContent className="py-12 text-center">
                 <ShoppingCart className="w-16 h-16 mx-auto text-slate-300 mb-4" />
@@ -263,6 +305,48 @@ const CustomerOrders = () => {
                 </Button>
               </CardContent>
             </Card>
+            {/* Show pending items even when cart is empty */}
+            {pendingItems.length > 0 && (
+              <Card className="rounded-xl border-0 shadow-sm border-amber-200 bg-amber-50" data-testid="pending-items-empty-cart">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <h4 className="font-medium text-sm text-amber-800">
+                      Previously Unavailable Items ({pendingItems.length})
+                    </h4>
+                  </div>
+                  <p className="text-xs text-amber-600 mb-3">
+                    These items were out of stock in your previous orders. Want to add them now?
+                  </p>
+                  <div className="space-y-2">
+                    {pendingItems.map((pItem) => {
+                      const alreadyInCart = cart?.some(c => (c.item_id || c.id) === pItem.item_id);
+                      return (
+                        <div key={pItem.id} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-200">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Package className="w-5 h-5 text-amber-500 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-800 line-clamp-1">{pItem.item_name}</p>
+                              <p className="text-[10px] text-slate-500">{pItem.item_code} | Prev Qty: {pItem.quantity}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={alreadyInCart}
+                            onClick={() => addPendingToCart(pItem)}
+                            className="shrink-0 ml-2 h-8 text-xs text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                          >
+                            <Plus className="w-3 h-3 mr-1" />Add to Cart
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            </>
           ) : (
             <>
               {/* Cart Items */}
@@ -304,6 +388,49 @@ const CustomerOrders = () => {
                   </Card>
                 ))}
               </div>
+
+              {/* Pending Items from Previous Orders */}
+              {pendingItems.length > 0 && (
+                <Card className="rounded-xl border-0 shadow-sm border-amber-200 bg-amber-50" data-testid="pending-items-section">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <h4 className="font-medium text-sm text-amber-800">
+                        Previously Unavailable Items ({pendingItems.length})
+                      </h4>
+                    </div>
+                    <p className="text-xs text-amber-600 mb-3">
+                      These items were out of stock in your previous orders. Want to add them?
+                    </p>
+                    <div className="space-y-2">
+                      {pendingItems.map((pItem) => {
+                        const alreadyInCart = cart?.some(c => (c.item_id || c.id) === pItem.item_id);
+                        return (
+                          <div key={pItem.id} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-200" data-testid={`customer-pending-${pItem.id}`}>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Package className="w-5 h-5 text-amber-500 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-800 line-clamp-1">{pItem.item_name}</p>
+                                <p className="text-[10px] text-slate-500">{pItem.item_code} | Prev Qty: {pItem.quantity}</p>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={alreadyInCart ? 'ghost' : 'outline'}
+                              disabled={alreadyInCart}
+                              onClick={() => addPendingToCart(pItem)}
+                              className={`shrink-0 ml-2 h-8 text-xs ${alreadyInCart ? 'text-slate-400' : 'text-emerald-600 border-emerald-300 hover:bg-emerald-50'}`}
+                              data-testid={`add-pending-cart-${pItem.id}`}
+                            >
+                              {alreadyInCart ? 'In Cart' : <><Plus className="w-3 h-3 mr-1" />Add</>}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Order Note */}
               <div>

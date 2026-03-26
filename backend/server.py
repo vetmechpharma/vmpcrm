@@ -6074,6 +6074,34 @@ async def get_customer_orders(customer: dict = Depends(get_current_customer)):
     
     return result
 
+@api_router.get("/customer/pending-items")
+async def get_customer_pending_items(customer: dict = Depends(get_current_customer)):
+    """Get pending (out-of-stock) items from previous orders for the logged-in customer"""
+    phone = customer.get('phone', '')
+    if not phone:
+        return []
+    pending_items = await db.pending_items.find({'doctor_phone': phone}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    result = []
+    for item in pending_items:
+        created_at = item.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        order_date = item.get('original_order_date') or item.get('created_at')
+        if isinstance(order_date, str):
+            order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+        result.append({
+            'id': item['id'],
+            'item_id': item['item_id'],
+            'item_code': item['item_code'],
+            'item_name': item['item_name'],
+            'quantity': item['quantity'],
+            'original_order_number': item.get('original_order_number', ''),
+            'original_order_date': str(order_date) if order_date else '',
+        })
+    return result
+
+
+
 @api_router.post("/customer/orders")
 async def create_customer_order(request: Request, background_tasks: BackgroundTasks, customer: dict = Depends(get_current_customer)):
     """Create a new order from the customer portal cart"""

@@ -50,6 +50,7 @@ A full-stack CRM system for a veterinary pharmaceutical company with Admin Panel
 - **MR Order Form role-based rate display** — Verified working (Mar 2026). getRoleRate() uses entity_type correctly. Rate shows in item search dropdown + selected item cards. Tested 100% pass (iteration 41).
 - **Admin Order Form role-based rate display** — Added getRoleRate() using customer.type field. Shows MRP, role rate, default rate label, and offers in both search dropdown and selected item cards (Mar 2026).
 - **Pending Items in Order Form** — When selecting a customer with previous out-of-stock items, both Admin and MR order forms now show a "Previous Pending Items" section with +Add buttons to easily fulfill those items (Mar 2026). Tested 100% (iteration 42).
+- **Customer Portal Pending Items** — Customer portal's Cart tab shows "Previously Unavailable Items" section for items that were out of stock in past orders, with "Add to Cart" buttons. Works with both empty and filled carts. New endpoint `GET /api/customer/pending-items`. Tested 100% (iteration 43).
 
 ## Key New Endpoints (This Session)
 - `POST /api/orders/{id}/transfer` - Transfer order to agency

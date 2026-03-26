@@ -11906,6 +11906,33 @@ async def get_mr_visual_aid_deck(deck_id: str, mr: dict = Depends(get_current_mr
     deck['slides'] = slides
     return deck
 
+@api_router.get("/mr/pending-items/{phone}")
+async def get_mr_pending_items_by_phone(phone: str, mr: dict = Depends(get_current_mr)):
+    """Get pending items for a customer by phone - MR accessible"""
+    pending_items = await db.pending_items.find({'doctor_phone': phone}, {'_id': 0}).sort('created_at', -1).to_list(100)
+    result = []
+    for item in pending_items:
+        created_at = item.get('created_at')
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        order_date = item.get('original_order_date') or item.get('created_at')
+        if isinstance(order_date, str):
+            order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+        result.append({
+            'id': item['id'],
+            'doctor_phone': item['doctor_phone'],
+            'doctor_name': item.get('doctor_name', ''),
+            'item_id': item['item_id'],
+            'item_code': item['item_code'],
+            'item_name': item['item_name'],
+            'quantity': item['quantity'],
+            'original_order_number': item.get('original_order_number', ''),
+            'original_order_date': str(order_date) if order_date else '',
+            'created_at': str(created_at) if created_at else '',
+        })
+    return result
+
+
 # ============== MR ORDER ROUTES ==============
 
 @api_router.get("/mr/items")

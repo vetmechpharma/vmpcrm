@@ -1,0 +1,78 @@
+{
+  "summary": "Tested Pending Items Display feature in Order Creation Form. All 7 backend API tests passed. All frontend UI tests passed. The feature correctly displays pending/out-of-stock items from previous orders when creating a new order for a customer with pending items, and correctly hides the section for customers without pending items.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pending_items_display.py",
+    "/app/test_reports/pytest/pytest_pending_items_display.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_pending_items_display.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "Admin": "Email: admin@vmpcrm.com, Password: admin123",
+    "MR": "Phone: 9876543211, Password: testpass"
+  },
+  "seed_data_creation": "Used existing test data: DR.DHIVAHAR (phone: 9688283839) has 2 pending items (Vitamin D3 1000IU qty 250, Paracetamol 500mg qty 10)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pending Items Display feature fully tested and working. Key components verified: 1) Admin Panel: GET /api/pending-items/doctor/{phone} returns pending items for admin access. 2) MR Panel: GET /api/mr/pending-items/{phone} returns pending items for MR access. 3) Orders.jsx: customerPendingItems state, selectCustomer fetches pending items via pendingItemsAPI.getByDoctor(), addPendingItemToOrder helper adds item with correct quantity. 4) MROrders.jsx: customerPendingItems state, selectCustomer fetches pending items via mrAPI.getPendingItems(), addPendingItemToOrder helper. 5) UI shows 'Previous Pending Items (N)' section with amber styling when customer has pending items. 6) '+Add' button adds item to order and changes to 'Added' (disabled). 7) Section correctly hidden when customer has no pending items. 8) MR panel only shows pending items for customers in MR's assigned territory.",
+  "features_tested": {
+    "Backend API Tests": {
+      "GET /api/pending-items/doctor/{phone} - Customer with pending items": "PASS - Returns 2 pending items for DR.DHIVAHAR",
+      "GET /api/pending-items/doctor/{phone} - Customer without pending items": "PASS - Returns empty array",
+      "GET /api/customers/search": "PASS - Returns customer data with type field",
+      "GET /api/mr/pending-items/{phone}": "PASS - MR accessible endpoint returns pending items",
+      "GET /api/mr/customers": "PASS - Returns customers with entity_type field",
+      "GET /api/pending-items/stats": "PASS - Returns total_pending_items and doctors_with_pending",
+      "Pending items data integrity": "PASS - Items reference valid item IDs"
+    },
+    "Admin Panel UI Tests": {
+      "Login and navigate to Orders": "PASS",
+      "Add Order modal opens": "PASS",
+      "Customer search for DHIVAHAR": "PASS - Found and selected customer",
+      "Previous Pending Items section displayed": "PASS - Shows 'Previous Pending Items (2)'",
+      "Vitamin D3 1000IU pending item shown": "PASS - Qty: 250, Order: ORD-20260326-0005",
+      "Paracetamol 500mg pending item shown": "PASS - Qty: 10, Order: ORD-20260301-0001",
+      "+Add buttons present": "PASS - 2 Add buttons found",
+      "Click +Add adds item to order": "PASS - Item added with toast notification",
+      "Button changes to 'Added' (disabled)": "PASS",
+      "Default Rate displayed for added item": "PASS - Shows Default Rate: ₹180",
+      "Customer without pending items - section hidden": "PASS - Dr. John Smith shows no pending section"
+    },
+    "MR Panel UI Tests": {
+      "Login and navigate to Orders": "PASS",
+      "New Order modal opens": "PASS",
+      "Customer search for Dr. Test Address": "PASS - Found and selected customer",
+      "No pending items section for customer without pending items": "PASS - Section correctly hidden",
+      "Order Items section visible": "PASS"
+    }
+  },
+  "pending_items_test_data": {
+    "customer_with_pending": {
+      "name": "DR.DHIVAHAR",
+      "phone": "9688283839",
+      "pending_items": [
+        {"item_name": "Vitamin D3 1000IU", "item_code": "ITM-0002", "quantity": "250", "order": "ORD-20260326-0005"},
+        {"item_name": "Paracetamol 500mg", "item_code": "ITM-0001", "quantity": "10", "order": "ORD-20260301-0001"}
+      ]
+    },
+    "customer_without_pending": {
+      "name": "Dr. John Smith",
+      "phone": "9876543210"
+    }
+  }
+}

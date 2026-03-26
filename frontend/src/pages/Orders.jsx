@@ -82,6 +82,7 @@ export const Orders = () => {
   const [customerResults, setCustomerResults] = useState([]);
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerPendingItems, setCustomerPendingItems] = useState([]);
   const [companySettings, setCompanySettings] = useState(null);
   
   // Transfer to agency
@@ -628,6 +629,7 @@ export const Orders = () => {
     setCustomerSearch('');
     setCustomerResults([]);
     setSelectedCustomer(null);
+    setCustomerPendingItems([]);
     setShowAddModal(true);
   };
 
@@ -662,10 +664,17 @@ export const Orders = () => {
     });
     setCustomerSearch('');
     setCustomerResults([]);
+    // Fetch pending items for this customer
+    if (customer.phone) {
+      pendingItemsAPI.getByDoctor(customer.phone)
+        .then(res => setCustomerPendingItems(res.data || []))
+        .catch(() => setCustomerPendingItems([]));
+    }
   };
 
   const clearSelectedCustomer = () => {
     setSelectedCustomer(null);
+    setCustomerPendingItems([]);
     setNewOrderForm({
       ...newOrderForm,
       customer_name: '',
@@ -717,6 +726,46 @@ export const Orders = () => {
       });
     }
     setItemSearch('');
+  };
+
+  const addPendingItemToOrder = (pendingItem) => {
+    // Find the full item data from loaded items
+    const fullItem = items.find(i => i.id === pendingItem.item_id);
+    if (fullItem) {
+      addItemToOrder(fullItem);
+      // Update quantity to match the pending quantity
+      const idx = newOrderForm.items.length; // will be the last item added
+      setTimeout(() => {
+        setNewOrderForm(prev => {
+          const updated = [...prev.items];
+          const lastIdx = updated.findIndex(i => i.item_id === pendingItem.item_id);
+          if (lastIdx >= 0) {
+            updated[lastIdx].quantity = String(pendingItem.quantity);
+          }
+          return { ...prev, items: updated };
+        });
+      }, 0);
+    } else {
+      // Item not in loaded list - add with basic info
+      const roleRate = 0;
+      setNewOrderForm({
+        ...newOrderForm,
+        items: [...newOrderForm.items, {
+          item_id: pendingItem.item_id,
+          item_code: pendingItem.item_code,
+          item_name: pendingItem.item_name,
+          quantity: String(pendingItem.quantity),
+          mrp: 0,
+          rate: roleRate,
+          defaultRate: roleRate,
+          gst: 0,
+          outOfStock: false,
+          offer: '',
+          special_offer: '',
+        }]
+      });
+    }
+    toast.success(`Added pending item: ${pendingItem.item_name}`);
   };
 
   const updateOrderItemQty = (index, qty) => {
@@ -1125,6 +1174,39 @@ export const Orders = () => {
                       placeholder="Delivery address"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pending Items for this Customer */}
+            {customerPendingItems.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-medium flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="w-4 h-4" /> Previous Pending Items ({customerPendingItems.length})
+                </h4>
+                <p className="text-xs text-amber-600">These items were out of stock in previous orders for this customer. Add them to this order to fulfill.</p>
+                <div className="border border-amber-200 rounded-lg bg-amber-50 divide-y divide-amber-200 max-h-48 overflow-y-auto">
+                  {customerPendingItems.map((pItem) => {
+                    const alreadyAdded = newOrderForm.items.some(i => i.item_id === pItem.item_id);
+                    return (
+                      <div key={pItem.id} className="p-3 flex items-center justify-between" data-testid={`pending-item-${pItem.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-slate-800">{pItem.item_name}</p>
+                          <p className="text-xs text-slate-500">{pItem.item_code} | Qty: {pItem.quantity} | Order: {pItem.original_order_number}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={alreadyAdded}
+                          onClick={() => addPendingItemToOrder(pItem)}
+                          className={alreadyAdded ? 'text-slate-400' : 'text-green-600 border-green-300 hover:bg-green-50'}
+                          data-testid={`add-pending-${pItem.id}`}
+                        >
+                          {alreadyAdded ? 'Added' : <><Plus className="w-3 h-3 mr-1" />Add</>}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

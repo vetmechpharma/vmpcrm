@@ -46,6 +46,7 @@ export default function MROrders() {
   const [itemSearch, setItemSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
+  const [customerPendingItems, setCustomerPendingItems] = useState([]);
 
   useEffect(() => { fetchOrders(); }, []);
 
@@ -65,6 +66,7 @@ export default function MROrders() {
     setOrderNotes('');
     setItemSearch('');
     setCustomerSearch('');
+    setCustomerPendingItems([]);
     setShowOrderForm(true);
     try {
       const [custResult, itemResult] = await Promise.all([
@@ -93,9 +95,18 @@ export default function MROrders() {
   const selectCustomer = (customer) => {
     setSelectedCustomer(customer);
     setCustomerSearch('');
+    // Fetch pending items for this customer
+    if (customer.phone) {
+      mrAPI.getPendingItems(customer.phone)
+        .then(res => setCustomerPendingItems(res.data || []))
+        .catch(() => setCustomerPendingItems([]));
+    }
   };
 
-  const clearCustomer = () => { setSelectedCustomer(null); };
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerPendingItems([]);
+  };
 
   // Get the role-based rate for the selected customer type
   const getRoleRate = (item) => {
@@ -136,6 +147,32 @@ export default function MROrders() {
       }]);
     }
     setItemSearch('');
+  };
+
+  const addPendingItemToOrder = (pendingItem) => {
+    const fullItem = items.find(i => i.id === pendingItem.item_id);
+    if (fullItem) {
+      addItemToOrder(fullItem);
+      setTimeout(() => {
+        setOrderItems(prev => {
+          const updated = [...prev];
+          const idx = updated.findIndex(i => i.item_id === pendingItem.item_id);
+          if (idx >= 0) updated[idx].quantity = String(pendingItem.quantity);
+          return updated;
+        });
+      }, 0);
+    } else {
+      setOrderItems(prev => [...prev, {
+        item_id: pendingItem.item_id,
+        item_code: pendingItem.item_code,
+        item_name: pendingItem.item_name,
+        quantity: String(pendingItem.quantity),
+        mrp: 0, rate: 0, defaultRate: 0, gst: 0,
+        outOfStock: false, previousQty: String(pendingItem.quantity),
+        offer: '', special_offer: '',
+      }]);
+    }
+    toast.success(`Added pending item: ${pendingItem.item_name}`);
   };
 
   const updateItemQty = (index, qty) => {
@@ -342,6 +379,39 @@ export default function MROrders() {
                 </>
               )}
             </div>
+
+            {/* ---- Pending Items for Customer ---- */}
+            {customerPendingItems.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="font-medium flex items-center gap-2 text-amber-700">
+                  <AlertTriangle className="w-4 h-4" /> Previous Pending Items ({customerPendingItems.length})
+                </h4>
+                <p className="text-xs text-amber-600">These items were out of stock in previous orders. Add them to fulfill now.</p>
+                <div className="border border-amber-200 rounded-lg bg-amber-50 divide-y divide-amber-200 max-h-48 overflow-y-auto">
+                  {customerPendingItems.map((pItem) => {
+                    const alreadyAdded = orderItems.some(i => i.item_id === pItem.item_id);
+                    return (
+                      <div key={pItem.id} className="p-3 flex items-center justify-between" data-testid={`mr-pending-item-${pItem.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-slate-800">{pItem.item_name}</p>
+                          <p className="text-xs text-slate-500">{pItem.item_code} | Qty: {pItem.quantity} | Order: {pItem.original_order_number}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={alreadyAdded}
+                          onClick={() => addPendingItemToOrder(pItem)}
+                          className={alreadyAdded ? 'text-slate-400' : 'text-green-600 border-green-300 hover:bg-green-50'}
+                          data-testid={`mr-add-pending-${pItem.id}`}
+                        >
+                          {alreadyAdded ? 'Added' : <><Plus className="w-3 h-3 mr-1" />Add</>}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ---- Add Items ---- */}
             <div className="space-y-3 border-t pt-4">

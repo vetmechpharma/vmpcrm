@@ -17,6 +17,7 @@ import bcrypt
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 import base64
 from io import BytesIO
 from PIL import Image
@@ -66,6 +67,7 @@ logger = logging.getLogger(__name__)
 # Global variable for background task
 daily_reminder_task = None
 greeting_task = None
+monthly_ledger_task = None
 
 async def send_daily_reminder_summary():
     """Background task to send daily reminder summary to admin via WhatsApp"""
@@ -3112,6 +3114,75 @@ async def send_email_task(smtp_config: dict, doctor: dict, subject: str, body: s
         )
         logger.error(f"Failed to send email: {str(e)}")
 
+
+async def send_notification_email(
+    to_email: str,
+    to_name: str,
+    subject: str,
+    body_html: str,
+    customer_id: str = None,
+    email_type: str = 'notification',
+    attachment_data: bytes = None,
+    attachment_filename: str = None
+):
+    """Reusable email sender for all notification types. Handles SMTP config, logging, and optional attachments."""
+    try:
+        smtp_config = await db.smtp_config.find_one({}, {'_id': 0})
+        if not smtp_config:
+            logger.warning(f"SMTP not configured, skipping {email_type} email to {to_email}")
+            return False
+
+        company = await db.company_settings.find_one({}, {'_id': 0})
+        company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+
+        # Wrap body in styled HTML template
+        full_html = f"""<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f5f5f5;">
+<div style="max-width:600px;margin:0 auto;background-color:#ffffff;">
+<div style="background:linear-gradient(135deg,#1e3a5f 0%,#2d5a87 100%);padding:24px;text-align:center;">
+<h1 style="color:#fff;margin:0;font-size:22px;">{company_name}</h1></div>
+<div style="padding:24px;">{body_html}</div>
+<div style="background-color:#1e3a5f;padding:18px;text-align:center;">
+<p style="color:#b8d4e8;margin:0;font-size:11px;">This is an automated notification from {company_name}</p></div>
+</div></body></html>"""
+
+        msg = MIMEMultipart()
+        msg['From'] = f"{smtp_config['from_name']} <{smtp_config['from_email']}>"
+        msg['To'] = f"{to_name} <{to_email}>"
+        msg['Subject'] = subject
+        msg.attach(MIMEText(full_html, 'html'))
+
+        if attachment_data and attachment_filename:
+            attachment = MIMEApplication(attachment_data, Name=attachment_filename)
+            attachment['Content-Disposition'] = f'attachment; filename="{attachment_filename}"'
+            msg.attach(attachment)
+
+        log_id = str(uuid.uuid4())
+        await db.email_logs.insert_one({
+            'id': log_id,
+            'doctor_id': customer_id,
+            'doctor_name': to_name,
+            'doctor_email': to_email,
+            'subject': subject,
+            'body': f'{email_type} email',
+            'status': 'pending',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'sent_by': 'system'
+        })
+
+        with smtplib.SMTP(smtp_config['smtp_server'], smtp_config['smtp_port'], timeout=30) as server:
+            server.starttls()
+            server.login(smtp_config['smtp_username'], smtp_config['smtp_password'])
+            server.sendmail(smtp_config['from_email'], [to_email], msg.as_string())
+
+        await db.email_logs.update_one({'id': log_id}, {'$set': {'status': 'sent', 'sent_at': datetime.now(timezone.utc).isoformat()}})
+        logger.info(f"{email_type} email sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send {email_type} email to {to_email}: {e}")
+        return False
+
+
 @api_router.post("/send-email")
 async def send_email(
     email_data: SendEmailRequest,
@@ -3593,13 +3664,23 @@ async def create_item(item_data: ItemCreate, current_user: dict = Depends(get_cu
     )
 
 @api_router.get("/items/{item_id}/image")
-async def get_item_image(item_id: str):
-    """Get item image as WebP"""
+async def get_item_image(item_id: str, fmt: Optional[str] = None):
+    """Get item image as WebP or JPEG (use ?fmt=jpg for JPEG)"""
     item = await db.items.find_one({'id': item_id}, {'image_webp': 1})
     if not item or not item.get('image_webp'):
         raise HTTPException(status_code=404, detail="Image not found")
     
     image_data = base64.b64decode(item['image_webp'])
+    
+    if fmt == 'jpg' or fmt == 'jpeg':
+        img = Image.open(BytesIO(image_data))
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        jpg_buffer = BytesIO()
+        img.save(jpg_buffer, format='JPEG', quality=85)
+        jpg_buffer.seek(0)
+        return Response(content=jpg_buffer.read(), media_type="image/jpeg")
+    
     return Response(content=image_data, media_type="image/webp")
 
 @api_router.get("/items", response_model=List[ItemResponse])
@@ -4295,6 +4376,20 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
         response = await send_wa_msg(wa_mobile, message, config=config)
         if response and response.status_code == 200:
             await log_whatsapp_message(wa_mobile, 'payment_receipt', message, 'success', recipient_name=payment.get('customer_name', ''))
+            # Also send email receipt
+            cust_email = (cust_doc or {}).get('email')
+            if cust_email:
+                email_body = f"""<p>Dear <strong>{payment.get('customer_name', 'Customer')}</strong>,</p>
+<div style="background:#f8fafc;padding:16px;border-radius:6px;margin:16px 0;">
+<h3 style="margin:0 0 12px 0;color:#1e3a5f;">Payment Receipt</h3>
+<table style="width:100%;font-size:14px;">
+<tr><td style="padding:6px 0;"><strong>Date:</strong></td><td>{payment.get('date', '')}</td></tr>
+<tr><td style="padding:6px 0;"><strong>Amount:</strong></td><td style="color:#10b981;font-weight:bold;">Rs.{payment['amount']:,.2f}</td></tr>
+<tr><td style="padding:6px 0;"><strong>Mode:</strong></td><td>{payment.get('mode', 'Cash')}</td></tr>
+{f"<tr><td style='padding:6px 0;'><strong>Notes:</strong></td><td>{payment.get('notes')}</td></tr>" if payment.get('notes') else ""}
+<tr><td style="padding:6px 0;border-top:2px solid #1e3a5f;"><strong>Ledger Balance:</strong></td><td style="border-top:2px solid #1e3a5f;font-weight:bold;">Rs.{balance:,.2f}</td></tr>
+</table></div><p>Thank you for your payment!</p>"""
+                await send_notification_email(cust_email, payment.get('customer_name', ''), f"Payment Receipt - Rs.{payment['amount']:,.2f}", email_body, cust_id, 'payment_receipt')
             return {"message": "Receipt sent via WhatsApp", "balance": balance}
         else:
             logger.error(f"WhatsApp receipt failed: {response.status_code if response else 'no_response'}")
@@ -4471,7 +4566,7 @@ async def send_ledger_whatsapp(
     to_date: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Send ledger statement via WhatsApp"""
+    """Send ledger statement via WhatsApp (summary text + PDF link) and also via email"""
     ledger = await get_customer_ledger(customer_type, customer_id, from_date, to_date, current_user)
     
     company = await db.company_settings.find_one({}, {'_id': 0})
@@ -4482,41 +4577,46 @@ async def send_ledger_whatsapp(
     if not cust_phone:
         raise HTTPException(status_code=400, detail="Customer phone not available")
     
-    # Build WhatsApp message
+    # Build summary WhatsApp message (concise)
     message = (
         f"*{company_name}*\n"
-        f"*LEDGER STATEMENT*\n"
+        f"*LEDGER STATEMENT SUMMARY*\n"
         f"{'─' * 28}\n"
         f"Customer: {cust['name']}\n"
         f"Type: {cust['type'].title()}\n"
     )
     if from_date or to_date:
         message += f"Period: {from_date or 'Start'} to {to_date or 'Present'}\n"
-    message += f"{'─' * 28}\n\n"
     
-    # Add entries (limit to recent entries to fit WhatsApp message)
-    entries = ledger['entries']
-    if len(entries) > 20:
-        message += f"_Showing last 20 of {len(entries)} entries_\n\n"
-        entries = entries[-20:]
-    
-    for entry in entries:
-        date_str = (entry.get('date', '') or '')[:10]
-        desc = entry.get('description', '')[:35]
-        if entry['debit'] > 0:
-            message += f"{date_str} | {desc}\n  Debit: Rs.{entry['debit']:,.2f} | Bal: Rs.{entry['balance']:,.2f}\n"
-        elif entry['credit'] > 0:
-            message += f"{date_str} | {desc}\n  Credit: Rs.{entry['credit']:,.2f} | Bal: Rs.{entry['balance']:,.2f}\n"
-    
+    num_entries = len(ledger['entries'])
     message += (
-        f"\n{'─' * 28}\n"
+        f"{'─' * 28}\n"
+        f"Total Entries: {num_entries}\n"
         f"*Total Debit: Rs.{ledger['total_debit']:,.2f}*\n"
         f"*Total Credit: Rs.{ledger['total_credit']:,.2f}*\n"
         f"*Closing Balance: Rs.{ledger['closing_balance']:,.2f}*\n"
         f"{'─' * 28}\n"
+        f"\nPlease find the detailed PDF statement attached.\n"
+        f"For any discrepancies, please contact us.\n"
     )
     
-    # Send WhatsApp
+    # Generate PDF bytes for attachment
+    pdf_bytes = generate_ledger_pdf_bytes(ledger, company_name, from_date, to_date)
+    
+    # Generate a temporary PDF access token and store the PDF in DB
+    pdf_token = str(uuid.uuid4())
+    await db.temp_ledger_pdfs.insert_one({
+        'token': pdf_token,
+        'pdf_data': base64.b64encode(pdf_bytes).decode('utf-8'),
+        'customer_name': cust['name'],
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'expires_at': (datetime.now(timezone.utc) + timedelta(hours=48)).isoformat()
+    })
+    
+    app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+    pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}" if app_base_url else None
+    
+    # Send WhatsApp with PDF attachment
     config = await get_whatsapp_config()
     if not (config.get('api_url') and config.get('auth_token') and config.get('sender_id')):
         raise HTTPException(status_code=400, detail="WhatsApp not configured")
@@ -4524,33 +4624,60 @@ async def send_ledger_whatsapp(
     wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
     
     try:
-        response = await send_wa_msg(wa_mobile, message, config=config)
+        if pdf_url:
+            response = await send_wa_msg(wa_mobile, message, file_url=pdf_url, file_caption=message, config=config)
+        else:
+            response = await send_wa_msg(wa_mobile, message, config=config)
+        
         if response and response.status_code == 200:
             await log_whatsapp_message(wa_mobile, 'ledger_statement', message, 'success', recipient_name=cust['name'])
-            return {"message": "Ledger sent via WhatsApp", "balance": ledger['closing_balance']}
         else:
             logger.error(f"WhatsApp ledger failed: {response.status_code if response else 'no_response'}")
-            raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code if response else 'no_response'}")
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"WhatsApp ledger error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"WhatsApp error: {str(e)}")
+    
+    # Also send via email with PDF attachment
+    cust_email = cust.get('email')
+    if cust_email:
+        try:
+            email_body = f"""<p>Dear <strong>{cust['name']}</strong>,</p>
+<p>Please find your ledger statement attached as PDF.</p>
+<div style="background:#f8fafc;padding:16px;border-radius:6px;margin:16px 0;">
+<table style="font-size:14px;width:100%;">
+<tr><td style="padding:6px 0;"><strong>Total Entries:</strong></td><td>{num_entries}</td></tr>
+<tr><td style="padding:6px 0;"><strong>Total Debit:</strong></td><td>Rs.{ledger['total_debit']:,.2f}</td></tr>
+<tr><td style="padding:6px 0;"><strong>Total Credit:</strong></td><td>Rs.{ledger['total_credit']:,.2f}</td></tr>
+<tr><td style="padding:6px 0;border-top:2px solid #1e3a5f;"><strong>Closing Balance:</strong></td>
+<td style="border-top:2px solid #1e3a5f;font-weight:bold;color:#1e3a5f;">Rs.{ledger['closing_balance']:,.2f}</td></tr>
+</table></div>
+<p>For any discrepancies, please contact us.</p>"""
+            filename = f"Ledger_{cust['name'].replace(' ', '_')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.pdf"
+            await send_notification_email(cust_email, cust['name'], f"Ledger Statement - {company_name}", email_body, customer_id, 'ledger_statement', attachment_data=pdf_bytes, attachment_filename=filename)
+        except Exception as e:
+            logger.error(f"Ledger email error: {e}")
+    
+    return {"message": "Ledger sent via WhatsApp and Email", "balance": ledger['closing_balance']}
 
-@api_router.get("/ledger/export/pdf/{customer_type}/{customer_id}")
-async def export_ledger_pdf(
-    customer_type: str,
-    customer_id: str,
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    """Export customer ledger as PDF"""
-    ledger = await get_customer_ledger(customer_type, customer_id, from_date, to_date, current_user)
+@api_router.get("/ledger-pdf/{token}")
+async def get_ledger_pdf_by_token(token: str):
+    """Public endpoint to serve temporary ledger PDFs (for WhatsApp file URL)"""
+    doc = await db.temp_ledger_pdfs.find_one({'token': token}, {'_id': 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="PDF not found or expired")
     
-    company = await db.company_settings.find_one({}, {'_id': 0})
-    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    # Check expiry
+    expires_at = datetime.fromisoformat(doc['expires_at'].replace('Z', '+00:00'))
+    if datetime.now(timezone.utc) > expires_at:
+        await db.temp_ledger_pdfs.delete_one({'token': token})
+        raise HTTPException(status_code=410, detail="PDF link has expired")
     
+    pdf_data = base64.b64decode(doc['pdf_data'])
+    filename = f"Ledger_{doc.get('customer_name', 'Statement').replace(' ', '_')}.pdf"
+    return Response(content=pdf_data, media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'})
+
+def generate_ledger_pdf_bytes(ledger: dict, company_name: str, from_date: str = None, to_date: str = None) -> bytes:
+    """Generate ledger PDF bytes (reusable for WhatsApp and email)"""
     pdf = FPDF(orientation='P', format='A4')
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
@@ -4564,6 +4691,7 @@ async def export_ledger_pdf(
     pdf.cell(0, 6, f"Customer: {cust['name']} | Phone: {cust['phone']} | Type: {cust['type'].title()}", ln=True, align='C')
     if from_date or to_date:
         pdf.cell(0, 5, f"Period: {from_date or 'Start'} to {to_date or 'Present'}", ln=True, align='C')
+    pdf.cell(0, 5, f"Generated: {datetime.now(timezone.utc).strftime('%d %b %Y, %I:%M %p')}", ln=True, align='C')
     pdf.ln(3)
     
     col_w = [25, 75, 30, 30, 30]
@@ -4588,7 +4716,6 @@ async def export_ledger_pdf(
         pdf.cell(col_w[4], 6, f"{entry['balance']:.2f}", 1, 0, 'R', fill)
         pdf.ln()
     
-    # Totals
     pdf.set_font('Helvetica', 'B', 8)
     pdf.set_fill_color(52, 73, 94)
     pdf.set_text_color(255, 255, 255)
@@ -4598,8 +4725,25 @@ async def export_ledger_pdf(
     pdf.cell(col_w[4], 7, f"{ledger['closing_balance']:.2f}", 1, 0, 'R', True)
     pdf.ln()
     
-    pdf_output = pdf.output()
-    return Response(content=bytes(pdf_output), media_type="application/pdf",
+    return bytes(pdf.output())
+
+@api_router.get("/ledger/export/pdf/{customer_type}/{customer_id}")
+async def export_ledger_pdf(
+    customer_type: str,
+    customer_id: str,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Export customer ledger as PDF"""
+    ledger = await get_customer_ledger(customer_type, customer_id, from_date, to_date, current_user)
+    
+    company = await db.company_settings.find_one({}, {'_id': 0})
+    company_name = company.get('company_name', 'VMP CRM') if company else 'VMP CRM'
+    
+    cust = ledger['customer']
+    pdf_bytes = generate_ledger_pdf_bytes(ledger, company_name, from_date, to_date)
+    return Response(content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=ledger_{cust['name'].replace(' ','_')}.pdf"})
 
 # ============== BULK IMPORT ENDPOINTS ==============
@@ -6274,6 +6418,27 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     
+    # Send email notification for approval/rejection
+    if customer.get('email'):
+        try:
+            if approval.status == 'approved':
+                email_body = f"""<p>Dear <strong>{customer['name']}</strong>,</p>
+<div style="background:#ecfdf5;padding:16px;border-radius:6px;border-left:4px solid #10b981;margin:16px 0;">
+<p style="color:#065f46;font-weight:bold;margin:0;">Your account has been APPROVED!</p></div>
+<p>You can now login to view products and place orders.</p>
+<p><strong>Customer Code:</strong> {customer['customer_code']}</p>"""
+                await send_notification_email(customer['email'], customer['name'], "Account Approved!", email_body, customer_id, 'account_approved')
+            else:
+                reason = approval.rejection_reason or "Please contact support for more details."
+                email_body = f"""<p>Dear <strong>{customer['name']}</strong>,</p>
+<div style="background:#fef2f2;padding:16px;border-radius:6px;border-left:4px solid #ef4444;margin:16px 0;">
+<p style="color:#991b1b;font-weight:bold;margin:0;">Registration Declined</p></div>
+<p><strong>Reason:</strong> {reason}</p>
+<p>Please contact support for assistance.</p>"""
+                await send_notification_email(customer['email'], customer['name'], "Registration Update", email_body, customer_id, 'account_declined')
+        except Exception as e:
+            logger.error(f"Account status email error: {e}")
+
     return {"message": f"Customer {approval.status} successfully"}
 
 
@@ -6607,6 +6772,21 @@ async def update_ticket_status(ticket_id: str, status: str, current_user: dict =
             except Exception as e:
                 logger.error(f"WhatsApp notification error: {str(e)}")
     
+    # Send email notification for ticket status change
+    if old_status != status and ticket.get('customer_email'):
+        try:
+            ticket_num = ticket.get('ticket_number', ticket_id[:8])
+            customer_name = ticket.get('customer_name', 'Customer')
+            status_colors = {'open': '#3b82f6', 'in_progress': '#f59e0b', 'resolved': '#10b981', 'closed': '#6b7280'}
+            color = status_colors.get(status, '#6b7280')
+            email_body = f"""<p>Dear <strong>{customer_name}</strong>,</p>
+<div style="background:#f8fafc;padding:16px;border-radius:6px;border-left:4px solid {color};margin:16px 0;">
+<p style="margin:0;"><strong>Ticket #{ticket_num}</strong> - <span style="color:{color};font-weight:bold;">{status.upper().replace('_', ' ')}</span></p>
+<p style="margin:8px 0 0 0;color:#666;">Subject: {ticket.get('subject', '')}</p></div>"""
+            await send_notification_email(ticket['customer_email'], customer_name, f"Ticket #{ticket_num} - {status.upper().replace('_', ' ')}", email_body, None, 'ticket_status')
+        except Exception as e:
+            logger.error(f"Ticket status email error: {e}")
+
     return {"message": "Ticket status updated"}
 
 @api_router.post("/support/tickets/{ticket_id}/reply")
@@ -6656,6 +6836,20 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
         except Exception as e:
             logger.error(f"WhatsApp notification error: {str(e)}")
     
+    # Send email notification for ticket reply
+    if ticket.get('customer_email'):
+        try:
+            ticket_num = ticket.get('ticket_number', ticket_id[:8])
+            customer_name = ticket.get('customer_name', 'Customer')
+            email_body = f"""<p>Dear <strong>{customer_name}</strong>,</p>
+<p>You have a new reply on your support ticket <strong>#{ticket_num}</strong>:</p>
+<div style="background:#f8fafc;padding:16px;border-radius:6px;border-left:4px solid #3b82f6;margin:16px 0;">
+<p style="margin:0;white-space:pre-line;">{reply.message[:500]}</p>
+<p style="margin:8px 0 0 0;color:#666;font-size:12px;">- {current_user['name']}</p></div>"""
+            await send_notification_email(ticket['customer_email'], customer_name, f"New Reply - Ticket #{ticket_num}", email_body, None, 'ticket_reply')
+        except Exception as e:
+            logger.error(f"Ticket reply email error: {e}")
+
     return {"message": "Reply added successfully", "reply": reply_doc}
 
 # Admin ticket creation model
@@ -6838,6 +7032,10 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
     params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
     try:
         response = await execute_wa_request(config, params)
+        if response and response.status_code != 200:
+            logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
+        elif response and file_url:
+            logger.info(f"WhatsApp file send: status={response.status_code}, file_url={file_url[:100]}, body={response.text[:200]}")
         return response
     except Exception as e:
         logger.error(f"WhatsApp send error: {e}")
@@ -7143,13 +7341,24 @@ async def get_marketing_campaign(campaign_id: str, current_user: dict = Depends(
     return {"campaign": campaign, "logs": logs}
 
 @api_router.get("/marketing/campaigns/{campaign_id}/image")
-async def get_campaign_image(campaign_id: str):
-    """Get campaign image"""
+async def get_campaign_image(campaign_id: str, fmt: Optional[str] = None):
+    """Get campaign image. Use ?fmt=jpg for JPEG format (better compatibility with external services)"""
     campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'image_webp': 1})
     if not campaign or not campaign.get('image_webp'):
         raise HTTPException(status_code=404, detail="Image not found")
     
-    return Response(content=campaign['image_webp'], media_type="image/webp")
+    image_data = base64.b64decode(campaign['image_webp'])
+    
+    if fmt == 'jpg' or fmt == 'jpeg':
+        img = Image.open(BytesIO(image_data))
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        jpg_buffer = BytesIO()
+        img.save(jpg_buffer, format='JPEG', quality=85)
+        jpg_buffer.seek(0)
+        return Response(content=jpg_buffer.read(), media_type="image/jpeg")
+    
+    return Response(content=image_data, media_type="image/webp")
 
 @api_router.post("/marketing/campaigns")
 async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_user: dict = Depends(get_current_user)):
@@ -7355,17 +7564,18 @@ async def process_marketing_campaign(campaign_id: str):
                     phone = recipient['phone']
                     wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
                     
-                    # Determine image URL to use
+                    # Determine image URL to use (serve as JPEG for better compatibility with external services)
                     image_url_to_send = None
+                    app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
                     
                     # Check if campaign has uploaded image
-                    if campaign.get('has_image', False):
-                        image_url_to_send = f"https://whatsapp-email-hub.preview.emergentagent.com/api/marketing/campaigns/{campaign_id}/image"
+                    if campaign.get('has_image', False) and app_base_url:
+                        image_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image?fmt=jpg"
                     # For product promotions, use first item's image as default
-                    elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details'):
+                    elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details') and app_base_url:
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"https://whatsapp-email-hub.preview.emergentagent.com/api/items/{item['id']}/image"
+                                image_url_to_send = f"{app_base_url}/api/items/{item['id']}/image"
                                 break
                     
                     if image_url_to_send:
@@ -7413,6 +7623,15 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Small delay between messages in same batch
                     await asyncio.sleep(2)
+                    
+                    # Also send email if recipient has email
+                    if recipient.get('email'):
+                        try:
+                            email_msg = message.replace('*', '<strong>').replace('\n', '<br/>')
+                            email_body = f'<div style="white-space:pre-line;line-height:1.6;">{email_msg}</div>'
+                            await send_notification_email(recipient['email'], recipient.get('name', ''), f"{campaign.get('name', 'Announcement')}", email_body, recipient.get('id'), 'marketing_campaign')
+                        except Exception as email_err:
+                            logger.error(f"Campaign email error for {recipient.get('email')}: {email_err}")
                     
                 except Exception as e:
                     logger.error(f"Error sending to recipient {log['recipient_id']}: {e}")
@@ -7922,6 +8141,45 @@ Regards,
     except Exception as e:
         logger.error(f"WhatsApp status update error: {str(e)}")
         await log_whatsapp_message(clean_mobile, f'status_{new_status}', message, 'failed', recipient_name=doctor_name, error_message=str(e))
+
+async def send_order_status_email(order: dict, new_status: str, update_data: dict = None):
+    """Send email notification for order status changes"""
+    try:
+        customer_email = order.get('doctor_email')
+        if not customer_email:
+            return
+        customer_name = order.get('doctor_name', 'Customer')
+        order_number = order.get('order_number', '')
+        items = order.get('items', [])
+        items_html = "".join([f"<li>{item.get('item_name', '')} - Qty: {item.get('quantity', '')}</li>" for item in items])
+
+        status_config = {
+            'confirmed': ('Order Confirmed', '#10b981', 'Your order has been confirmed and is being processed.'),
+            'shipped': ('Order Shipped', '#3b82f6', 'Your order has been shipped and is on its way!'),
+            'ready_to_despatch': ('Ready to Dispatch', '#f59e0b', 'Your order is packed and ready for dispatch.'),
+            'delivered': ('Order Delivered', '#10b981', 'Your order has been delivered. Thank you!'),
+            'cancelled': ('Order Cancelled', '#ef4444', f"Your order has been cancelled. Reason: {(update_data or {}).get('cancellation_reason', 'Not specified')}"),
+        }
+        title, color, desc = status_config.get(new_status, (f'Order {new_status.title()}', '#6b7280', f'Your order status has been updated to: {new_status}'))
+
+        tracking_html = ""
+        if new_status == 'shipped':
+            tracking = order.get('tracking_number') or (update_data or {}).get('tracking_number', '')
+            transport = order.get('transport_name') or (update_data or {}).get('transport_name', '')
+            if tracking or transport:
+                tracking_html = f'<p style="margin:10px 0;"><strong>Transport:</strong> {transport}<br/><strong>Tracking:</strong> {tracking}</p>'
+
+        body = f"""<div style="background-color:{color};padding:12px;text-align:center;border-radius:6px;margin-bottom:16px;">
+<span style="color:#fff;font-weight:bold;font-size:16px;">{title}</span></div>
+<p>Dear <strong>{customer_name}</strong>,</p>
+<p>{desc}</p>
+<div style="background:#f8fafc;padding:16px;border-radius:6px;margin:16px 0;">
+<strong>Order No:</strong> {order_number}<br/>
+<strong>Items:</strong><ul>{items_html}</ul>{tracking_html}</div>"""
+
+        await send_notification_email(customer_email, customer_name, f"{title} - {order_number}", body, order.get('doctor_id'), f'order_{new_status}')
+    except Exception as e:
+        logger.error(f"Order status email error: {e}")
 
 async def send_whatsapp_ready_to_despatch(order: dict, update_data: dict):
     """Send WhatsApp notification for Ready to Despatch status - to both transporter and customer"""
@@ -8443,7 +8701,7 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
     background_tasks.add_task(
         send_push_to_admins,
         'New Order Received',
-        f'Order {order_number} from {entity_name}',
+        f'Order {order_number} from {order_data.customer_name}',
         '/admin/orders',
         'new-order'
     )
@@ -8650,6 +8908,8 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
             background_tasks.add_task(send_whatsapp_ready_to_despatch, order, update_data)
         else:
             background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
+        # Send email notification for all status changes
+        background_tasks.add_task(send_order_status_email, order, new_status, update_data)
     
     # Send push notification to customer
     status_labels = {'confirmed': 'Confirmed', 'processing': 'Processing', 'ready_to_despatch': 'Ready to Dispatch', 'shipped': 'Dispatched', 'delivered': 'Delivered', 'cancelled': 'Cancelled'}
@@ -11960,22 +12220,155 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+async def send_monthly_ledger_statements():
+    """Background task to send ledger statements on the 27th of every month to all parties with outstanding balance"""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            # Target: 27th of current/next month at 10 AM IST (4:30 AM UTC)
+            target_day = 27
+            target_hour = 4
+            target_minute = 30
+            
+            # Calculate next run
+            if now.day < target_day or (now.day == target_day and now.hour < target_hour):
+                next_run = now.replace(day=target_day, hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            else:
+                # Next month
+                if now.month == 12:
+                    next_run = now.replace(year=now.year + 1, month=1, day=target_day, hour=target_hour, minute=target_minute, second=0, microsecond=0)
+                else:
+                    next_run = now.replace(month=now.month + 1, day=target_day, hour=target_hour, minute=target_minute, second=0, microsecond=0)
+            
+            wait_seconds = (next_run - now).total_seconds()
+            logger.info(f"Monthly ledger task scheduled. Next run on {next_run.strftime('%d %b %Y')} ({wait_seconds/3600:.1f} hours)")
+            await asyncio.sleep(wait_seconds)
+            
+            # Execute: send ledger statements to all customers with outstanding balance
+            logger.info("Starting monthly ledger statement distribution...")
+            company = await db.company_settings.find_one({}, {'_id': 0})
+            company_name = (company or {}).get('company_name', 'VMP CRM')
+            config = await get_whatsapp_config()
+            app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+            
+            sent_count = 0
+            for coll_name, cust_type in [('doctors', 'doctor'), ('medicals', 'medical'), ('agencies', 'agency')]:
+                customers = await db[coll_name].find({'status': 'active'}, {'_id': 0}).to_list(5000)
+                for cust in customers:
+                    try:
+                        # Calculate outstanding balance
+                        opening_bal = cust.get('opening_balance', 0) or 0
+                        pipeline = [{'$match': {'customer_id': cust['id']}}, {'$group': {'_id': None, 'total': {'$sum': '$net_amount'}}}]
+                        inv_result = await db.invoices.aggregate(pipeline).to_list(1)
+                        total_invoiced = inv_result[0]['total'] if inv_result else 0
+                        pay_pipeline = [{'$match': {'customer_id': cust['id']}}, {'$group': {'_id': None, 'total': {'$sum': '$amount'}}}]
+                        pay_result = await db.payments.aggregate(pay_pipeline).to_list(1)
+                        total_paid = pay_result[0]['total'] if pay_result else 0
+                        outstanding = opening_bal + total_invoiced - total_paid
+                        
+                        if outstanding <= 0:
+                            continue  # Skip customers with no outstanding balance
+                        
+                        # Build ledger data
+                        fake_user = {'id': 'system', 'name': 'System', 'role': 'admin'}
+                        try:
+                            ledger = await get_customer_ledger(cust_type, cust['id'], None, None, fake_user)
+                        except Exception:
+                            continue
+                        
+                        # Generate summary message
+                        summary_msg = (
+                            f"*{company_name}*\n"
+                            f"*MONTHLY LEDGER STATEMENT*\n"
+                            f"{'─' * 28}\n"
+                            f"Customer: {cust['name']}\n"
+                            f"Statement Date: {now.strftime('%d %b %Y')}\n"
+                            f"{'─' * 28}\n"
+                            f"*Outstanding Balance: Rs.{outstanding:,.2f}*\n"
+                            f"{'─' * 28}\n"
+                            f"Please find detailed PDF statement attached.\n"
+                            f"Kindly arrange payment at the earliest.\n"
+                        )
+                        
+                        # Generate PDF
+                        pdf_bytes = generate_ledger_pdf_bytes(ledger, company_name)
+                        
+                        # Store temp PDF for WhatsApp
+                        pdf_token = str(uuid.uuid4())
+                        await db.temp_ledger_pdfs.insert_one({
+                            'token': pdf_token,
+                            'pdf_data': base64.b64encode(pdf_bytes).decode('utf-8'),
+                            'customer_name': cust['name'],
+                            'created_at': now.isoformat(),
+                            'expires_at': (now + timedelta(hours=48)).isoformat()
+                        })
+                        
+                        # Send WhatsApp with PDF
+                        if config and cust.get('phone'):
+                            wa_mobile = cust['phone'] if cust['phone'].startswith('91') else f"91{cust['phone'][-10:]}"
+                            pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}" if app_base_url else None
+                            try:
+                                if pdf_url:
+                                    await send_wa_msg(wa_mobile, summary_msg, file_url=pdf_url, file_caption=summary_msg, config=config)
+                                else:
+                                    await send_wa_msg(wa_mobile, summary_msg, config=config)
+                                await log_whatsapp_message(wa_mobile, 'monthly_ledger', summary_msg[:200], 'success', recipient_name=cust['name'])
+                            except Exception as we:
+                                logger.error(f"Monthly ledger WhatsApp error for {cust['name']}: {we}")
+                        
+                        # Send email with PDF attachment
+                        if cust.get('email'):
+                            try:
+                                email_body = f"""<p>Dear <strong>{cust['name']}</strong>,</p>
+<p>Please find your monthly ledger statement attached.</p>
+<div style="background:#fef3c7;padding:16px;border-radius:6px;border-left:4px solid #f59e0b;margin:16px 0;">
+<p style="margin:0;font-weight:bold;color:#92400e;">Outstanding Balance: Rs.{outstanding:,.2f}</p></div>
+<p>Kindly arrange payment at the earliest. For any discrepancies, please contact us.</p>"""
+                                filename = f"Ledger_{cust['name'].replace(' ', '_')}_{now.strftime('%Y%m')}.pdf"
+                                await send_notification_email(cust['email'], cust['name'], f"Monthly Statement - {company_name}", email_body, cust['id'], 'monthly_ledger', attachment_data=pdf_bytes, attachment_filename=filename)
+                            except Exception as ee:
+                                logger.error(f"Monthly ledger email error for {cust['name']}: {ee}")
+                        
+                        sent_count += 1
+                        await asyncio.sleep(3)  # Throttle between customers
+                        
+                    except Exception as ce:
+                        logger.error(f"Monthly ledger error for {cust.get('name', 'unknown')}: {ce}")
+            
+            logger.info(f"Monthly ledger distribution complete. Sent to {sent_count} customers.")
+            
+            # Clean up expired temp PDFs
+            await db.temp_ledger_pdfs.delete_many({
+                'expires_at': {'$lt': datetime.now(timezone.utc).isoformat()}
+            })
+            
+        except asyncio.CancelledError:
+            logger.info("Monthly ledger statement task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Monthly ledger task error: {e}")
+            await asyncio.sleep(3600)  # Retry in 1 hour on error
+
+
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on app startup"""
-    global daily_reminder_task, backup_scheduler_task, greeting_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task
     daily_reminder_task = asyncio.create_task(send_daily_reminder_summary())
     logger.info("Daily reminder background task started")
     backup_scheduler_task = asyncio.create_task(run_scheduled_backups())
     logger.info("Backup scheduler task started")
     greeting_task = asyncio.create_task(send_birthday_anniversary_greetings())
     logger.info("Birthday/Anniversary greeting task started")
+    monthly_ledger_task = asyncio.create_task(send_monthly_ledger_statements())
+    logger.info("Monthly ledger statement task started")
     # Seed default templates
     await seed_default_greeting_templates()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global daily_reminder_task, backup_scheduler_task, greeting_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task
     if daily_reminder_task:
         daily_reminder_task.cancel()
         try:
@@ -11997,4 +12390,11 @@ async def shutdown_db_client():
         except asyncio.CancelledError:
             pass
         logger.info("Birthday/Anniversary greeting task stopped")
+    if monthly_ledger_task:
+        monthly_ledger_task.cancel()
+        try:
+            await monthly_ledger_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Monthly ledger statement task stopped")
     client.close()

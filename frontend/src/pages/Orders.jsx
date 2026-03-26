@@ -677,6 +677,14 @@ export const Orders = () => {
     });
   };
 
+  // Get the role-based rate for the selected customer type
+  const getRoleRate = (item) => {
+    const cType = selectedCustomer?.type || newOrderForm.customer_type || 'doctor';
+    if (cType === 'medical') return item.rate_medicals || item.rate || 0;
+    if (cType === 'agency') return item.rate_agencies || item.rate || 0;
+    return item.rate_doctors || item.rate || 0;
+  };
+
   const addItemToOrder = (item) => {
     const existingIndex = newOrderForm.items.findIndex(i => i.item_id === item.id);
     if (existingIndex >= 0) {
@@ -689,6 +697,8 @@ export const Orders = () => {
       newItems[existingIndex].outOfStock = false;
       setNewOrderForm({ ...newOrderForm, items: newItems });
     } else {
+      const roleRate = getRoleRate(item);
+      const cType = selectedCustomer?.type || newOrderForm.customer_type || 'doctor';
       setNewOrderForm({
         ...newOrderForm,
         items: [...newOrderForm.items, {
@@ -696,10 +706,13 @@ export const Orders = () => {
           item_code: item.item_code,
           item_name: item.item_name,
           quantity: '1',
-          mrp: item.mrp || item.rate || 0,
-          rate: item.rate || 0,
+          mrp: item.mrp || 0,
+          rate: roleRate,
+          defaultRate: roleRate,
           gst: item.gst || 0,
-          outOfStock: false
+          outOfStock: false,
+          offer: item[`offer_${cType}s`] || item.offer_doctors || item.offer || '',
+          special_offer: item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '',
         }]
       });
     }
@@ -1136,21 +1149,37 @@ export const Orders = () => {
 
               {/* Search Results */}
               {itemSearch && (
-                <div className="border rounded-lg max-h-40 overflow-y-auto">
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
                   {filteredItems.length > 0 ? (
-                    filteredItems.slice(0, 10).map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-2 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
-                        onClick={() => addItemToOrder(item)}
-                      >
-                        <div>
-                          <p className="font-medium text-sm">{item.item_name}</p>
-                          <p className="text-xs text-slate-500">{item.item_code} | ₹{item.rate}</p>
+                    filteredItems.slice(0, 10).map((item) => {
+                      const cType = selectedCustomer?.type || newOrderForm.customer_type || 'doctor';
+                      const roleRate = getRoleRate(item);
+                      const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
+                      const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0"
+                          onClick={() => addItemToOrder(item)}
+                          data-testid={`add-item-${item.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{item.item_name}</p>
+                            <p className="text-xs text-slate-500">
+                              {item.item_code} | MRP: ₹{item.mrp || 0}
+                              {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
+                            </p>
+                            {(offer || special) && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{offer}</span>}
+                                {special && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{special}</span>}
+                              </div>
+                            )}
+                          </div>
+                          <Plus className="w-4 h-4 text-green-600 shrink-0 ml-2" />
                         </div>
-                        <Plus className="w-4 h-4 text-green-600" />
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <p className="p-3 text-sm text-slate-400 text-center">No items found</p>
                   )}
@@ -1177,7 +1206,14 @@ export const Orders = () => {
                             <div className="flex gap-3 mt-1 text-xs text-slate-600">
                               {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
+                              {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
                             </div>
+                            {(item.offer || item.special_offer) && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {item.offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{item.offer}</span>}
+                                {item.special_offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{item.special_offer}</span>}
+                              </div>
+                            )}
                           </div>
                           {!item.outOfStock ? (
                             <div className="flex items-center gap-2 flex-shrink-0">

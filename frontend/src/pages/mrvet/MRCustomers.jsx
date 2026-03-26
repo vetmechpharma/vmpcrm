@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mrAPI } from '../../context/MRAuthContext';
+import { fetchWithOffline, CACHE_KEYS, getCachedCustomers } from '../../lib/offlineData';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -24,9 +25,33 @@ export default function MRCustomers() {
       const params = {};
       if (search) params.search = search;
       if (typeFilter) params.entity_type = typeFilter;
-      const res = await mrAPI.getCustomers(params);
-      setCustomers(res.data);
-    } catch { /* silent */ }
+      
+      // For unfiltered requests, use the offline-aware fetch
+      if (!search && !typeFilter) {
+        const result = await fetchWithOffline(() => mrAPI.getCustomers(params), CACHE_KEYS.customers);
+        setCustomers(result.data);
+      } else {
+        // For filtered requests, try API first then filter from cache
+        try {
+          const res = await mrAPI.getCustomers(params);
+          setCustomers(res.data);
+        } catch {
+          // Offline with filters - filter from cached full list
+          let cached = getCachedCustomers();
+          if (search) {
+            const s = search.toLowerCase();
+            cached = cached.filter(c => c.name?.toLowerCase().includes(s) || (c.phone || '').includes(search));
+          }
+          if (typeFilter) {
+            cached = cached.filter(c => c.entity_type === typeFilter);
+          }
+          setCustomers(cached);
+        }
+      }
+    } catch {
+      // Fallback to any cached data
+      setCustomers(getCachedCustomers());
+    }
     finally { setLoading(false); }
   };
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `mr-static-${CACHE_VERSION}`;
 const DATA_CACHE = `mr-data-${CACHE_VERSION}`;
 const SLIDE_CACHE = `mr-slides-${CACHE_VERSION}`;
@@ -94,18 +94,33 @@ self.addEventListener('fetch', (event) => {
 
 // Network-first: try network, cache response, fallback to cache
 async function networkFirst(request, cacheName) {
+  const url = new URL(request.url);
+  // Create a cache key without query params for base API endpoints
+  const baseUrl = `${url.origin}${url.pathname}`;
+  const cacheKeyRequest = new Request(baseUrl);
+  
   try {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(cacheName);
+      // Cache under both the full URL and the base URL (without params)
       cache.put(request, response.clone());
+      if (request.url !== baseUrl) {
+        cache.put(cacheKeyRequest, response.clone());
+      }
     }
     return response;
   } catch (err) {
+    // Try cache: first exact URL, then base URL without params
     const cached = await caches.match(request);
     if (cached) {
-      console.log('[MR-SW] Serving cached:', request.url);
+      console.log('[MR-SW] Serving cached (exact):', request.url);
       return cached;
+    }
+    const baseCached = await caches.match(cacheKeyRequest);
+    if (baseCached) {
+      console.log('[MR-SW] Serving cached (base):', baseUrl);
+      return baseCached;
     }
     return new Response(JSON.stringify({ error: 'Offline', cached: false }), {
       status: 503,

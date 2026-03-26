@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mrAPI } from '../../context/MRAuthContext';
+import { fetchWithOffline, CACHE_KEYS, getCachedCustomers } from '../../lib/offlineData';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -36,14 +37,20 @@ export default function MRVisits() {
 
   const fetchVisits = async () => {
     setLoading(true);
-    try { const res = await mrAPI.getVisits(); setVisits(res.data); }
-    catch { /* silent */ }
+    try {
+      const result = await fetchWithOffline(() => mrAPI.getVisits(), CACHE_KEYS.visits);
+      setVisits(result.data);
+    } catch { /* silent */ }
     finally { setLoading(false); }
   };
 
   const fetchCustomers = async () => {
-    try { const res = await mrAPI.getCustomers({}); setCustomers(res.data); }
-    catch { /* silent */ }
+    try {
+      const result = await fetchWithOffline(() => mrAPI.getCustomers({}), CACHE_KEYS.customers);
+      setCustomers(result.data);
+    } catch {
+      setCustomers(getCachedCustomers());
+    }
   };
 
   const openNewVisit = () => {

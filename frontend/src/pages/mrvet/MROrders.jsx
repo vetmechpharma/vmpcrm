@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mrAPI } from '../../context/MRAuthContext';
+import { fetchWithOffline, CACHE_KEYS, getCachedCustomers, getCachedItems, getCachedOrders } from '../../lib/offlineData';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -50,8 +51,11 @@ export default function MROrders() {
 
   const fetchOrders = async () => {
     setLoading(true);
-    try { const res = await mrAPI.getOrders(); setOrders(res.data); }
-    catch { /* silent */ }
+    try {
+      const result = await fetchWithOffline(() => mrAPI.getOrders(), CACHE_KEYS.orders);
+      setOrders(result.data);
+      if (result.fromCache) toast.info('Showing offline orders data');
+    } catch { setOrders(getCachedOrders()); }
     finally { setLoading(false); }
   };
 
@@ -63,10 +67,27 @@ export default function MROrders() {
     setCustomerSearch('');
     setShowOrderForm(true);
     try {
-      const [custRes, itemRes] = await Promise.all([mrAPI.getCustomers({}), mrAPI.getItems({})]);
-      setCustomers(custRes.data);
-      setItems(itemRes.data);
-    } catch { toast.error('Failed to load data'); }
+      const [custResult, itemResult] = await Promise.all([
+        fetchWithOffline(() => mrAPI.getCustomers({}), CACHE_KEYS.customers),
+        fetchWithOffline(() => mrAPI.getItems({}), CACHE_KEYS.items),
+      ]);
+      setCustomers(custResult.data);
+      setItems(itemResult.data);
+      if (custResult.fromCache || itemResult.fromCache) {
+        toast.info('Using offline cached data');
+      }
+    } catch {
+      // Last resort: try raw localStorage cache
+      const cachedCust = getCachedCustomers();
+      const cachedItems = getCachedItems();
+      if (cachedCust.length > 0 || cachedItems.length > 0) {
+        setCustomers(cachedCust);
+        setItems(cachedItems);
+        toast.info('Using offline cached data');
+      } else {
+        toast.error('No data available offline. Please connect to internet first.');
+      }
+    }
   };
 
   const selectCustomer = (customer) => {

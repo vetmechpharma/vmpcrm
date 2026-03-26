@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mrAPI } from '../../context/MRAuthContext';
 import { useMRAuth } from '../../context/MRAuthContext';
+import { fetchWithOffline, CACHE_KEYS } from '../../lib/offlineData';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Loader2, Users, ClipboardList, CalendarCheck, Layers, AlertTriangle, MapPin } from 'lucide-react';
@@ -14,8 +15,8 @@ export default function MRDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    mrAPI.getDashboard()
-      .then(res => setStats(res.data))
+    fetchWithOffline(() => mrAPI.getDashboard(), CACHE_KEYS.dashboard)
+      .then(result => setStats(result.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

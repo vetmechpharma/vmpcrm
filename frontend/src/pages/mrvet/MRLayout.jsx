@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useMRAuth } from '../../context/MRAuthContext';
 import { usePWA } from '../../hooks/usePWA';
+import { prefetchEssentialData } from '../../lib/offlineData';
 import { Helmet } from 'react-helmet';
 import {
   LayoutDashboard, Users, Layers, ClipboardList, CalendarCheck,
@@ -33,6 +34,15 @@ export default function MRLayout() {
   // Auto-subscribe MR to push notifications
   useAutoSubscribe('mr');
   const { isOnline, offlineCount, syncing, syncOfflineData, canInstall, installApp } = usePWA();
+
+  // Pre-fetch and cache essential data for offline use
+  useEffect(() => {
+    if (mr && isOnline) {
+      prefetchEssentialData().then(count => {
+        if (count > 0) console.log('[MR] Offline data pre-cached');
+      });
+    }
+  }, [mr, isOnline]);
 
   const handleLogout = () => { logout(); navigate('/mrvet/login'); };
 

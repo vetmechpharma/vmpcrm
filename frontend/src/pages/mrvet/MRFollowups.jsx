@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { mrAPI } from '../../context/MRAuthContext';
+import { fetchWithOffline, CACHE_KEYS } from '../../lib/offlineData';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -18,8 +19,11 @@ export default function MRFollowups() {
   const fetchFollowups = async () => {
     setLoading(true);
     try {
-      const res = await mrAPI.getFollowups({ filter_type: tab });
-      setFollowups(res.data);
+      const result = await fetchWithOffline(
+        () => mrAPI.getFollowups({ filter_type: tab }),
+        `${CACHE_KEYS.followups}_${tab}`
+      );
+      setFollowups(result.data);
     } catch { /* silent */ }
     finally { setLoading(false); }
   };

@@ -4,7 +4,7 @@
 A full-stack CRM system for a veterinary pharmaceutical company. Includes an Admin Panel, Customer Portal, and Medical Representative (MR) PWA module.
 
 ## Architecture
-- **Backend**: FastAPI + MongoDB (server.py - monolithic, ~12,400 lines)
+- **Backend**: FastAPI + MongoDB (server.py - monolithic, ~12,500 lines)
 - **Frontend**: React + TailwindCSS + Shadcn/UI
 - **MR Module**: Separate PWA with offline sync + localStorage caching
 - **Customer Portal**: Login, orders, ledger, support
@@ -26,52 +26,43 @@ A full-stack CRM system for a veterinary pharmaceutical company. Includes an Adm
 
 ### MR Module (PWA)
 - [x] Installable PWA with offline order sync
-- [x] **Offline Data Caching** - Pre-fetches customers, items, orders, dashboard on app load
+- [x] **Offline Data Caching** - Pre-fetches customers, items, orders, dashboard, outstanding on app load
 - [x] **localStorage Fallback** - All pages work offline with cached data
 - [x] **Service Worker v3** - Enhanced caching with base URL key dedup
+- [x] **Outstanding Page** - Shows balance details for Doctors/Medicals/Agencies with offline sync
 - [x] Customer visits, follow-ups, Order creation, Visual aids
 
 ### Email Parity (Feb 2026)
-- [x] Order status emails, Payment receipts, Account approval/rejection
-- [x] Support ticket status/replies, Marketing campaigns
-- [x] Reusable `send_notification_email()` utility
+- [x] Order status, Payment receipts, Account approval/rejection, Ticket status/replies, Marketing
 
 ### Ledger Improvements (Feb 2026)
-- [x] WhatsApp/Email ledger with summary text + PDF attachment
-- [x] Automated monthly statements (27th of each month)
-- [x] Public `/api/ledger-pdf/{token}` endpoint (48h expiry)
+- [x] WhatsApp/Email with summary + PDF attachment, Automated monthly statements (27th)
 
 ### PWA Icons (Feb 2026)
-- [x] VETMECH branding for customer app, MR PANEL branding for MR app
+- [x] VETMECH for customer app, MR PANEL for MR app
 
 ### Bug Fixes
-- [x] **WhatsApp marketing image bug (P0)** - base64 text → binary decode fix
-- [x] **MR offline mode (P0)** - Added pre-caching, localStorage fallback, SW v3
-- [x] **Hardcoded preview URL** → configurable APP_BASE_URL
-- [x] **Missing function/variable** - restored send_whatsapp_ready_to_despatch, fixed entity_name
+- [x] WhatsApp marketing image bug (base64→binary), MR offline mode, Hardcoded URL→configurable
 
-## Key DB Collections
-- items, push_subscriptions, message_templates, whatsapp_config, company_settings
-- temp_ledger_pdfs (NEW - for WhatsApp ledger delivery)
+## Key New Files
+- `/app/frontend/src/pages/mrvet/MROutstanding.jsx` - Outstanding balance page
+- `/app/frontend/src/lib/offlineData.js` - Offline data caching utility
+- `/app/frontend/public/mr-sw.js` - Service Worker v3
 
-## Technical Debt (P0)
-- **server.py refactor** - 12,400+ lines, needs modular architecture
-- **Duplicated follow-up UI** - Doctors/Medicals/Agencies share code
+## Key New Endpoints
+- `GET /api/mr/outstanding` - Returns customer outstanding balances for MR territory
+- `GET /api/ledger-pdf/{token}` - Public temporary PDF serving endpoint
+
+## Technical Debt
+- **server.py refactor** - 12,500+ lines, needs modular architecture (P0)
+- **Duplicated follow-up UI** - Doctors/Medicals/Agencies share code (P2)
 
 ## Upcoming Tasks
 - (P1) Refactor server.py into modular router-based structure
 - (P1) Stock/Inventory Management
-- (P1) Follow-up UI refactor
-- (P2) Sales reports with charts
-- (P2) Broader data import/export
-- (P2) Sales targets for MRs
-- (P2) Installation script for VPS deployment
-
-## Blocked
-- WhatsApp OTP delivery - External BotMasterSender API issue
+- (P2) Follow-up UI refactor, Sales reports, Data import/export, MR sales targets, VPS script
 
 ## Credentials
 - Admin: admin@vmpcrm.com / admin123
 - Test MR: 9876543211 / testpass
 - Test Customer: 9999777766 / test123
-- WhatsApp test numbers: 9486544884 / 9342704047

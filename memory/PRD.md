@@ -47,6 +47,7 @@ A full-stack CRM system for a veterinary pharmaceutical company with Admin Panel
 - Missing function definitions restored
 - **Order notes now visible** in admin order views
 - **MR name displayed** on orders ("Submitted by: MR Name")
+- **MR Order Form role-based rate display** — Verified working (Mar 2026). getRoleRate() uses entity_type correctly. Rate shows in item search dropdown + selected item cards. Tested 100% pass (iteration 41).
 
 ## Key New Endpoints (This Session)
 - `POST /api/orders/{id}/transfer` - Transfer order to agency

@@ -536,7 +536,7 @@ export const Settings = () => {
                     data-testid="whatsapp-instance-id-input"
                   />
                 </div>
-                <p className="text-[10px] text-blue-500">Text: POST /whatsapp/send/text | Image: POST /whatsapp/send/image | Auth: Bearer token</p>
+                <p className="text-[10px] text-blue-500">Text: POST /api/send (type=text) | Media: POST /api/send (type=media) | Auth: access_token in body</p>
               </div>
             )}
 

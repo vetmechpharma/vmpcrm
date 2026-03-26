@@ -7062,34 +7062,33 @@ async def execute_wa_request(config, params, headers=None):
 
 
 async def execute_rest_api_wa(config, receiver, message=None, file_url=None, file_caption=None):
-    """Execute WhatsApp send via REST API type (AKNexus style): POST with Bearer auth"""
+    """Execute WhatsApp send via REST API type (AKNexus style): POST with access_token in body"""
     base_url = config['api_url'].rstrip('/')
-    auth_token = config.get('auth_token', '')
+    access_token = config.get('auth_token', '')
     instance_id = config.get('instance_id', '')
-    headers = {
-        'Authorization': f'Bearer {auth_token}',
-        'Content-Type': 'application/json',
-    }
     async with httpx.AsyncClient(timeout=30.0) as client:
         if file_url:
-            # Send image with caption
-            endpoint = f"{base_url}/whatsapp/send/image"
+            # Send media with caption
             payload = {
-                'instance_id': instance_id,
-                'to': receiver,
+                'number': receiver,
+                'type': 'media',
+                'message': file_caption or message or '',
                 'media_url': file_url,
-                'caption': file_caption or message or '',
+                'instance_id': instance_id,
+                'access_token': access_token,
             }
         else:
             # Send text message
-            endpoint = f"{base_url}/whatsapp/send/text"
             payload = {
-                'instance_id': instance_id,
-                'to': receiver,
+                'number': receiver,
+                'type': 'text',
                 'message': message or '',
+                'instance_id': instance_id,
+                'access_token': access_token,
             }
-        logger.info(f"REST API WA send: {endpoint} -> {receiver}")
-        response = await client.post(endpoint, json=payload, headers=headers)
+        endpoint = f"{base_url}/send"
+        logger.info(f"REST API WA send: {endpoint} -> {receiver} (type={payload['type']})")
+        response = await client.post(endpoint, json=payload)
         return response
 
 
@@ -7107,14 +7106,15 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
 
     try:
         if api_type == 'rest_api':
-            # AKNexus-style REST API: POST with Bearer auth
+            # AKNexus-style REST API: POST with access_token in body
             response = await execute_rest_api_wa(config, clean_receiver, message, file_url, file_caption)
             if response:
                 body = response.text.strip()
-                if response.status_code == 200 and ('"status":"success"' in body or '"success":true' in body or '"success": true' in body):
-                    logger.info(f"REST API WA success: {'image' if file_url else 'text'} to {clean_receiver}")
+                is_success = response.status_code == 200 and ('Page not found' not in body)
+                if is_success:
+                    logger.info(f"REST API WA success: {'media' if file_url else 'text'} to {clean_receiver}, body={body[:200]}")
                 else:
-                    logger.warning(f"REST API WA response: status={response.status_code}, body={body[:300]}")
+                    logger.warning(f"REST API WA failed: status={response.status_code}, body={body[:300]}")
             return response
         else:
             # BotMasterSender-style query param API
@@ -7683,7 +7683,7 @@ async def process_marketing_campaign(campaign_id: str):
                     if response and response.status_code == 200:
                         # Verify the API actually succeeded by checking body
                         body = response.text.strip()
-                        is_success = '"success":true' in body or '"success": true' in body
+                        is_success = ('"success":true' in body or '"success": true' in body or '"status":"success"' in body or '"status": "success"' in body) and ('Page not found' not in body)
                         if is_success:
                             await db.campaign_logs.update_one(
                                 {'id': log['id']},
@@ -10708,7 +10708,7 @@ async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(g
         response = await send_wa_msg(mobile, message, config=config)
         if response and response.status_code == 200:
             body = response.text.strip()
-            is_success = '"success":true' in body or '"success": true' in body
+            is_success = ('"success":true' in body or '"success": true' in body or '"status":"success"' in body or '"status": "success"' in body) and ('Page not found' not in body)
             if is_success:
                 return {"message": "Test message sent successfully", "status": "success", "response": body[:300]}
             else:
@@ -10741,7 +10741,7 @@ async def test_specific_whatsapp_config(config_id: str, mobile: str, current_use
     try:
         response = await send_wa_msg(mobile, message, config=config_doc)
         body = response.text.strip() if response else ''
-        is_success = response and response.status_code == 200 and ('"success":true' in body or '"success": true' in body)
+        is_success = response and response.status_code == 200 and ('Page not found' not in body)
         if is_success:
             return {"message": f"Test sent via {config_doc.get('name', 'Config')}!", "status": "success", "response": body[:300]}
         else:

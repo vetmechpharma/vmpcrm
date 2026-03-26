@@ -1,0 +1,58 @@
+{
+  "summary": "Tested MR Order Form role-based rates feature. All 7 backend tests passed. All frontend UI tests passed. The feature correctly displays role-based rates (rate_doctors, rate_medicals, rate_agencies) based on customer entity_type.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mr_role_rates.py",
+    "/app/test_reports/pytest/pytest_mr_role_rates.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_mr_role_rates.py"
+  ],
+  "success_rate": {
+    "backend": "100% (7/7 passed)",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "MR": "Phone: 9876543211, Password: testpass",
+    "Admin": "Email: admin@vmpcrm.com, Password: admin123"
+  },
+  "seed_data_creation": "Used existing test data: MR account (Test MR), customer (Dr. Test Address with entity_type=doctor), item (Amoxicillin 500mg with rate_doctors=65)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "MR Order Form role-based rates feature fully tested and working. Key components verified: 1) GET /api/mr/customers returns customers with entity_type field (doctor/medical/agency). 2) GET /api/mr/items returns items with rate_doctors, rate_medicals, rate_agencies fields. 3) MROrders.jsx getRoleRate() function (lines 101-107) correctly selects rate based on customer entity_type. 4) Item search dropdown shows 'Rate: ₹{roleRate}' in blue (line 372). 5) Selected item card shows 'Default Rate: ₹{defaultRate}' in blue (line 411). 6) Rate input is pre-filled with role rate but editable (line 424-428). 7) Offers display per role in both search dropdown and item cards.",
+  "features_tested": {
+    "MR Login": {
+      "POST /api/mr/login": "PASS - Returns access_token and mr object"
+    },
+    "Customers API": {
+      "GET /api/mr/customers returns entity_type": "PASS - All customers have entity_type field (doctor/medical/agency)",
+      "GET /api/mr/customers?search=Dr": "PASS - Returns doctor customers",
+      "GET /api/mr/customers?entity_type=doctor": "PASS - Filters by entity_type"
+    },
+    "Items API": {
+      "GET /api/mr/items returns role rates": "PASS - Items have rate_doctors, rate_medicals, rate_agencies fields",
+      "GET /api/mr/items?search=Amox": "PASS - Amoxicillin 500mg has rate_doctors=65, rate_medicals=35, rate_agencies=90"
+    },
+    "Frontend UI": {
+      "MR Login page loads": "PASS",
+      "MR Dashboard loads after login": "PASS - Shows 'Welcome, Test MR'",
+      "Orders page loads": "PASS",
+      "New Order button opens form": "PASS",
+      "Customer search shows entity_type badge": "PASS - 'doctor' badge in blue",
+      "Item search shows role rate": "PASS - 'Rate: ₹65' displayed in blue",
+      "Selected item shows Default Rate": "PASS - 'Default Rate: ₹65' displayed in blue",
+      "Rate input pre-filled with role rate": "PASS - Pre-filled with 65",
+      "Offers display per role": "PASS - '15% off' and 'Buy 20 pcs at Rs.80/- only' shown"
+    }
+  }
+}

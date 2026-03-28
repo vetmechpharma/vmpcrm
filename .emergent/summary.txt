@@ -1,53 +1,46 @@
-<analysis>**original_problem_statement:** 
-The user provided a comprehensive list of feature requests and bug fixes for a Veterinary CRM system:
-1. Fix WhatsApp Marketing Image Attachment Bug (P0).
-2. Implement Email Parity for all WhatsApp-triggered events (orders, greetings, etc.).
-3. Ledger Improvements: Send text summary + PDF attachment via WhatsApp, and schedule automated monthly statements on the 27th.
-4. Update PWA icons with user-uploaded images.
-5. Fix MR Panel offline sync (fetching customers/agencies/items was failing without internet).
-6. Add Outstanding details page in the MR Panel with offline support.
-7. Enhance MR Orders: Show role-based default rates (MRP vs doctor/medical/agency rate), show order notes in admin, add MR payment record/approval flow, clearly show MR name on orders, and add an Order Transfer to Agency feature with WhatsApp notifications.
+<analysis>**original_problem_statement**: 
+The user provided feature requests and bug fixes for a Veterinary CRM system:
+1. Fix MR Order Form role-based default rates not displaying.
+2. Add Admin panel manual order role-based default rate mapping.
+3. Show previous pending/out-of-stock items for specific customers during new order creation (Admin, MR, and Customer panels).
+4. Fix WhatsApp Marketing images/documents showing Sent but not delivering. 
+5. Implement support for multiple WhatsApp APIs (BotMasterSender + AKNexus).
+6. Fix AKNexus sending images as PDFs (requires proper file URL extensions).
+7. Add individual direct WhatsApp message buttons/dialogs to Doctors, Medicals, and Agencies tables.
 
-PRODUCT REQUIREMENTS: The application must support robust offline capabilities for Medical Representatives (MRs) working in the field with poor connectivity. The backend must handle automated reporting (ledgers) and dual-channel notifications (Email + WhatsApp). Long-standing technical debt ( monolith) needs addressing.
+PRODUCT REQUIREMENTS: The application must support robust offline capabilities for MRs, automated ledgers, dual-channel notifications (Email + WA), and must maintain an organized dual WhatsApp API configuration. Long-standing technical debt ( monolith) remains a critical issue.
 
 **User's preferred language**: INSTRUCT next agent to respond in **English** only.
 
 **what currently exists?** 
-A full-stack CRM (FastAPI + React + MongoDB) with Admin, Customer, and Medical Representative (MR) modules. The system features a dynamic WhatsApp configuration, Web Push Notifications, robust Email parity, scheduled background tasks (APScheduler) for ledgers/greetings, and a highly offline-capable PWA for MRs utilizing Service Workers and localStorage fallbacks for essential data.
+A full-stack CRM (FastAPI + React + MongoDB) with Admin, Customer, and Medical Representative (MR) modules. Features dynamic multi-API WhatsApp configuration (supports both Query Param and REST styles like AKNexus), fallback-to-text logic for failed media WA messages, robust Email parity, offline MR ordering, and out-of-stock/pending item reminders at checkout.
 
 **Last working item**:
-- **Last item agent was working**: Debugging the Role-based default rate display on the MR Order form (). The user reported that despite the previous feature implementation, the default rate is not showing up in the UI. 
-- **Reasoning**: The agent verified the backend is sending the correct rate fields (, , etc.), and the frontend has the  logic. However, a screenshot confirmed the rate is missing from the item search dropdown and selected item cards. The agent was inspecting the  object structure just before stopping and noticed  was present, but .
+- **Last item agent was working**: Adding a direct WhatsApp messaging feature to individual user records. The agent added a MessageCircle icon button and a dialog modal to , , and  tables, and created the  backend endpoint. 
+- **Reasoning**: The code was implemented, linted, and the backend was restarted. The agent took a screenshot of the Doctors page to verify the new UI button, but the context window ended before the agent could review the screenshot, test the dialog flow, and run the testing agent.
 - **Status**: IN PROGRESS
-- **Agent Testing Done**: N (Debugging in progress)
-- **Which testing method agent to use?**: Frontend testing agent / manual testing by screenshot tool
+- **Agent Testing Done**: N (Code written, awaiting UI/functional verification)
+- **Which testing method agent to use?**: Frontend testing agent / manual testing by screenshot tool to verify the dialog opens and sends correctly.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: MR Order form not displaying role-based default rates (P0)**
-   - **Attempted fixes**: Added  logic to  during the previous feature batch. It failed to render in the UI.
+- **Issue 1: Verify and finalize individual WhatsApp messaging feature (P0)**
+   - **Attempted fixes**: Code is fully implemented across , , , and . 
    - **Next debug checklist**: 
-     - File:  (Lines ~360-420 and  function).
-     - Check how  evaluates the customer role. The terminal logs show the selected customer object has , but  and . If  looks for  or , it will fail to map to , returning 0. Update the logic to check .
-   - **Why fix this issue and what will be achieved with the fix?**: MRs need to see the exact role-based pricing while taking orders in the field to avoid misquoting customers.
+     - Check the last screenshot taken for  to verify the WhatsApp button is visible in the Actions column.
+     - Trigger the WhatsApp dialog and verify the  API successfully pushes a message using the active WA config.
+     - Call  to test the UI and API flows for Doctors, Medicals, and Agencies.
+   - **Why fix this issue and what will be achieved with the fix?**: Completes the user's latest request and closes out the active task block.
    - **Status**: IN PROGRESS
    - **Is recurring issue?**: N
-   - **Should Test frontend/backend/both after fix?**: Frontend
+   - **Should Test frontend/backend/both after fix?**: Both (Testing Agent)
    - **Blocked on other issue**: None
-
-- **Issue 2: OTP delivery via WhatsApp is failing (P2)**
-   - **Attempted fixes**: Previous fork identified this as a  from the external  API.
-   - **Next debug checklist**: Await user action. They need to verify their BotMasterSender API credentials and account status.
-   - **Why fix this issue?**: Unblocks customer OTP login.
-   - **Status**: BLOCKED
-   - **Is recurring issue?**: Y
-   - **Should Test frontend/backend/both after fix?**: Backend
 
 **In progress Task List**:
 *(None - Current active item is classified as an Issue)*
 
 **Upcoming and Future Tasks**
-- (P0) **Refactor :** Critical technical debt. The file is now over 12,600 lines. Must be broken into a modular, router-based structure (, ).
+- (P0) **Refactor :** CRITICAL technical debt. The file is now over 12,800 lines. Must be broken down into a modular, router-based structure (, ).
 - (P2) **Stock/Inventory Management:** Implement item quantity tracking, manage stock levels, and low-stock alerts.
 - (P2) **Sales reports with charts.**
 - (P2) **Broader data import/export functionality.**
@@ -56,97 +49,89 @@ A full-stack CRM (FastAPI + React + MongoDB) with Admin, Customer, and Medical R
 - (P2) **Refactor Follow-up UI:** Extract duplicated logic from , , .
 
 **Completed work in this session**
-- WhatsApp Marketing Image bug (decoded base64 string to binary bytes for WebP/JPEG) (DONE)
-- Email Parity across all WhatsApp notification events (DONE)
-- Ledger Improvements (WhatsApp text + PDF link, Email PDF attachment) (DONE)
-- Automated monthly ledger statements via APScheduler (DONE)
-- Updated PWA Icons for Customer and MR apps (DONE)
-- MR Panel Offline Mode fix (LocalStorage pre-caching via ) (DONE)
-- MR Panel Outstanding page with offline sync (DONE)
-- Admin Orders: Show order notes and MR name (DONE)
-- MR Payment recording flow + Admin Approval tab (DONE)
-- Order Transfer to Agency status + Agency WhatsApp notification (DONE)
+- MR & Admin Order Form role-based default rate mapping (DONE)
+- Pending/Out-of-stock items displayed during new order creation across Admin, MR, and Customer Portal (DONE)
+- Dual WhatsApp API support added (BotMasterSender Query Param + AKNexus REST API) with UI for switching/testing configs (DONE)
+- WhatsApp file-to-text fallback logic for unsupported file actions (DONE)
+- Fixed WhatsApp media attachments for AKNexus by mapping  and  extensions to  and  endpoints (DONE)
 
 **Earlier issues found/mentioned but not fixed**
 - **Issue 1: Monolithic server.py file**
-  - **Debug checklist**: Plan a phased refactoring to split endpoints into , , , etc.
-  - **Why to solve**: The file size (~12.6k lines) severely impacts agent context windows, readability, and future maintainability.
+  - **Debug checklist**: Plan a phased refactoring to split endpoints into , , , , etc.
+  - **Why to solve**: The file size (~12.8k lines) severely impacts agent context windows, readability, and future maintainability.
   - **Should Test frontend/backend/both after fix**: Both (Extensive regression via testing agent).
   - **Is recurring issue?**: Y
 
 **Known issue recurrence from previous fork**
-- Issue recurrence in previous fork: External WhatsApp OTP integration (BotMasterSender) failing.
-- Recurrence count: 1
-- Status: BLOCKED
+- Issue recurrence in previous fork: None active. (Previous WA OTP issues are bypassed via the new multi-WA config system).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend**: React, Tailwind, Shadcn UI, PWA Service Workers, LocalStorage Caching ().
-- **Backend**: FastAPI, MongoDB (Motor), / (Emails),  (PDF generation),  (Cron tasks).
+- **Frontend**: React, Tailwind, Shadcn UI.
+- **Backend**: FastAPI, MongoDB (Motor), Multiple WhatsApp API styles (REST with Bearer vs Query param).
+- **Architecture Note**: AKNexus API determines  vs  entirely via the URL extension suffix (, ). Endpoints were adapted to fake these extensions.
 
 **key DB schema**
-- : Added  (String),  (String),  (Boolean).
-- : Added  (String: 'pending', 'approved', 'rejected') to support MR payment approval workflows.
-- : Uses multiple rate fields (, , ).
+- : , , ,  ( or ), , .
+- : , , , .
 
 **changes in tech stack**
-- No new libraries added in this session. Re-utilized existing , , and .
+- None
 
 **All files of reference**
--  (Contains active bug regarding )
--  (Core of the MR offline capabilities added this session)
--  (Admin orders logic)
--  (Admin payment approvals logic)
 - 
+- , ,  (Contains active unverified Direct WA feature)
+-  (WA Multi-config UI)
 
 **Areas that need refactoring**:
 - : Absolute P0 technical debt. Must be refactored into a  directory structure.
 
 **key api endpoints**
--  (MR offline-syncable ledgers)
--  (Transfer order to agency)
--  (MR logging a payment)
--  (Public endpoint for WhatsApp ledger PDFs)
+-  &  (Manage WA APIs)
+-  (Newly added, awaiting verification)
+-  (Fetch pending items)
+-  (Tricks AKNexus into sending as )
 
 **Critical Info for New Agent**
-- **Active Bug Context**: You are in the middle of debugging the MR Order Form rate display. Look at how  state is structured in . The last console log showed the customer object has  but  and  are . Update  to safely check  alongside other type keys.
-- **Testing**: The  was used extensively and successfully in this session (generating iterations 37 through 40). Continue this pattern for any backend changes.
-- **Environment**: Do NOT use old preview URLs. Always rely on the bash outputs or  for the current active .
+- **Active Task Context**: The direct WhatsApp message buttons and dialogs are fully coded in the entity tables (Doctors/Medicals/Agencies). You just need to verify they render correctly via screenshot, test the dialog submission, run the testing agent, and wrap up the task.
+- **WhatsApp API**: The system now supports AKNexus (). Do not add  parameters when sending images via this API, or it reverts to a document. Ensure any new file endpoints map to  or  extensions.
+- **Testing**: The  was used extensively and successfully. Continue this pattern.
 
 **documents and test reports created in this job**
 -  (Updated)
--  (Image Bug)
--  (MR Offline Sync)
--  (MR Outstanding)
--  (Order Transfer/Payments/Rates)
+-  (MR Orders Rates)
+-  (Admin Pending Items)
+-  (Customer Pending Items)
+-  (WA Multi-config)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. User: Mr also show role based default rate *(Status: IN PROGRESS - UI is failing to display the calculated rate)*
-2. User: 1.rate edit option showing correct but role based default rate not showing... 2. order notes... 3.add record payment option... 4.in orders also its show submited by MR label... 5. order status add option like order transfer... *(Status: DONE, except bug in item 1)*
-3. User: proceed *(Status: ADDRESSED)*
-4. User: yes (confirming plan) *(Status: ADDRESSED)*
-5. User: add aditional pae in MR Panel with outstanding details of Doctors medicals agencies list with offline sync... *(Status: DONE)*
-6. User: WHEN OFFLINE MR PANEL NOT FETECH MEDICAL/ AGNECIES/ DOCTORS LIST NOT FETECHING AND CANT ABLE TO SLEECT ITEMS ALSO,SO THAT NOT ABLE TO PROCEED ORDER *(Status: DONE)*
-7. User: PROCEED *(Status: ADDRESSED)*
-8. User: 🔴 P0 — Immediate Priority Fix WhatsApp Marketing Image Attachment Bug... P1 Email Parity... P1 Ledger System Improvements... Update PWA Icons *(Status: DONE)*
-9. User: Please use ask_human tool and confirm your plan now. *(Status: ADDRESSED)*
+1. User: add indiviual user doctor / medical /agencies whatsapp message option in their respective actions *(Status: IN PROGRESS - Code written, awaiting testing/verification)*
+2. User: pdf atatchemnt wqorking fine ? whatsapp ledfer sharing *(Status: DONE)*
+3. User: marketing images / product images / or any images in marketing page atatched like pdf not in image... *(Status: DONE - Fixed by adding  route extensions)*
+4. User: PROCEED *(Status: ADDRESSED)*
+5. User: Shares AKNexus API credentials. *(Status: ADDRESSED)*
+6. User: Shares complete AKNexus REST API structure. *(Status: ADDRESSED)*
+7. User: Shall I proceed? *(Status: ADDRESSED)*
+8. User: MULTIPLE WHATSAPP API USE OPTION IN I HAD ANOTHER WHQATSAPP BUSINESS API... *(Status: DONE)*
+9. User: WHATSAPP MARKETING - PRODUCT PROMO SENDING NOT WORKING STATUS SHOWS SENT BUT NOT SENT... *(Status: DONE)*
+10. User: add pending items in user panel also at the time of checkout... *(Status: DONE)*
 
 **Project Health Check:**
-- Broken: MR Order Form role-based rate display ().
+- Broken: None
 - Mocked: None
 
 **3rd Party Integrations**
-- BotMasterSender API (WhatsApp) — requires User API Key
+- BotMasterSender API (WhatsApp Query Params) — requires User API Key
+- AKNexus API (WhatsApp REST) — requires User Access Token and Instance ID
 - Custom SMTP (Email) — requires User Credentials
-- pywebpush (Web Notifications) — utilizes generated VAPID keys
 
 **Testing status**
-- Testing agent used after significant changes: YES (iterations 37-40 all passed 100%).
+- Testing agent used after significant changes: YES (Iterations 41-45 generated with 100% passes).
 - Troubleshoot agent used after agent stuck in loop: NO
 - Test files created: 
-- Known regressions: MR Order Form UI not displaying default rates.
+- Known regressions: None
 
 **Credentials to test flow:**
 - Admin:  / 
@@ -154,14 +139,4 @@ A full-stack CRM (FastAPI + React + MongoDB) with Admin, Customer, and Medical R
 - Customer:  / 
 
 **What agent forgot to execute**
-- The agent implemented the logical calculation for the role-based rate () but failed to ensure the customer object shape matched the logic's expectations (expecting  or  when the data provided ), resulting in the UI bug they are currently fixing.
-
-**Debugging checklist for current issue**
-    Issue: MR Order form not displaying role-based default rate
-    
-    Frontend files to check: 
-    -  (Lines ~100-130 for , lines ~360-430 for render logic).
-  
-    Backend files to check: NA (Backend verified returning correct , etc.)
-    
-    Database to check: Check what role classification field (, , or ) is attached to MR customer payloads.</analysis>
+- The agent successfully injected the code for individual WhatsApp messaging into all entity tables (, etc.) but ran out of context exactly while viewing the screenshot to verify the UI. The testing phase (both manual UI check and Testing Agent) for this specific feature was skipped.</analysis>

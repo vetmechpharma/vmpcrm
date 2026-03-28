@@ -240,6 +240,7 @@ export const whatsappAPI = {
   activateConfig: (id) => api.put(`/whatsapp-config/${id}/activate`),
   testConfig: (mobile) => api.post(`/whatsapp-config/test?mobile=${mobile}`),
   testSpecificConfig: (id, mobile) => api.post(`/whatsapp-config/${id}/test?mobile=${mobile}`),
+  sendDirect: (data) => api.post('/whatsapp/send-direct', data),
 };
 
 // Fallback OTP APIs

@@ -10715,6 +10715,64 @@ async def activate_whatsapp_config(config_id: str, current_user: dict = Depends(
     await db.whatsapp_config.update_one({'id': config_id}, {'$set': {'is_active': True}})
     return {"message": "Config activated successfully"}
 
+
+class WhatsAppDirectMessage(BaseModel):
+    phone: str
+    message: str
+    name: Optional[str] = None
+    message_type: Optional[str] = "text"  # text, image, pdf, product
+    file_url: Optional[str] = None
+    item_id: Optional[str] = None
+
+@api_router.post("/whatsapp/send-direct")
+async def send_direct_whatsapp(data: WhatsAppDirectMessage, current_user: dict = Depends(get_current_user)):
+    """Send a direct WhatsApp message to an individual contact. Supports text, image, PDF, and product messages."""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can send messages")
+    config = await get_whatsapp_config()
+    if not config:
+        raise HTTPException(status_code=400, detail="WhatsApp not configured")
+    try:
+        file_url = None
+        file_caption = data.message or ''
+        msg_type = data.message_type or 'text'
+        app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+
+        if msg_type == 'product' and data.item_id:
+            item = await db.items.find_one({'id': data.item_id}, {'_id': 0, 'image_webp': 0})
+            if not item:
+                raise HTTPException(status_code=404, detail="Item not found")
+            has_image = await db.items.find_one({'id': data.item_id, 'image_webp': {'$ne': None}}, {'_id': 1})
+            if has_image and app_base_url:
+                file_url = f"{app_base_url}/api/items/{data.item_id}/image.jpg"
+            if not file_caption.strip():
+                file_caption = f"{item.get('item_name', '')} - MRP: Rs.{item.get('mrp', 0)}"
+        elif msg_type == 'image' and data.file_url:
+            file_url = data.file_url
+        elif msg_type == 'pdf' and data.file_url:
+            file_url = data.file_url
+
+        if file_url:
+            response = await send_wa_msg(data.phone, file_caption, file_url=file_url, file_caption=file_caption, config=config)
+        else:
+            response = await send_wa_msg(data.phone, data.message, config=config)
+
+        if response and response.status_code == 200:
+            body = response.text.strip()
+            is_success = ('Page not found' not in body)
+            if is_success:
+                log_preview = f"[{msg_type}] {file_caption[:150]}" if file_url else data.message[:200]
+                await log_whatsapp_message(data.phone, 'direct', log_preview, 'success', recipient_name=data.name)
+                return {"message": f"WhatsApp sent to {data.name or data.phone}", "status": "success"}
+            else:
+                return {"message": f"Failed: {body[:200]}", "status": "failed"}
+        return {"message": "Failed to send", "status": "failed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/whatsapp-config/test")
 async def test_whatsapp_config_route(mobile: str, current_user: dict = Depends(get_current_user)):
     """Send a test message to verify WhatsApp configuration"""

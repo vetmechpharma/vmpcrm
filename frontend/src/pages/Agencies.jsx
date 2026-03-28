@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { agenciesAPI, emailAPI, tasksAPI, transportAPI, locationAPI, followupsAPI, paymentsAPI } from '../lib/api';
+import WhatsAppDirectDialog from '../components/WhatsAppDirectDialog';
 import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -15,7 +16,7 @@ import { toast } from 'sonner';
 import { 
   Plus, Search, Edit2, Trash2, Mail, Loader2, Phone, Calendar, Clock,
   MessageSquare, CheckSquare, AlertTriangle, PhoneCall, Eye, Building,
-  RefreshCw, Key, History, ArrowRight, IndianRupee
+  RefreshCw, Key, History, ArrowRight, IndianRupee, MessageCircle
 } from 'lucide-react';
 import { LEAD_STATUSES, getStatusColor, formatDate, formatDateTime } from '../lib/utils';
 
@@ -37,6 +38,7 @@ export const Agencies = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -348,6 +350,7 @@ export const Agencies = () => {
                           <Button variant="ghost" size="icon" onClick={() => openFollowUpModal(agency)} title="Add Follow-up" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" data-testid={`followup-btn-${agency.id}`}><PhoneCall className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => openEditModal(agency)} title="Edit" className="h-8 w-8"><Edit2 className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleSendPortalAccess(agency)} title="Portal Access" className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"><Key className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setSelectedAgency(agency); setShowWhatsAppModal(true); }} title="Send WhatsApp" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" data-testid={`wa-btn-${agency.id}`}><MessageCircle className="w-4 h-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => { setSelectedAgency(agency); setShowDeleteModal(true); }} title="Delete" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </TableCell>
@@ -536,6 +539,15 @@ export const Agencies = () => {
           <DialogFooter><Button variant="outline" onClick={() => setShowBulkDeleteModal(false)}>Cancel</Button><Button onClick={handleBulkDelete} disabled={bulkDeleting} className="bg-red-600 hover:bg-red-700">{bulkDeleting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Delete {selectedIds.length} Agency(s)</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* WhatsApp Message Modal */}
+      <WhatsAppDirectDialog
+        open={showWhatsAppModal}
+        onOpenChange={setShowWhatsAppModal}
+        recipientName={selectedAgency?.name}
+        recipientPhone={selectedAgency?.phone}
+      />
+
     </div>
   );
 };

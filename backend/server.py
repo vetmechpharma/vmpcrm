@@ -1062,6 +1062,7 @@ class MarketingCampaignCreate(BaseModel):
     message: str
     item_ids: Optional[List[str]] = None  # For product promotions
     image_base64: Optional[str] = None  # Optional image attachment
+    pdf_base64: Optional[str] = None  # Optional PDF attachment
     scheduled_at: Optional[str] = None  # ISO datetime for scheduling
     batch_size: int = 10  # Messages per batch
     batch_delay_seconds: int = 60  # Delay between batches (to avoid ban)
@@ -7427,12 +7428,14 @@ async def get_marketing_campaigns(
         query['status'] = status
     
     # Exclude image_webp binary data from list
-    campaigns = await db.marketing_campaigns.find(query, {'_id': 0, 'image_webp': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
+    campaigns = await db.marketing_campaigns.find(query, {'_id': 0, 'image_webp': 0, 'pdf_data': 0}).sort('created_at', -1).skip(skip).limit(limit).to_list(limit)
     
-    # Add image_url for campaigns with images
+    # Add image_url and pdf_url for campaigns with attachments
     for campaign in campaigns:
         if campaign.get('has_image'):
             campaign['image_url'] = f"/api/marketing/campaigns/{campaign['id']}/image"
+        if campaign.get('has_pdf'):
+            campaign['pdf_url'] = f"/api/marketing/campaigns/{campaign['id']}/attachment.pdf"
     
     total = await db.marketing_campaigns.count_documents(query)
     
@@ -7441,13 +7444,15 @@ async def get_marketing_campaigns(
 @api_router.get("/marketing/campaigns/{campaign_id}")
 async def get_marketing_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
     """Get campaign details with logs"""
-    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0, 'image_webp': 0})
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 0, 'image_webp': 0, 'pdf_data': 0})
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
     
     # Add image_url if campaign has image
     if campaign.get('has_image'):
         campaign['image_url'] = f"/api/marketing/campaigns/{campaign_id}/image"
+    if campaign.get('has_pdf'):
+        campaign['pdf_url'] = f"/api/marketing/campaigns/{campaign_id}/attachment.pdf"
     
     # Get campaign logs
     logs = await db.campaign_logs.find({'campaign_id': campaign_id}, {'_id': 0}).sort('sent_at', -1).to_list(1000)
@@ -7479,6 +7484,17 @@ async def get_campaign_image(campaign_id: str, fmt: Optional[str] = None):
 async def get_campaign_image_jpg(campaign_id: str):
     """Get campaign image as JPEG with proper .jpg extension for WhatsApp compatibility"""
     return await get_campaign_image(campaign_id, fmt='jpg')
+
+
+@api_router.get("/marketing/campaigns/{campaign_id}/attachment.pdf")
+async def get_campaign_pdf(campaign_id: str):
+    """Get campaign PDF attachment"""
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'pdf_data': 1})
+    if not campaign or not campaign.get('pdf_data'):
+        raise HTTPException(status_code=404, detail="PDF not found")
+    pdf_bytes = base64.b64decode(campaign['pdf_data'])
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=campaign_{campaign_id}.pdf"})
+
 
 
 @api_router.post("/marketing/campaigns")
@@ -7515,6 +7531,16 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
             processed_image = process_image_to_webp(image_bytes, max_size_kb=200, target_size=(800, 800))
         except Exception as e:
             logger.error(f"Failed to process campaign image: {e}")
+
+    # Handle PDF upload - store raw base64 in MongoDB
+    pdf_data = None
+    if campaign.pdf_base64:
+        try:
+            pdf_raw = campaign.pdf_base64.split(',')[1] if ',' in campaign.pdf_base64 else campaign.pdf_base64
+            base64.b64decode(pdf_raw)  # validate
+            pdf_data = pdf_raw
+        except Exception as e:
+            logger.error(f"Failed to process campaign PDF: {e}")
     
     # Determine initial status
     status = 'scheduled' if campaign.scheduled_at else 'draft'
@@ -7536,6 +7562,8 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
         'item_details': item_details,
         'image_webp': processed_image,
         'has_image': processed_image is not None,
+        'pdf_data': pdf_data,
+        'has_pdf': pdf_data is not None,
         'batch_size': campaign.batch_size,
         'batch_delay_seconds': campaign.batch_delay_seconds,
         'status': status,
@@ -7685,22 +7713,32 @@ async def process_marketing_campaign(campaign_id: str):
                     phone = recipient['phone']
                     wa_mobile = phone if phone.startswith('91') else f"91{phone[-10:]}"
                     
-                    # Determine image URL to use (serve as JPEG for better compatibility with external services)
-                    image_url_to_send = None
+                    # Determine file URL to use for attachment
+                    file_url_to_send = None
                     app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
                     
+                    # Check if campaign has PDF attachment
+                    if campaign.get('has_pdf', False) and app_base_url:
+                        file_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/attachment.pdf"
                     # Check if campaign has uploaded image
-                    if campaign.get('has_image', False) and app_base_url:
-                        image_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image.jpg"
+                    elif campaign.get('has_image', False) and app_base_url:
+                        file_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image.jpg"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details') and app_base_url:
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"{app_base_url}/api/items/{item['id']}/image.jpg"
+                                file_url_to_send = f"{app_base_url}/api/items/{item['id']}/image.jpg"
                                 break
                     
-                    if image_url_to_send:
-                        response = await send_wa_msg(wa_mobile, message, file_url=image_url_to_send, file_caption=message, config=config)
+                    # If both PDF and image exist, send image first then PDF separately
+                    if campaign.get('has_pdf', False) and campaign.get('has_image', False) and app_base_url:
+                        img_url = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image.jpg"
+                        pdf_url = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/attachment.pdf"
+                        response = await send_wa_msg(wa_mobile, message, file_url=img_url, file_caption=message, config=config)
+                        await asyncio.sleep(1)
+                        await send_wa_msg(wa_mobile, '', file_url=pdf_url, file_caption='', config=config)
+                    elif file_url_to_send:
+                        response = await send_wa_msg(wa_mobile, message, file_url=file_url_to_send, file_caption=message, config=config)
                     else:
                         response = await send_wa_msg(wa_mobile, message, config=config)
                     

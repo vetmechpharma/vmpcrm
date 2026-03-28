@@ -94,6 +94,8 @@ export const Marketing = () => {
   const [itemSearch, setItemSearch] = useState('');
   const [imageBase64, setImageBase64] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [pdfBase64, setPdfBase64] = useState(null);
+  const [pdfFileName, setPdfFileName] = useState(null);
   const [scheduledAt, setScheduledAt] = useState('');
   const [batchSize, setBatchSize] = useState(10);
   const [batchDelay, setBatchDelay] = useState(60);
@@ -207,6 +209,23 @@ export const Marketing = () => {
     }
   };
 
+  const handlePdfUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('PDF must be less than 10MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPdfBase64(reader.result);
+        setPdfFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+
   const handleApplyTemplate = (template) => {
     setMessage(template.message);
     setCampaignType(template.category);
@@ -272,6 +291,7 @@ export const Marketing = () => {
         message: message,
         item_ids: campaignType === 'product_promo' ? selectedItems : [],
         image_base64: imageBase64,
+        pdf_base64: pdfBase64,
         scheduled_at: scheduledAt || null,
         batch_size: batchSize,
         batch_delay_seconds: batchDelay,
@@ -293,6 +313,8 @@ export const Marketing = () => {
       setSelectedItems([]);
       setImageBase64(null);
       setImagePreview(null);
+      setPdfBase64(null);
+      setPdfFileName(null);
       setScheduledAt('');
       
       fetchCampaigns();
@@ -697,6 +719,39 @@ export const Marketing = () => {
                   )}
                 </div>
 
+                {/* PDF Upload */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Attach PDF (Optional)
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={handlePdfUpload}
+                      className="flex-1"
+                      data-testid="pdf-upload-input"
+                    />
+                    {pdfFileName && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
+                        <FileText className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-700 max-w-[150px] truncate">{pdfFileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setPdfBase64(null); setPdfFileName(null); }}
+                          className="text-red-400 hover:text-red-600"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    PDF will be sent as a document attachment via WhatsApp (max 10MB)
+                  </p>
+                </div>
+
                 {/* Scheduling */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg">
                   <div className="space-y-2">
@@ -916,6 +971,9 @@ export const Marketing = () => {
                               {campaign.has_image && (
                                 <Image className="w-4 h-4 text-blue-500" title="Has Image" />
                               )}
+                              {campaign.has_pdf && (
+                                <FileText className="w-4 h-4 text-red-500" title="Has PDF" />
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3">
@@ -1068,6 +1126,23 @@ export const Marketing = () => {
                     alt="Campaign"
                     className="max-w-xs rounded-lg border shadow-sm"
                   />
+                </div>
+              )}
+
+              {/* Campaign PDF */}
+              {selectedCampaign.has_pdf && selectedCampaign.pdf_url && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-2">Attached PDF</p>
+                  <a 
+                    href={`${process.env.REACT_APP_BACKEND_URL}${selectedCampaign.pdf_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 hover:bg-red-100 transition-colors"
+                    data-testid="campaign-pdf-link"
+                  >
+                    <FileText className="w-5 h-5" />
+                    <span className="text-sm font-medium">View PDF Attachment</span>
+                  </a>
                 </div>
               )}
 

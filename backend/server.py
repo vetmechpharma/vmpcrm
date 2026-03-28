@@ -4634,7 +4634,7 @@ async def send_ledger_whatsapp(
     })
     
     app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
-    pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}" if app_base_url else None
+    pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}.pdf" if app_base_url else None
     
     # Send WhatsApp with PDF attachment
     config = await get_whatsapp_config()
@@ -4695,6 +4695,13 @@ async def get_ledger_pdf_by_token(token: str):
     filename = f"Ledger_{doc.get('customer_name', 'Statement').replace(' ', '_')}.pdf"
     return Response(content=pdf_data, media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="{filename}"'})
+
+
+@api_router.get("/ledger-pdf/{token}.pdf")
+async def get_ledger_pdf_by_token_ext(token: str):
+    """Alias with .pdf extension for WhatsApp compatibility"""
+    return await get_ledger_pdf_by_token(token)
+
 
 def generate_ledger_pdf_bytes(ledger: dict, company_name: str, from_date: str = None, to_date: str = None) -> bytes:
     """Generate ledger PDF bytes (reusable for WhatsApp and email)"""
@@ -7075,7 +7082,8 @@ async def execute_rest_api_wa(config, receiver, message=None, file_url=None, fil
     instance_id = config.get('instance_id', '')
     async with httpx.AsyncClient(timeout=30.0) as client:
         if file_url:
-            # Send media with caption
+            # Detect if it's a PDF or image from the URL extension
+            is_pdf = file_url.lower().endswith('.pdf')
             payload = {
                 'number': receiver,
                 'type': 'media',
@@ -7084,6 +7092,8 @@ async def execute_rest_api_wa(config, receiver, message=None, file_url=None, fil
                 'instance_id': instance_id,
                 'access_token': access_token,
             }
+            if is_pdf:
+                payload['filename'] = 'Ledger_Statement.pdf'
         else:
             # Send text message
             payload = {
@@ -12803,7 +12813,7 @@ async def send_monthly_ledger_statements():
                         # Send WhatsApp with PDF
                         if config and cust.get('phone'):
                             wa_mobile = cust['phone'] if cust['phone'].startswith('91') else f"91{cust['phone'][-10:]}"
-                            pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}" if app_base_url else None
+                            pdf_url = f"{app_base_url}/api/ledger-pdf/{pdf_token}.pdf" if app_base_url else None
                             try:
                                 if pdf_url:
                                     await send_wa_msg(wa_mobile, summary_msg, file_url=pdf_url, file_caption=summary_msg, config=config)

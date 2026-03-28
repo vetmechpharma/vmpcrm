@@ -546,6 +546,7 @@ export const Agencies = () => {
         onOpenChange={setShowWhatsAppModal}
         recipientName={selectedAgency?.name}
         recipientPhone={selectedAgency?.phone}
+        recipientRole="agencies"
       />
 
     </div>

@@ -15,7 +15,7 @@ const MSG_TYPES = [
   { value: 'product', label: 'Product', icon: Package },
 ];
 
-export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName, recipientPhone }) {
+export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName, recipientPhone, recipientRole }) {
   const [msgType, setMsgType] = useState('text');
   const [message, setMessage] = useState('');
   const [fileUrl, setFileUrl] = useState('');
@@ -60,6 +60,15 @@ export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName
     ).slice(0, 50);
   }, [items, itemSearch]);
 
+  const getRolePrice = (item) => {
+    const r = recipientRole || 'doctors';
+    return {
+      rate: item[`rate_${r}`] ?? item.rate,
+      offer: item[`offer_${r}`] ?? item.offer,
+      specialOffer: item[`special_offer_${r}`] ?? item.special_offer,
+    };
+  };
+
   const handleSend = async () => {
     if (msgType === 'text' && !message.trim()) { toast.error('Enter a message'); return; }
     if ((msgType === 'image' || msgType === 'pdf') && !fileUrl.trim()) { toast.error('Enter a file URL'); return; }
@@ -72,6 +81,7 @@ export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName
         name: recipientName,
         message: message,
         message_type: msgType,
+        recipient_role: recipientRole || 'doctors',
       };
       if (msgType === 'image' || msgType === 'pdf') payload.file_url = fileUrl;
       if (msgType === 'product') payload.item_id = selectedItem.id;
@@ -164,7 +174,14 @@ export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-slate-800 truncate text-xs">{item.item_name}</p>
-                        <p className="text-[11px] text-slate-400">{item.item_code} | MRP: Rs.{item.mrp}</p>
+                        <p className="text-[11px] text-slate-400">{item.item_code} | MRP: Rs.{item.mrp}{getRolePrice(item).rate ? ` | Rate: Rs.${getRolePrice(item).rate}` : ''}</p>
+                        {(getRolePrice(item).offer || getRolePrice(item).specialOffer) && (
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {getRolePrice(item).offer && <span className="text-amber-500">Offer: {getRolePrice(item).offer}</span>}
+                            {getRolePrice(item).offer && getRolePrice(item).specialOffer && ' | '}
+                            {getRolePrice(item).specialOffer && <span className="text-purple-500">Spl: {getRolePrice(item).specialOffer}</span>}
+                          </p>
+                        )}
                       </div>
                       {item.out_of_stock && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded">OOS</span>}
                     </button>
@@ -185,6 +202,13 @@ export default function WhatsAppDirectDialog({ open, onOpenChange, recipientName
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-green-800">{selectedItem.item_name}</p>
                     <p className="text-xs text-green-600">MRP: Rs.{selectedItem.mrp} | Code: {selectedItem.item_code}</p>
+                    {(() => { const p = getRolePrice(selectedItem); return (
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                        {p.rate && <span className="text-xs text-green-700 font-medium">Rate: Rs.{p.rate}</span>}
+                        {p.offer && <span className="text-xs text-amber-600">Offer: {p.offer}</span>}
+                        {p.specialOffer && <span className="text-xs text-purple-600">Spl: {p.specialOffer}</span>}
+                      </div>
+                    ); })()}
                   </div>
                   <button onClick={() => setSelectedItem(null)} className="text-slate-400 hover:text-red-500 text-lg">&times;</button>
                 </div>

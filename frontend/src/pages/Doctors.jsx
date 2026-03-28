@@ -727,6 +727,7 @@ export const Doctors = () => {
         onOpenChange={setShowWhatsAppModal}
         recipientName={selectedDoctor?.name}
         recipientPhone={selectedDoctor?.phone}
+        recipientRole="doctors"
       />
 
     </div>

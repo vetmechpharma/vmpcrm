@@ -10723,6 +10723,7 @@ class WhatsAppDirectMessage(BaseModel):
     message_type: Optional[str] = "text"  # text, image, pdf, product
     file_url: Optional[str] = None
     item_id: Optional[str] = None
+    recipient_role: Optional[str] = "doctors"  # doctors, medicals, agencies
 
 @api_router.post("/whatsapp/send-direct")
 async def send_direct_whatsapp(data: WhatsAppDirectMessage, current_user: dict = Depends(get_current_user)):
@@ -10746,7 +10747,19 @@ async def send_direct_whatsapp(data: WhatsAppDirectMessage, current_user: dict =
             if has_image and app_base_url:
                 file_url = f"{app_base_url}/api/items/{data.item_id}/image.jpg"
             if not file_caption.strip():
-                file_caption = f"{item.get('item_name', '')} - MRP: Rs.{item.get('mrp', 0)}"
+                role = data.recipient_role or 'doctors'
+                rate = item.get(f'rate_{role}') or item.get('rate', '')
+                offer = item.get(f'offer_{role}') or item.get('offer', '')
+                special_offer = item.get(f'special_offer_{role}') or item.get('special_offer', '')
+                parts = [f"{item.get('item_name', '')}"]
+                parts.append(f"MRP: Rs.{item.get('mrp', 0)}")
+                if rate:
+                    parts.append(f"Rate: Rs.{rate}")
+                if offer:
+                    parts.append(f"Offer: {offer}")
+                if special_offer:
+                    parts.append(f"Special Offer: {special_offer}")
+                file_caption = '\n'.join(parts)
         elif msg_type == 'image' and data.file_url:
             file_url = data.file_url
         elif msg_type == 'pdf' and data.file_url:

@@ -3696,6 +3696,13 @@ async def get_item_image(item_id: str, fmt: Optional[str] = None):
     
     return Response(content=image_data, media_type="image/webp")
 
+
+@api_router.get("/items/{item_id}/image.jpg")
+async def get_item_image_jpg(item_id: str):
+    """Get item image as JPEG with proper .jpg extension for WhatsApp compatibility"""
+    return await get_item_image(item_id, fmt='jpg')
+
+
 @api_router.get("/items", response_model=List[ItemResponse])
 async def get_items(
     search: Optional[str] = None,
@@ -7457,6 +7464,13 @@ async def get_campaign_image(campaign_id: str, fmt: Optional[str] = None):
     
     return Response(content=image_data, media_type="image/webp")
 
+
+@api_router.get("/marketing/campaigns/{campaign_id}/image.jpg")
+async def get_campaign_image_jpg(campaign_id: str):
+    """Get campaign image as JPEG with proper .jpg extension for WhatsApp compatibility"""
+    return await get_campaign_image(campaign_id, fmt='jpg')
+
+
 @api_router.post("/marketing/campaigns")
 async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_user: dict = Depends(get_current_user)):
     """Create a new marketing campaign"""
@@ -7667,12 +7681,12 @@ async def process_marketing_campaign(campaign_id: str):
                     
                     # Check if campaign has uploaded image
                     if campaign.get('has_image', False) and app_base_url:
-                        image_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image?fmt=jpg"
+                        image_url_to_send = f"{app_base_url}/api/marketing/campaigns/{campaign_id}/image.jpg"
                     # For product promotions, use first item's image as default
                     elif campaign['campaign_type'] == 'product_promo' and campaign.get('item_details') and app_base_url:
                         for item in campaign['item_details']:
                             if item.get('has_image'):
-                                image_url_to_send = f"{app_base_url}/api/items/{item['id']}/image"
+                                image_url_to_send = f"{app_base_url}/api/items/{item['id']}/image.jpg"
                                 break
                     
                     if image_url_to_send:

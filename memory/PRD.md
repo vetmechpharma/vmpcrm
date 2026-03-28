@@ -1,82 +1,74 @@
 # VMP CRM - Product Requirements Document
 
 ## Original Problem Statement
-A full-stack CRM system for a veterinary pharmaceutical company with Admin Panel, Customer Portal, and MR PWA module.
+Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distribution management. Features include:
+- Admin, Customer, and Medical Representative (MR) modules
+- Dynamic multi-API WhatsApp configuration (BotMasterSender + AKNexus)
+- Offline MR ordering, automated ledgers, dual-channel notifications (Email + WA)
+- Role-based pricing, pending/out-of-stock item management
 
 ## Architecture
-- **Backend**: FastAPI + MongoDB (server.py ~12,700 lines)
-- **Frontend**: React + TailwindCSS + Shadcn/UI
-- **MR Module**: PWA with offline sync + localStorage caching
-- **Customer Portal**: Login, orders, ledger, support
-- **Push Notifications**: Web Push via pywebpush + VAPID
+- **Frontend**: React, Tailwind, Shadcn UI
+- **Backend**: FastAPI, MongoDB (Motor), Multiple WhatsApp API styles
+- **Key**: AKNexus determines message type via URL extension suffix (.pdf, .jpg)
 
-## All Implemented Features
+## Completed Features (All Tested)
 
-### Admin Panel
-- Dashboard, Doctor/Medical/Agency management, Items, Orders, Payments, Expenses
-- Item hide/show, Images ZIP download, Dynamic WhatsApp Config
-- Message Templates Editor, Company Short Name
-- Marketing (WhatsApp + Push + Email), Web Push Notifications
-- Item import/export, Reminders, Greetings, User/Role management
-- SMTP/WhatsApp settings, DB backup, MR Management
-- **Order Transfer to Agency** - Transfer button → agency selection → WhatsApp to agency + customer
-- **MR Payment Approvals** - Admin Payments page has "MR Approvals" tab with approve/reject
+### Phase 1 - Core CRM
+- Admin/MR/Customer authentication & portals
+- Doctor/Medical/Agency CRUD with lead management
+- Order management with role-based pricing
+- Item/Product management with images
+- Email & WhatsApp notifications
+- Follow-up tracking, notes, tasks
+- Payment tracking & ledger management
 
-### Customer Portal
-- Registration & login, Dynamic branding, Web Push, Product catalog
-- Order placement, Ledger view, Support tickets, Profile
+### Phase 2 - Role-Based Enhancements
+- MR & Admin Order Form role-based default rate mapping
+- Pending/Out-of-stock items displayed during order creation (Admin, MR, Customer)
 
-### MR Module (PWA)
-- Offline data caching (pre-fetches customers, items, orders, dashboard, outstanding)
-- localStorage fallback, Service Worker v3
-- Outstanding Page - balance details for Doctors/Medicals/Agencies with offline sync
-- **Payment Recording** - MR records payments for admin approval
-- **Role-based Default Rate** - Order form shows correct rate per customer type (doctor/medical/agency)
-- Customer visits, follow-ups, Order creation, Visual aids
+### Phase 3 - WhatsApp Multi-API
+- Dual WhatsApp API support (BotMasterSender Query Param + AKNexus REST)
+- UI for switching/testing WhatsApp configs
+- WhatsApp file-to-text fallback for failed media
+- Fixed AKNexus image/PDF extensions (.jpg, .pdf endpoints)
 
-### Email Parity
-- Order status, Payment receipts, Account approval, Ticket status/replies, Marketing, Ledger
+### Phase 4 - Direct WhatsApp Messaging (Latest - Mar 28, 2026)
+- Individual WhatsApp message buttons in Doctors, Medicals, Agencies tables
+- Enhanced dialog with 4 message types: **Text, Image, PDF, Product**
+- Product selection from items list with search, thumbnails, MRP display
+- Shared `WhatsAppDirectDialog` component (deduplicated across 3 pages)
+- Backend `POST /api/whatsapp/send-direct` supports all message types
+- Tested: 100% backend (10/10), 100% frontend (all 3 pages)
 
-### Ledger Improvements
-- WhatsApp/Email with summary + PDF attachment, Automated monthly statements (27th)
+## Key API Endpoints
+- `POST /api/whatsapp/send-direct` - Send direct WA (text/image/pdf/product)
+- `POST /api/whatsapp-config` & `PUT /api/whatsapp-config/{id}/activate`
+- `GET /api/pending-items/doctor/{phone}`
+- `GET /api/items/{item_id}/image.jpg` (AKNexus image endpoint)
 
-### Recent Bug Fixes (Feb-Mar 2026)
-- WhatsApp marketing image bug (base64→binary decode)
-- MR offline mode (pre-caching + localStorage)
-- Hardcoded URL → configurable APP_BASE_URL
-- Missing function definitions restored
-- **Order notes now visible** in admin order views
-- **MR name displayed** on orders ("Submitted by: MR Name")
-- **MR Order Form role-based rate display** — Verified working (Mar 2026). getRoleRate() uses entity_type correctly. Rate shows in item search dropdown + selected item cards. Tested 100% pass (iteration 41).
-- **Admin Order Form role-based rate display** — Added getRoleRate() using customer.type field. Shows MRP, role rate, default rate label, and offers in both search dropdown and selected item cards (Mar 2026).
-- **Pending Items in Order Form** — When selecting a customer with previous out-of-stock items, both Admin and MR order forms now show a "Previous Pending Items" section with +Add buttons to easily fulfill those items (Mar 2026). Tested 100% (iteration 42).
-- **Customer Portal Pending Items** — Customer portal's Cart tab shows "Previously Unavailable Items" section for items that were out of stock in past orders, with "Add to Cart" buttons. Works with both empty and filled carts. New endpoint `GET /api/customer/pending-items`. Tested 100% (iteration 43).
-- **WhatsApp Dual API Integration** — Added AKNexus Business API (rest_api type) alongside BotMasterSender (query_param type). Multi-config admin UI with per-config test. AKNexus supports text + media sends. Tested 100% (iteration 45).
-- **WhatsApp Image Fix** — Images were arriving as PDF documents. Added `.jpg` extension routes (`/api/items/{id}/image.jpg`, `/api/marketing/campaigns/{id}/image.jpg`) so AKNexus sends as `imageMessage` instead of `documentMessage`. Confirmed working (Mar 2026).
+## DB Schema (Key Collections)
+- `whatsapp_config`: name, api_url, auth_token, api_type, instance_id, is_active
+- `pending_items`: doctor_phone, item_id, quantity, original_order_id
+- `items`: item_name, item_code, mrp, rate_doctors/medicals/agencies, image_webp
 
-## Key New Endpoints (This Session)
-- `POST /api/orders/{id}/transfer` - Transfer order to agency
-- `POST /api/mr/payment-requests` - MR records payment
-- `GET /api/mr/payment-requests` - MR's payment request history
-- `GET /api/payment-requests` - Admin views all requests
-- `POST /api/payment-requests/{id}/approve` - Admin approve/reject
-- `GET /api/mr/pending-items/{phone}` - MR gets customer's pending items
-- `GET /api/customer/pending-items` - Customer gets own pending items
-- `POST /api/whatsapp-config/{id}/test` - Per-config WhatsApp test
+## Tech Debt
+- **P0**: `server.py` is ~12,950 lines - needs modular refactoring into routes/
 
-## Key DB Collections (New)
-- `payment_requests` - MR payment submissions with status, mr_name, amount, mode
+## Backlog (P2)
+- Stock/Inventory Management (quantity tracking, low-stock alerts)
+- Sales reports with charts
+- Data import/export functionality
+- Sales target management for MRs
+- VPS installation script (install.sh)
+- Refactor follow-up UI (extract duplicated logic)
 
-## Technical Debt
-- server.py refactor (12,700+ lines) - P0
-- Duplicated follow-up UI - P2
+## 3rd Party Integrations
+- BotMasterSender API (WhatsApp Query Params) — User API Key
+- AKNexus API (WhatsApp REST) — User Access Token + Instance ID
+- Custom SMTP (Email) — User Credentials
 
-## Upcoming Tasks
-- (P1) Refactor server.py
-- (P1) Stock/Inventory Management
-- (P2) Follow-up UI refactor, Sales reports, Data import/export, MR sales targets, VPS script
-
-## Credentials
+## Test Credentials
 - Admin: admin@vmpcrm.com / admin123
 - MR: 9876543211 / testpass
 - Customer: 9999777766 / test123

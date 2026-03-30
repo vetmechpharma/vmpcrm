@@ -11860,6 +11860,136 @@ async def change_admin_password(password_data: AdminPasswordChange, current_user
 # Global variable for backup scheduler
 backup_scheduler_task = None
 
+
+@api_router.get("/database/backup-file/{backup_id}/backup.pdf")
+async def serve_backup_file(backup_id: str):
+    """Serve temporary backup file for WhatsApp download"""
+    doc = await db.temp_backup_files.find_one({'id': backup_id}, {'_id': 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Backup file not found")
+    return Response(content=doc['data'].encode(), media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename={doc.get('filename', 'backup.json')}"})
+
+@api_router.delete("/email-logs")
+async def delete_email_logs(current_user: dict = Depends(get_current_user)):
+    """Delete all email logs"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete email logs")
+    result = await db.email_logs.delete_many({})
+    return {"message": f"Deleted {result.deleted_count} email logs", "deleted_count": result.deleted_count}
+
+@api_router.delete("/whatsapp-logs")
+async def delete_whatsapp_logs(current_user: dict = Depends(get_current_user)):
+    """Delete all WhatsApp logs"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete WhatsApp logs")
+    result = await db.whatsapp_logs.delete_many({})
+    return {"message": f"Deleted {result.deleted_count} WhatsApp logs", "deleted_count": result.deleted_count}
+
+@api_router.post("/database/factory-reset")
+async def factory_reset(current_user: dict = Depends(get_current_user)):
+    """Factory reset - Delete ALL data except admin user and system settings"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can perform factory reset")
+    
+    # Collections to preserve
+    preserved = {'users', 'system_settings', 'company_settings', 'smtp_settings',
+                 'whatsapp_config', 'message_templates', 'greeting_templates', 'backup_history'}
+    
+    deleted_summary = {}
+    all_collections = await db.list_collection_names()
+    for coll_name in all_collections:
+        if coll_name in preserved:
+            continue
+        count = await db[coll_name].count_documents({})
+        if count > 0:
+            await db[coll_name].delete_many({})
+            deleted_summary[coll_name] = count
+    
+    # Log the factory reset
+    await db.backup_history.insert_one({
+        'id': str(uuid.uuid4()),
+        'filename': 'FACTORY_RESET',
+        'status': 'success',
+        'type': 'factory_reset',
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'created_by': current_user['name'],
+        'details': deleted_summary
+    })
+    
+    return {"message": "Factory reset completed", "deleted": deleted_summary}
+
+@api_router.post("/database/send-email-backup")
+async def send_email_backup(current_user: dict = Depends(get_current_user)):
+    """Manually send database backup via email only"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can send backups")
+    
+    # Get backup settings
+    settings = await db.system_settings.find_one({'type': 'backup_settings'}, {'_id': 0})
+    email_address = settings.get('email_address', '') if settings else ''
+    if not email_address:
+        raise HTTPException(status_code=400, detail="No backup email configured. Set it in Backup Settings.")
+    
+    smtp_config = await db.smtp_settings.find_one({}, {'_id': 0})
+    if not smtp_config or not smtp_config.get('host'):
+        raise HTTPException(status_code=400, detail="SMTP not configured")
+    
+    # Build export
+    collections_to_export = [
+        'doctors', 'medicals', 'agencies', 'items', 'orders', 'expenses',
+        'reminders', 'pending_items', 'portal_customers', 'support_tickets',
+        'users', 'company_settings', 'item_categories', 'transports',
+        'payments', 'tasks', 'mrs', 'whatsapp_config', 'smtp_config',
+        'greeting_templates', 'message_templates', 'system_settings',
+        'marketing_campaigns', 'followups',
+        'doctor_notes', 'medical_notes', 'agency_notes',
+        'doctor_followups', 'medical_followups', 'agency_followups'
+    ]
+    export_data = {'export_date': datetime.now(timezone.utc).isoformat(), 'exported_by': current_user['name'], 'collections': {}}
+    total_records = 0
+    for coll_name in collections_to_export:
+        docs = await db[coll_name].find({}, {'_id': 0}).to_list(100000)
+        export_data['collections'][coll_name] = docs
+        total_records += len(docs)
+    
+    json_str = json.dumps(export_data, default=str)
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+    filename = f"crm_backup_{timestamp}.json"
+    
+    try:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.application import MIMEApplication
+        
+        msg = MIMEMultipart()
+        msg['From'] = smtp_config.get('from_email', smtp_config['username'])
+        msg['To'] = email_address
+        msg['Subject'] = f"CRM Database Backup - {timestamp}"
+        body = f"CRM Database Backup\n\nTimestamp: {timestamp}\nTriggered by: {current_user['name']}\nTotal Records: {total_records}\nFile Size: {len(json_str) / 1024:.1f} KB\n\nBackup file attached."
+        msg.attach(MIMEText(body, 'plain'))
+        attachment = MIMEApplication(json_str.encode(), _subtype='json')
+        attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(attachment)
+        
+        server = smtplib.SMTP(smtp_config['host'], smtp_config.get('port', 587))
+        server.starttls()
+        server.login(smtp_config['username'], smtp_config['password'])
+        server.send_message(msg)
+        server.quit()
+        
+        await db.backup_history.insert_one({
+            'id': str(uuid.uuid4()), 'filename': filename, 'status': 'success',
+            'type': 'manual_email', 'created_at': datetime.now(timezone.utc).isoformat(),
+            'created_by': current_user['name'], 'size_bytes': len(json_str),
+            'total_records': total_records, 'sent_email': True
+        })
+        return {"message": f"Backup sent to {email_address}", "status": "success"}
+    except Exception as e:
+        return {"message": f"Failed to send: {str(e)}", "status": "failed"}
+
+
 @api_router.get("/database/backup-settings")
 async def get_backup_settings(current_user: dict = Depends(get_current_user)):
     """Get database backup settings"""
@@ -11969,7 +12099,12 @@ async def perform_scheduled_backup(triggered_by: str = "System"):
         collections_to_export = [
             'doctors', 'medicals', 'agencies', 'items', 'orders', 'expenses',
             'reminders', 'pending_items', 'portal_customers', 'support_tickets',
-            'users', 'company_settings', 'item_categories', 'transports'
+            'users', 'company_settings', 'item_categories', 'transports',
+            'payments', 'tasks', 'mrs', 'whatsapp_config', 'smtp_config',
+            'greeting_templates', 'message_templates', 'system_settings',
+            'marketing_campaigns', 'expense_categories', 'catalogue_settings',
+            'followups', 'doctor_notes', 'medical_notes', 'agency_notes',
+            'doctor_followups', 'medical_followups', 'agency_followups'
         ]
         
         export_data = {
@@ -11993,28 +12128,52 @@ async def perform_scheduled_backup(triggered_by: str = "System"):
         sent_whatsapp = False
         sent_email = False
         
-        # Send WhatsApp notification
+        # Save backup file temporarily for WhatsApp file sending
+        backup_file_path = f"/tmp/{filename}"
+        with open(backup_file_path, 'w') as f:
+            f.write(json_str)
+        
+        # Send WhatsApp notification with JSON backup file
         wa_number = settings.get('whatsapp_number', '9486544884')
         if wa_number:
             config = await get_whatsapp_config()
             if config.get('api_url') and config.get('auth_token'):
                 try:
-                    message = f"*VMP CRM Database Backup*\n\n" \
-                              f"Backup completed successfully!\n\n" \
+                    app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+                    caption = f"*CRM Database Backup*\n\n" \
                               f"*Timestamp:* {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC\n" \
                               f"*Triggered by:* {triggered_by}\n" \
                               f"*Total Records:* {total_records}\n" \
-                              f"*File Size:* {file_size / 1024:.1f} KB\n\n" \
-                              f"The backup has been sent to your email.\n\n" \
-                              f"Filename: {filename}"
+                              f"*File Size:* {file_size / 1024:.1f} KB"
                     
                     wa_mobile = wa_number if wa_number.startswith('91') else f"91{wa_number[-10:]}"
-                    response = await send_wa_msg(wa_mobile, message, config=config)
-                    if response and response.status_code == 200:
-                        sent_whatsapp = True
-                        logger.info(f"Backup notification sent via WhatsApp to {wa_mobile}")
+                    
+                    # Try to send the backup file via WhatsApp
+                    if app_base_url:
+                        # Store backup temporarily in DB for serving
+                        backup_id = str(uuid.uuid4())
+                        await db.temp_backup_files.insert_one({
+                            'id': backup_id,
+                            'data': json_str,
+                            'filename': filename,
+                            'created_at': datetime.now(timezone.utc).isoformat()
+                        })
+                        file_url = f"{app_base_url}/api/database/backup-file/{backup_id}/backup.pdf"
+                        response = await send_wa_msg(wa_mobile, caption, file_url=file_url, file_caption=caption, config=config)
+                        if response and response.status_code == 200:
+                            sent_whatsapp = True
+                            logger.info(f"Backup file sent via WhatsApp to {wa_mobile}")
+                        else:
+                            # Fallback: send text notification only
+                            response = await send_wa_msg(wa_mobile, caption + "\n\nBackup sent to your email.", config=config)
+                            if response and response.status_code == 200:
+                                sent_whatsapp = True
+                    else:
+                        response = await send_wa_msg(wa_mobile, caption + "\n\nBackup sent to your email.", config=config)
+                        if response and response.status_code == 200:
+                            sent_whatsapp = True
                 except Exception as e:
-                    logger.error(f"Failed to send WhatsApp backup notification: {str(e)}")
+                    logger.error(f"Failed to send WhatsApp backup: {str(e)}")
         
         # Send Email with backup attachment
         email_address = settings.get('email_address', 'vetmech2server@gmail.com')

@@ -365,4 +365,17 @@ export const locationAPI = {
   getDistricts: (state) => axios.get(`${API_URL}/api/public/districts/${encodeURIComponent(state)}`),
 };
 
+// Database Management APIs
+export const databaseAPI = {
+  getBackupSettings: () => api.get('/database/backup-settings'),
+  updateBackupSettings: (data) => api.put('/database/backup-settings', data),
+  getBackupHistory: () => api.get('/database/backup-history'),
+  exportDatabase: () => api.get('/database/export'),
+  triggerBackup: () => api.post('/database/trigger-backup'),
+  factoryReset: () => api.post('/database/factory-reset'),
+  sendEmailBackup: () => api.post('/database/send-email-backup'),
+  deleteEmailLogs: () => api.delete('/email-logs'),
+  deleteWhatsappLogs: () => api.delete('/whatsapp-logs'),
+};
+
 export default api;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { smtpAPI, whatsappAPI, fallbackOTPAPI, catalogueAPI } from '../lib/api';
+import { smtpAPI, whatsappAPI, fallbackOTPAPI, catalogueAPI, databaseAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2, BookOpen, Link, Edit, ToggleLeft, ToggleRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Mail, Server, Lock, CheckCircle, AlertCircle, MessageCircle, Send, Key, Plus, Trash2, BookOpen, Link, Edit, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Database, AlertTriangle, Download, RefreshCw, FileJson } from 'lucide-react';
 import { Alert, AlertDescription } from '../components/ui/alert';
 
 export const Settings = () => {
@@ -27,6 +27,11 @@ export const Settings = () => {
   // Catalogue state
   const [catalogues, setCatalogues] = useState([]);
   const [savingCatalogues, setSavingCatalogues] = useState(false);
+
+  // Database Management state
+  const [dbAction, setDbAction] = useState(null);
+  const [factoryResetConfirm, setFactoryResetConfirm] = useState('');
+  const [backupHistory, setBackupHistory] = useState([]);
   
   const [formData, setFormData] = useState({
     smtp_server: '',
@@ -65,6 +70,7 @@ export const Settings = () => {
 
   useEffect(() => {
     fetchConfigs();
+    fetchBackupHistory();
   }, []);
 
   const fetchConfigs = async () => {
@@ -296,6 +302,112 @@ export const Settings = () => {
       fetchConfigs();
     } catch (error) {
       toast.error('Failed to delete OTP');
+    }
+  };
+
+  // Database Management Handlers
+  const fetchBackupHistory = async () => {
+    try {
+      const res = await databaseAPI.getBackupHistory();
+      setBackupHistory(Array.isArray(res.data) ? res.data : []);
+    } catch { /* ignore */ }
+  };
+
+  const handleDeleteEmailLogs = async () => {
+    if (!window.confirm('Delete ALL email logs? This cannot be undone.')) return;
+    setDbAction('delete-email');
+    try {
+      const res = await databaseAPI.deleteEmailLogs();
+      toast.success(res.data?.message || 'Email logs deleted');
+      fetchBackupHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete email logs');
+    } finally {
+      setDbAction(null);
+    }
+  };
+
+  const handleDeleteWhatsappLogs = async () => {
+    if (!window.confirm('Delete ALL WhatsApp logs? This cannot be undone.')) return;
+    setDbAction('delete-wa');
+    try {
+      const res = await databaseAPI.deleteWhatsappLogs();
+      toast.success(res.data?.message || 'WhatsApp logs deleted');
+      fetchBackupHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete WhatsApp logs');
+    } finally {
+      setDbAction(null);
+    }
+  };
+
+  const handleFactoryReset = async () => {
+    if (factoryResetConfirm !== 'RESET') {
+      toast.error('Type RESET to confirm');
+      return;
+    }
+    setDbAction('factory-reset');
+    try {
+      const res = await databaseAPI.factoryReset();
+      toast.success(res.data?.message || 'Factory reset completed');
+      setFactoryResetConfirm('');
+      fetchBackupHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Factory reset failed');
+    } finally {
+      setDbAction(null);
+    }
+  };
+
+  const handleSendEmailBackup = async () => {
+    if (!window.confirm('Send a full database backup to the configured backup email?')) return;
+    setDbAction('email-backup');
+    try {
+      const res = await databaseAPI.sendEmailBackup();
+      if (res.data?.status === 'failed') {
+        toast.error(res.data?.message || 'Backup email failed');
+      } else {
+        toast.success(res.data?.message || 'Backup email sent');
+      }
+      fetchBackupHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send backup email');
+    } finally {
+      setDbAction(null);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    if (!window.confirm('Trigger a full backup (WhatsApp JSON + Email)?')) return;
+    setDbAction('trigger-backup');
+    try {
+      const res = await databaseAPI.triggerBackup();
+      toast.success(res.data?.message || 'Backup triggered');
+      fetchBackupHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Backup failed');
+    } finally {
+      setDbAction(null);
+    }
+  };
+
+  const handleExportDatabase = async () => {
+    setDbAction('export');
+    try {
+      const res = await databaseAPI.exportDatabase();
+      const jsonStr = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `crm_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Database exported');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Export failed');
+    } finally {
+      setDbAction(null);
     }
   };
 
@@ -994,6 +1106,161 @@ export const Settings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Database Management */}
+      {isAdmin && (
+        <Card className="border-red-200" data-testid="database-management-card">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <Database className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <CardTitle>Database Management</CardTitle>
+                <CardDescription>Backup, export, and manage application data</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Backup Actions */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Backup & Export</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleExportDatabase}
+                  disabled={dbAction === 'export'}
+                  className="justify-start h-auto py-3"
+                  data-testid="export-database-btn"
+                >
+                  {dbAction === 'export' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Export Database</div>
+                    <div className="text-xs text-slate-500">Download JSON backup file</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleSendEmailBackup}
+                  disabled={dbAction === 'email-backup'}
+                  className="justify-start h-auto py-3"
+                  data-testid="send-email-backup-btn"
+                >
+                  {dbAction === 'email-backup' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Email Backup</div>
+                    <div className="text-xs text-slate-500">Send backup to configured email</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleTriggerBackup}
+                  disabled={dbAction === 'trigger-backup'}
+                  className="justify-start h-auto py-3 sm:col-span-2"
+                  data-testid="trigger-full-backup-btn"
+                >
+                  {dbAction === 'trigger-backup' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileJson className="w-4 h-4 mr-2" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Full Backup (WhatsApp + Email)</div>
+                    <div className="text-xs text-slate-500">Send JSON backup via WhatsApp and Email</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+
+            {/* Log Cleanup */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Log Cleanup</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteEmailLogs}
+                  disabled={dbAction === 'delete-email'}
+                  className="justify-start h-auto py-3 border-amber-200 hover:bg-amber-50 text-amber-700"
+                  data-testid="delete-email-logs-btn"
+                >
+                  {dbAction === 'delete-email' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Delete Email Logs</div>
+                    <div className="text-xs opacity-75">Clear all email delivery records</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteWhatsappLogs}
+                  disabled={dbAction === 'delete-wa'}
+                  className="justify-start h-auto py-3 border-amber-200 hover:bg-amber-50 text-amber-700"
+                  data-testid="delete-whatsapp-logs-btn"
+                >
+                  {dbAction === 'delete-wa' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  <div className="text-left">
+                    <div className="font-medium text-sm">Delete WhatsApp Logs</div>
+                    <div className="text-xs opacity-75">Clear all WhatsApp message records</div>
+                  </div>
+                </Button>
+              </div>
+            </div>
+
+            {/* Factory Reset */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-red-600 border-b border-red-200 pb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Danger Zone
+              </h3>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong>Factory Reset</strong> will permanently delete ALL business data (doctors, medicals, agencies, orders, payments, expenses, etc.). Only system settings, templates, and admin user will be preserved. This action <strong>cannot be undone</strong>.
+                </AlertDescription>
+              </Alert>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs text-red-600">Type RESET to confirm</Label>
+                  <Input
+                    value={factoryResetConfirm}
+                    onChange={(e) => setFactoryResetConfirm(e.target.value.toUpperCase())}
+                    placeholder="Type RESET"
+                    className="border-red-200 focus:ring-red-500 font-mono"
+                    data-testid="factory-reset-confirm-input"
+                  />
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={handleFactoryReset}
+                  disabled={dbAction === 'factory-reset' || factoryResetConfirm !== 'RESET'}
+                  data-testid="factory-reset-btn"
+                >
+                  {dbAction === 'factory-reset' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Factory Reset
+                </Button>
+              </div>
+            </div>
+
+            {/* Backup History */}
+            {backupHistory.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Recent Backup History</h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {backupHistory.slice(0, 10).map((entry, idx) => (
+                    <div key={entry.id || idx} className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded border" data-testid={`backup-history-${idx}`}>
+                      <div>
+                        <span className="font-medium">{entry.filename || entry.type}</span>
+                        <span className="text-slate-400 ml-2">
+                          {entry.created_at ? new Date(entry.created_at).toLocaleString() : ''}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full ${
+                        entry.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {entry.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

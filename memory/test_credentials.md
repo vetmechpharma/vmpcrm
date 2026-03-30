@@ -2,8 +2,8 @@
 
 ## Admin
 - URL: /admin/login
-- Email: admin@vmpcrm.com
-- Password: admin123
+- Email: info@vetmech.in
+- Password: Kongu@@44884
 
 ## MR (Medical Representative)
 - URL: /mrvet/login

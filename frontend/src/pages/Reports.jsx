@@ -5,12 +5,14 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import {
   Loader2, TrendingUp, TrendingDown, ShoppingCart, Users, Package,
-  IndianRupee, BarChart3, Calendar, AlertTriangle, Clock, ArrowRight
+  IndianRupee, BarChart3, Calendar, AlertTriangle, Clock, ArrowRight,
+  Phone, User, Mail, MapPin, X
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
 const STATUS_COLORS = { pending: '#f59e0b', confirmed: '#3b82f6', ready_to_despatch: '#8b5cf6', shipped: '#06b6d4', delivered: '#10b981', cancelled: '#ef4444', transferred: '#6b7280' };
@@ -59,6 +61,7 @@ const Reports = () => {
   const [period, setPeriod] = useState('6months');
   const [dormantTab, setDormantTab] = useState('30_days');
   const [activeSection, setActiveSection] = useState('overview');
+  const [profileContact, setProfileContact] = useState(null);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -417,7 +420,7 @@ const Reports = () => {
                   <table className="w-full text-sm" data-testid="dormant-table">
                     <thead><tr className="border-b text-left text-xs text-slate-500">
                       <th className="pb-2 pr-2">Name</th><th className="pb-2 pr-2">Type</th>
-                      <th className="pb-2 pr-2 text-right">Past Orders</th><th className="pb-2 pr-2 text-right">Revenue</th><th className="pb-2 text-right">Last Order</th>
+                      <th className="pb-2 pr-2 text-right">Orders</th><th className="pb-2 pr-2 text-right">Revenue</th><th className="pb-2 pr-2 text-right">Last Order</th><th className="pb-2 text-center">Actions</th>
                     </tr></thead>
                     <tbody>
                       {(dormant[dormantTab] || []).map((d, i) => (
@@ -426,7 +429,19 @@ const Reports = () => {
                           <td className="py-1.5 pr-2 text-xs"><span className="px-1.5 py-0.5 bg-slate-50 text-slate-500 rounded text-[10px]">{d.type || 'doctor'}</span></td>
                           <td className="py-1.5 pr-2 text-right text-xs">{d.total_orders}</td>
                           <td className="py-1.5 pr-2 text-right text-xs text-slate-600">Rs.{d.revenue.toLocaleString()}</td>
-                          <td className="py-1.5 text-right text-xs text-red-500 font-medium">{d.last_order?.slice(0, 10)}</td>
+                          <td className="py-1.5 pr-2 text-right text-xs text-red-500 font-medium">{d.last_order?.slice(0, 10)}</td>
+                          <td className="py-1.5 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {d.phone && (
+                                <a href={`tel:${d.phone}`} title={`Call ${d.phone}`} className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-green-50 text-green-600 hover:bg-green-100 transition-colors" data-testid={`call-btn-${i}`}>
+                                  <Phone className="w-3.5 h-3.5" />
+                                </a>
+                              )}
+                              <button onClick={() => setProfileContact(d)} title="View Profile" className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" data-testid={`profile-btn-${i}`}>
+                                <User className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -437,6 +452,101 @@ const Reports = () => {
           </Card>
         </div>
       )}
+
+      {/* Profile Contact Dialog */}
+      <Dialog open={!!profileContact} onOpenChange={(open) => { if (!open) setProfileContact(null); }}>
+        <DialogContent className="max-w-sm" data-testid="profile-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-800">
+              <User className="w-5 h-5 text-blue-600" />Contact Profile
+            </DialogTitle>
+          </DialogHeader>
+          {profileContact && (
+            <div className="space-y-4 py-2">
+              <div className="text-center pb-3 border-b">
+                <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-2">
+                  <span className="text-xl font-bold text-blue-600">{profileContact.name?.charAt(0)?.toUpperCase()}</span>
+                </div>
+                <p className="font-bold text-lg text-slate-800">{profileContact.name}</p>
+                <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full capitalize">{profileContact.type || 'doctor'}</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {profileContact.phone && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">Phone</p>
+                      <a href={`tel:${profileContact.phone}`} className="text-sm font-medium text-green-700 hover:underline">{profileContact.phone}</a>
+                    </div>
+                    <a href={`tel:${profileContact.phone}`} className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1" data-testid="profile-call-btn">
+                      <Phone className="w-3 h-3" />Call
+                    </a>
+                  </div>
+                )}
+
+                {profileContact.email && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">Email</p>
+                      <a href={`mailto:${profileContact.email}`} className="text-sm text-blue-700 hover:underline truncate block">{profileContact.email}</a>
+                    </div>
+                  </div>
+                )}
+
+                {profileContact.city && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">Location</p>
+                      <p className="text-sm text-slate-700">{profileContact.city}{profileContact.address ? `, ${profileContact.address}` : ''}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <ShoppingCart className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Order History</p>
+                    <p className="text-sm text-slate-700"><strong>{profileContact.total_orders}</strong> orders | Rs.<strong>{profileContact.revenue?.toLocaleString()}</strong></p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-4 h-4 text-red-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-wider">Last Order</p>
+                    <p className="text-sm text-red-600 font-medium">{profileContact.last_order?.slice(0, 10)}</p>
+                  </div>
+                </div>
+
+                {profileContact.status && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
+                      <p className="text-sm capitalize text-slate-700">{profileContact.status}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ORDERS SECTION */}
       {activeSection === 'orders' && (

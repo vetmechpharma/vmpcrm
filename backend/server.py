@@ -3731,16 +3731,31 @@ async def get_analytics_reports(period: str = "6months", current_user: dict = De
     all_orderers = await db.orders.aggregate([
         {'$unwind': '$items'},
         {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
-        {'$group': {'_id': '$doctor_id', 'name': {'$first': '$doctor_name'}, 'type': {'$first': '$doctor_type'}, 'last_order': {'$max': '$created_at'}, 'order_ids': {'$addToSet': '$id'}, 'total_revenue': {'$sum': '$item_rev'}}},
+        {'$group': {'_id': '$doctor_id', 'name': {'$first': '$doctor_name'}, 'type': {'$first': '$doctor_type'}, 'phone': {'$first': '$doctor_phone'}, 'last_order': {'$max': '$created_at'}, 'order_ids': {'$addToSet': '$id'}, 'total_revenue': {'$sum': '$item_rev'}}},
         {'$addFields': {'total_orders': {'$size': '$order_ids'}}}
     ]).to_list(5000)
+
+    # Build contact info lookup from entity collections
+    contact_lookup = {}
+    for coll_name in ['doctors', 'medicals', 'agencies']:
+        entities = await db[coll_name].find({}, {'_id': 0, 'id': 1, 'name': 1, 'phone': 1, 'email': 1, 'city': 1, 'address': 1, 'status': 1}).to_list(5000)
+        for e in entities:
+            contact_lookup[e.get('id')] = {'phone': e.get('phone', ''), 'email': e.get('email', ''), 'city': e.get('city', ''), 'address': e.get('address', ''), 'status': e.get('status', '')}
+
     for d_days in dormant_days_list:
         cutoff = (now - timedelta(days=d_days)).isoformat()
         dormant_list = []
         for o in all_orderers:
             lo = o.get('last_order', '')
             if lo and lo < cutoff and o['total_orders'] > 0:
-                dormant_list.append({'id': o['_id'], 'name': o.get('name', 'Unknown'), 'type': o.get('type', 'doctor'), 'last_order': lo, 'total_orders': o['total_orders'], 'revenue': round(o['total_revenue'], 2)})
+                contact = contact_lookup.get(o['_id'], {})
+                dormant_list.append({
+                    'id': o['_id'], 'name': o.get('name', 'Unknown'), 'type': o.get('type', 'doctor'),
+                    'phone': contact.get('phone') or o.get('phone', ''),
+                    'email': contact.get('email', ''), 'city': contact.get('city', ''),
+                    'address': contact.get('address', ''), 'status': contact.get('status', ''),
+                    'last_order': lo, 'total_orders': o['total_orders'], 'revenue': round(o['total_revenue'], 2)
+                })
         dormant_list.sort(key=lambda x: x['last_order'])
         dormant_data[f'{d_days}_days'] = dormant_list[:20]
 

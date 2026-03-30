@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { agenciesAPI, emailAPI, tasksAPI, transportAPI, locationAPI, followupsAPI, paymentsAPI } from '../lib/api';
 import WhatsAppDirectDialog from '../components/WhatsAppDirectDialog';
+import { FollowUpDialog } from '../components/FollowUpDialog';
 import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -44,16 +45,14 @@ export const Agencies = () => {
 
   // Follow-up
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
-  const [followUpData, setFollowUpData] = useState({ notes: '', new_status: '', next_follow_up_date: '', next_follow_up_time: '' });
-  const [followUpHistory, setFollowUpHistory] = useState([]);
-  const [loadingFollowUps, setLoadingFollowUps] = useState(false);
-  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
 
   const [notes, setNotes] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', priority: 'moderate' });
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingFollowUps, setLoadingFollowUps] = useState(false);
+  const [followUpHistory, setFollowUpHistory] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '', proprietor_name: '', gst_number: '', drug_license: '',
@@ -157,28 +156,9 @@ export const Agencies = () => {
   };
 
   // Follow-up handlers
-  const openFollowUpModal = async (agency) => {
+  const openFollowUpModal = (agency) => {
     setSelectedAgency(agency);
-    setFollowUpData({ notes: '', new_status: agency.lead_status || 'Contacted', next_follow_up_date: '', next_follow_up_time: '' });
     setShowFollowUpModal(true);
-    setLoadingFollowUps(true);
-    try { const r = await followupsAPI.getHistory('agency', agency.id); setFollowUpHistory(r.data); }
-    catch (e) { setFollowUpHistory([]); }
-    finally { setLoadingFollowUps(false); }
-  };
-
-  const handleSubmitFollowUp = async () => {
-    if (!followUpData.notes.trim()) { toast.error('Please add follow-up notes'); return; }
-    setFollowUpSubmitting(true);
-    try {
-      await followupsAPI.create({
-        entity_type: 'agency', entity_id: selectedAgency.id, notes: followUpData.notes,
-        new_status: followUpData.new_status || null, next_follow_up_date: followUpData.next_follow_up_date || null,
-        next_follow_up_time: followUpData.next_follow_up_time || null,
-      });
-      toast.success('Follow-up recorded'); setShowFollowUpModal(false); fetchAgencies();
-    } catch (e) { toast.error('Failed to save follow-up'); }
-    finally { setFollowUpSubmitting(false); }
   };
 
   const handleAddNote = async () => {
@@ -366,47 +346,13 @@ export const Agencies = () => {
       </Card>
 
       {/* Follow-Up Modal */}
-      <Dialog open={showFollowUpModal} onOpenChange={setShowFollowUpModal}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><PhoneCall className="w-5 h-5 text-green-600" />Follow-up: {selectedAgency?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="flex items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg">
-              <span className="text-slate-500">Current Status:</span>
-              <Badge className={getStatusColor(selectedAgency?.lead_status)}>{selectedAgency?.lead_status}</Badge>
-              {selectedAgency?.follow_up_date && <span className="text-slate-500 ml-2">| Follow-up: {formatDate(selectedAgency?.follow_up_date)}</span>}
-            </div>
-            <div className="space-y-2"><Label>What happened? *</Label><Textarea value={followUpData.notes} onChange={(e) => setFollowUpData({...followUpData, notes: e.target.value})} placeholder="e.g., Called and they asked to call back after 2 days..." rows={3} data-testid="followup-notes-input" /></div>
-            <div className="space-y-2"><Label>Update Lead Status</Label>
-              <Select value={followUpData.new_status} onValueChange={(v) => setFollowUpData({...followUpData, new_status: v})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{LEAD_STATUSES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}</SelectContent></Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Next Follow-up Date</Label><Input type="date" value={followUpData.next_follow_up_date} onChange={(e) => setFollowUpData({...followUpData, next_follow_up_date: e.target.value})} data-testid="followup-date-input" /></div>
-              <div className="space-y-2"><Label>Time (Optional)</Label><Input type="time" value={followUpData.next_follow_up_time} onChange={(e) => setFollowUpData({...followUpData, next_follow_up_time: e.target.value})} /></div>
-            </div>
-            <div className="border-t pt-4">
-              <h4 className="font-medium flex items-center gap-2 mb-3 text-sm"><History className="w-4 h-4" /> Follow-up History</h4>
-              {loadingFollowUps ? <Loader2 className="w-4 h-4 animate-spin" /> : followUpHistory.length > 0 ? (
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {followUpHistory.map((fu) => (
-                    <div key={fu.id} className={`p-3 rounded-lg text-sm border-l-4 ${fu.status === 'open' ? 'border-l-green-500 bg-green-50' : 'border-l-slate-300 bg-slate-50'}`}>
-                      <div className="flex items-start justify-between gap-2"><p className="text-slate-800 flex-1">{fu.notes}</p><Badge variant="outline" className={fu.status === 'open' ? 'text-green-600 border-green-300' : 'text-slate-400 border-slate-200'}>{fu.status}</Badge></div>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        <span>{fu.created_by}</span><span>{formatDateTime(fu.created_at)}</span>
-                        {fu.new_status && <span className="flex items-center gap-1"><ArrowRight className="w-3 h-3" /><Badge className={`${getStatusColor(fu.new_status)} text-[10px]`}>{fu.new_status}</Badge></span>}
-                        {fu.next_follow_up_date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Next: {formatDate(fu.next_follow_up_date)}</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-slate-400">No follow-up history yet</p>}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFollowUpModal(false)}>Cancel</Button>
-            <Button onClick={handleSubmitFollowUp} disabled={followUpSubmitting} data-testid="followup-submit-btn">{followUpSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save Follow-up</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FollowUpDialog
+        open={showFollowUpModal}
+        onClose={() => setShowFollowUpModal(false)}
+        entity={selectedAgency}
+        entityType="agency"
+        onFollowUpSaved={fetchAgencies}
+      />
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal || showEditModal} onOpenChange={() => { setShowAddModal(false); setShowEditModal(false); resetForm(); }}>

@@ -3557,6 +3557,248 @@ async def get_comprehensive_dashboard_stats(current_user: dict = Depends(get_cur
     }
 
 
+# ============== ANALYTICS REPORTS ==============
+
+@api_router.get("/analytics/reports")
+async def get_analytics_reports(period: str = "6months", current_user: dict = Depends(get_current_user)):
+    """Comprehensive analytics reports with time-series data for charts"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can view analytics")
+
+    now = datetime.now(timezone.utc)
+    period_map = {'1month': 30, '3months': 90, '6months': 180, '1year': 365}
+    days = period_map.get(period, 180)
+    start_date = (now - timedelta(days=days)).isoformat()
+
+    # ---- REVENUE & ORDERS OVER TIME (monthly) ----
+    monthly_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$addFields': {'month': {'$substr': ['$created_at', 0, 7]}}},
+        {'$unwind': {'path': '$items', 'preserveNullAndEmptyArrays': True}},
+        {'$addFields': {
+            'item_revenue': {'$multiply': [
+                {'$ifNull': ['$items.rate', 0]},
+                {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}
+            ]}
+        }},
+        {'$group': {
+            '_id': '$month',
+            'order_ids': {'$addToSet': '$id'},
+            'total_revenue': {'$sum': '$item_revenue'},
+        }},
+        {'$addFields': {'order_count': {'$size': '$order_ids'}}},
+        {'$project': {'_id': 1, 'order_count': 1, 'total_revenue': 1, 'avg_value': {'$cond': [{'$gt': ['$order_count', 0]}, {'$divide': ['$total_revenue', '$order_count']}, 0]}}},
+        {'$sort': {'_id': 1}}
+    ]
+    monthly_data = await db.orders.aggregate(monthly_pipeline).to_list(24)
+    orders_over_time = [{'month': m['_id'], 'orders': m['order_count'], 'revenue': round(m['total_revenue'], 2), 'avg_value': round(m['avg_value'], 2)} for m in monthly_data]
+
+    # ---- ORDER STATUS DISTRIBUTION ----
+    status_pipeline = [{'$group': {'_id': '$status', 'count': {'$sum': 1}}}]
+    status_data = await db.orders.aggregate(status_pipeline).to_list(20)
+    order_status_dist = [{'status': s['_id'] or 'unknown', 'count': s['count']} for s in status_data]
+
+    # ---- TOP PRODUCTS BY REVENUE & QUANTITY ----
+    product_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$unwind': '$items'},
+        {'$addFields': {
+            'qty_num': {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}},
+        }},
+        {'$addFields': {'item_rev': {'$multiply': ['$qty_num', {'$ifNull': ['$items.rate', 0]}]}}},
+        {'$group': {
+            '_id': '$items.item_name',
+            'total_qty': {'$sum': '$qty_num'},
+            'total_revenue': {'$sum': '$item_rev'},
+            'order_count': {'$sum': 1}
+        }},
+        {'$sort': {'total_revenue': -1}},
+        {'$limit': 15}
+    ]
+    try:
+        product_data = await db.orders.aggregate(product_pipeline).to_list(15)
+    except Exception:
+        product_pipeline_simple = [
+            {'$match': {'created_at': {'$gte': start_date}}},
+            {'$unwind': '$items'},
+            {'$group': {'_id': '$items.item_name', 'order_count': {'$sum': 1}}},
+            {'$sort': {'order_count': -1}},
+            {'$limit': 15}
+        ]
+        product_data = await db.orders.aggregate(product_pipeline_simple).to_list(15)
+    top_products = [{'name': p['_id'] or 'Unknown', 'qty': int(p.get('total_qty', 0)), 'revenue': round(p.get('total_revenue', 0), 2), 'orders': p.get('order_count', 0)} for p in product_data]
+
+    # ---- SLOW MOVERS (items with 0 or very few orders) ----
+    all_items = await db.items.find({'is_hidden': {'$ne': True}}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1}).to_list(5000)
+    ordered_items_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$unwind': '$items'},
+        {'$group': {'_id': '$items.item_name', 'count': {'$sum': 1}}}
+    ]
+    ordered_items = await db.orders.aggregate(ordered_items_pipeline).to_list(5000)
+    ordered_map = {o['_id']: o['count'] for o in ordered_items if o['_id']}
+    slow_movers = []
+    for item in all_items:
+        n = item.get('item_name')
+        cnt = ordered_map.get(n, 0)
+        slow_movers.append({'name': n, 'code': item.get('item_code', ''), 'orders': cnt})
+    slow_movers.sort(key=lambda x: x['orders'])
+    slow_movers = slow_movers[:15]
+
+    # ---- TOP DOCTORS BY REVENUE ----
+    doctor_rev_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}, 'doctor_type': {'$in': ['doctor', None]}}},
+        {'$unwind': '$items'},
+        {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
+        {'$group': {
+            '_id': '$doctor_id',
+            'name': {'$first': '$doctor_name'},
+            'total_revenue': {'$sum': '$item_rev'},
+            'order_ids': {'$addToSet': '$id'}
+        }},
+        {'$addFields': {'order_count': {'$size': '$order_ids'}}},
+        {'$sort': {'total_revenue': -1}},
+        {'$limit': 10}
+    ]
+    top_doctors_data = await db.orders.aggregate(doctor_rev_pipeline).to_list(10)
+    top_doctors = [{'id': d['_id'], 'name': d.get('name', 'Unknown'), 'revenue': round(d['total_revenue'], 2), 'orders': d['order_count']} for d in top_doctors_data]
+
+    # ---- TOP MEDICALS BY REVENUE ----
+    medical_rev_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}, 'doctor_type': 'medical'}},
+        {'$unwind': '$items'},
+        {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
+        {'$group': {
+            '_id': '$doctor_id',
+            'name': {'$first': '$doctor_name'},
+            'total_revenue': {'$sum': '$item_rev'},
+            'order_ids': {'$addToSet': '$id'}
+        }},
+        {'$addFields': {'order_count': {'$size': '$order_ids'}}},
+        {'$sort': {'total_revenue': -1}},
+        {'$limit': 10}
+    ]
+    top_medicals_data = await db.orders.aggregate(medical_rev_pipeline).to_list(10)
+    top_medicals = [{'id': m['_id'], 'name': m.get('name', 'Unknown'), 'revenue': round(m['total_revenue'], 2), 'orders': m['order_count']} for m in top_medicals_data]
+
+    # ---- TOP AGENCIES BY REVENUE ----
+    agency_rev_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}, 'doctor_type': 'agency'}},
+        {'$unwind': '$items'},
+        {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
+        {'$group': {
+            '_id': '$doctor_id',
+            'name': {'$first': '$doctor_name'},
+            'total_revenue': {'$sum': '$item_rev'},
+            'order_ids': {'$addToSet': '$id'}
+        }},
+        {'$addFields': {'order_count': {'$size': '$order_ids'}}},
+        {'$sort': {'total_revenue': -1}},
+        {'$limit': 10}
+    ]
+    top_agencies_data = await db.orders.aggregate(agency_rev_pipeline).to_list(10)
+    top_agencies = [{'id': a['_id'], 'name': a.get('name', 'Unknown'), 'revenue': round(a['total_revenue'], 2), 'orders': a['order_count']} for a in top_agencies_data]
+
+    # ---- FREQUENT ORDERERS (ordered 3+ times in period) ----
+    freq_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$unwind': '$items'},
+        {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
+        {'$group': {
+            '_id': '$doctor_id',
+            'name': {'$first': '$doctor_name'},
+            'type': {'$first': '$doctor_type'},
+            'total_revenue': {'$sum': '$item_rev'},
+            'order_ids': {'$addToSet': '$id'},
+            'last_order': {'$max': '$created_at'}
+        }},
+        {'$addFields': {'order_count': {'$size': '$order_ids'}}},
+        {'$match': {'order_count': {'$gte': 3}}},
+        {'$sort': {'order_count': -1}},
+        {'$limit': 15}
+    ]
+    frequent_data = await db.orders.aggregate(freq_pipeline).to_list(15)
+    frequent_orderers = [{'id': f['_id'], 'name': f.get('name', 'Unknown'), 'type': f.get('type', 'doctor'), 'orders': f['order_count'], 'revenue': round(f['total_revenue'], 2), 'last_order': f.get('last_order', '')} for f in frequent_data]
+
+    # ---- DORMANT CUSTOMERS (had orders before but none in last X days) ----
+    dormant_days_list = [30, 60, 90]
+    dormant_data = {}
+    # Pre-compute all orderers with revenue from items
+    all_orderers = await db.orders.aggregate([
+        {'$unwind': '$items'},
+        {'$addFields': {'item_rev': {'$multiply': [{'$ifNull': ['$items.rate', 0]}, {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}]}}},
+        {'$group': {'_id': '$doctor_id', 'name': {'$first': '$doctor_name'}, 'type': {'$first': '$doctor_type'}, 'last_order': {'$max': '$created_at'}, 'order_ids': {'$addToSet': '$id'}, 'total_revenue': {'$sum': '$item_rev'}}},
+        {'$addFields': {'total_orders': {'$size': '$order_ids'}}}
+    ]).to_list(5000)
+    for d_days in dormant_days_list:
+        cutoff = (now - timedelta(days=d_days)).isoformat()
+        dormant_list = []
+        for o in all_orderers:
+            lo = o.get('last_order', '')
+            if lo and lo < cutoff and o['total_orders'] > 0:
+                dormant_list.append({'id': o['_id'], 'name': o.get('name', 'Unknown'), 'type': o.get('type', 'doctor'), 'last_order': lo, 'total_orders': o['total_orders'], 'revenue': round(o['total_revenue'], 2)})
+        dormant_list.sort(key=lambda x: x['last_order'])
+        dormant_data[f'{d_days}_days'] = dormant_list[:20]
+
+    # ---- ORDERS BY DAY OF WEEK ----
+    dow_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$addFields': {'dow': {'$dayOfWeek': {'$dateFromString': {'dateString': '$created_at', 'onError': now}}}}},
+        {'$group': {'_id': '$dow', 'count': {'$sum': 1}}},
+        {'$sort': {'_id': 1}}
+    ]
+    try:
+        dow_data = await db.orders.aggregate(dow_pipeline).to_list(7)
+        day_names = ['', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        orders_by_day = [{'day': day_names[d['_id']] if d['_id'] < len(day_names) else str(d['_id']), 'orders': d['count']} for d in dow_data]
+    except Exception:
+        orders_by_day = []
+
+    # ---- CUSTOMER ENTITY COUNTS ----
+    entity_counts = {
+        'doctors': await db.doctors.count_documents({}),
+        'medicals': await db.medicals.count_documents({}),
+        'agencies': await db.agencies.count_documents({})
+    }
+
+    # ---- PAYMENT MODE DISTRIBUTION ----
+    payment_pipeline = [
+        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$group': {'_id': '$payment_mode', 'count': {'$sum': 1}, 'total': {'$sum': {'$ifNull': ['$amount', 0]}}}},
+        {'$sort': {'total': -1}}
+    ]
+    payment_data = await db.payments.aggregate(payment_pipeline).to_list(20)
+    payment_modes = [{'mode': p['_id'] or 'Unknown', 'count': p['count'], 'total': round(p['total'], 2)} for p in payment_data]
+
+    # ---- SUMMARY TOTALS ----
+    total_revenue = sum(m.get('revenue', 0) for m in orders_over_time)
+    total_orders = await db.orders.count_documents({'created_at': {'$gte': start_date}})
+    total_payments = sum(p['total'] for p in payment_modes)
+
+    return {
+        'period': period,
+        'summary': {
+            'total_revenue': round(total_revenue, 2),
+            'total_orders': total_orders,
+            'total_payments': round(total_payments, 2),
+            'total_customers': entity_counts['doctors'] + entity_counts['medicals'] + entity_counts['agencies'],
+            'entity_counts': entity_counts
+        },
+        'orders_over_time': orders_over_time,
+        'order_status_distribution': order_status_dist,
+        'orders_by_day_of_week': orders_by_day,
+        'top_products': top_products,
+        'slow_movers': slow_movers,
+        'top_doctors': top_doctors,
+        'top_medicals': top_medicals,
+        'top_agencies': top_agencies,
+        'frequent_orderers': frequent_orderers,
+        'dormant_customers': dormant_data,
+        'payment_modes': payment_modes,
+    }
+
+
+
 # ============== ITEM ROUTES ==============
 
 @api_router.get("/item-categories", response_model=List[CategoryResponse])

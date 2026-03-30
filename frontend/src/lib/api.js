@@ -139,6 +139,10 @@ export const dashboardAPI = {
   getComprehensiveStats: () => api.get('/dashboard/comprehensive-stats'),
 };
 
+export const analyticsAPI = {
+  getReports: (period = '6months') => api.get('/analytics/reports', { params: { period } }),
+};
+
 // Items APIs
 export const itemsAPI = {
   getAll: (params) => api.get('/items', { params }),

@@ -1,72 +1,60 @@
 # VMP CRM - Product Requirements Document
 
 ## Original Problem Statement
-Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distribution management. Features include:
-- Admin, Customer, and Medical Representative (MR) modules
-- Dynamic multi-API WhatsApp configuration (BotMasterSender + AKNexus)
-- Offline MR ordering, automated ledgers, dual-channel notifications (Email + WA)
-- Role-based pricing, pending/out-of-stock item management
+Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distribution management. Features include Admin, Customer, and Medical Representative (MR) modules with WhatsApp/Email notifications, offline ordering, and analytics.
 
 ## Architecture
-- **Frontend**: React, Tailwind, Shadcn UI
+- **Frontend**: React, Tailwind, Shadcn UI, Recharts
 - **Backend**: FastAPI, MongoDB (Motor), Multiple WhatsApp API styles
 - **Key**: AKNexus determines message type via URL extension suffix (.pdf, .jpg)
 
-## Completed Features (All Tested)
+## Completed Features
 
-### Phase 1 - Core CRM
-- Admin/MR/Customer authentication & portals
+### Core CRM
+- Admin/MR/Customer portals with authentication
 - Doctor/Medical/Agency CRUD with lead management
 - Order management with role-based pricing
 - Item/Product management with images
-- Email & WhatsApp notifications
-- Follow-up tracking, notes, tasks
-- Payment tracking & ledger management
+- Email & WhatsApp notifications, Follow-up tracking, Payment tracking
 
-### Phase 2 - Role-Based Enhancements
-- MR & Admin Order Form role-based default rate mapping
-- Pending/Out-of-stock items displayed during order creation (Admin, MR, Customer)
+### WhatsApp Enhancements
+- Dual WhatsApp API (BotMasterSender + AKNexus) with UI toggle
+- Individual WhatsApp message in Doctors/Medicals/Agencies (Text/Image/PDF/Product with role-specific pricing)
+- WhatsApp file-to-text fallback, AKNexus image/PDF extensions
 
-### Phase 3 - WhatsApp Multi-API
-- Dual WhatsApp API support (BotMasterSender Query Param + AKNexus REST)
-- UI for switching/testing WhatsApp configs
-- WhatsApp file-to-text fallback for failed media
-- Fixed AKNexus image/PDF extensions (.jpg, .pdf endpoints)
+### Marketing
+- Campaign creation with image AND PDF attachments
+- Multi-recipient bulk sending with batch control
 
-### Phase 4 - Direct WhatsApp Messaging (Latest - Mar 28, 2026)
-- Individual WhatsApp message buttons in Doctors, Medicals, Agencies tables
-- Enhanced dialog with 4 message types: **Text, Image, PDF, Product**
-- Product selection from items list with search, thumbnails, MRP display
-- Shared `WhatsAppDirectDialog` component (deduplicated across 3 pages)
-- Backend `POST /api/whatsapp/send-direct` supports all message types
-- Tested: 100% backend (10/10), 100% frontend (all 3 pages)
+### Message Templates (Mar 30, 2026)
+- 18 WhatsApp + 13 Email templates — all visible, editable, with preview
+- Variable documentation, live preview with sample data, search, reset to default
+
+### Reports & Analytics (Mar 30, 2026)
+- **Overview**: Revenue/Orders trend, status distribution, payment modes
+- **Products**: Top products by revenue/qty, slow movers
+- **Customers**: Top doctors/medicals/agencies, frequent orderers, dormant customers (30/60/90 days)
+- **Orders**: Monthly trends, day-of-week analysis, avg order value
+- **Activity**: Revenue bars, customer distribution pie, dormant summary
+- Period selector: 1mo/3mo/6mo/1yr
+- Testing: 100% backend (17/17), 100% frontend
 
 ## Key API Endpoints
-- `POST /api/whatsapp/send-direct` - Send direct WA (text/image/pdf/product)
-- `POST /api/whatsapp-config` & `PUT /api/whatsapp-config/{id}/activate`
-- `GET /api/pending-items/doctor/{phone}`
-- `GET /api/items/{item_id}/image.jpg` (AKNexus image endpoint)
-
-## DB Schema (Key Collections)
-- `whatsapp_config`: name, api_url, auth_token, api_type, instance_id, is_active
-- `pending_items`: doctor_phone, item_id, quantity, original_order_id
-- `items`: item_name, item_code, mrp, rate_doctors/medicals/agencies, image_webp
+- `GET /api/analytics/reports?period=6months` — Comprehensive analytics
+- `POST /api/whatsapp/send-direct` — Direct WA (text/image/pdf/product)
+- `GET/PUT /api/message-templates` — Template CRUD
+- `POST /api/marketing/campaigns` — Campaign with image + PDF
 
 ## Tech Debt
-- **P0**: `server.py` is ~12,950 lines - needs modular refactoring into routes/
+- **P0**: `server.py` is ~13,200 lines — needs modular refactoring into routes/
 
 ## Backlog (P2)
-- Stock/Inventory Management (quantity tracking, low-stock alerts)
-- Sales reports with charts
-- Data import/export functionality
+- Stock/Inventory Management
 - Sales target management for MRs
-- VPS installation script (install.sh)
-- Refactor follow-up UI (extract duplicated logic)
-
-## 3rd Party Integrations
-- BotMasterSender API (WhatsApp Query Params) — User API Key
-- AKNexus API (WhatsApp REST) — User Access Token + Instance ID
-- Custom SMTP (Email) — User Credentials
+- Data import/export
+- VPS installation script
+- AI Insights for analytics (user requested: add later)
+- Refactor follow-up UI
 
 ## Test Credentials
 - Admin: admin@vmpcrm.com / admin123

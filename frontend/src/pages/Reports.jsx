@@ -229,7 +229,7 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={140} />
-                    <Tooltip formatter={(v, n) => [n === 'value' ? `Rs.${v.toLocaleString()}` : v, n === 'value' ? 'Value (Rate x Qty)' : n === 'qty' ? 'Total Qty' : 'Orders']} />
+                    <Tooltip formatter={(v) => [`${v} pcs`, 'Total Qty']} />
                     <Legend />
                     <Bar dataKey="qty" fill="#2563eb" name="Total Qty" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -307,10 +307,12 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 9, angle: -35, textAnchor: 'end' }} height={80} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v, n) => [n === 'value' ? `Rs.${v.toLocaleString()}` : `${v} pcs`, n === 'value' ? 'Value' : 'Qty']} />
+                    <Tooltip formatter={(v, name) => {
+                      if (name === 'value') return [`Rs.${v.toLocaleString()}`, 'Value'];
+                      return [`${v} pcs`, 'Qty'];
+                    }} />
                     <Legend />
                     <Bar dataKey="value" fill="#10b981" name="Value (Rs.)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="qty" fill="#2563eb" name="Qty (pcs)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : <EmptyState text="No data" />}

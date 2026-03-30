@@ -11787,15 +11787,6 @@ async def delete_whatsapp_log(log_id: str, current_user: dict = Depends(get_curr
     
     return {"message": "Log deleted successfully"}
 
-@api_router.delete("/whatsapp-logs")
-async def clear_whatsapp_logs(current_user: dict = Depends(get_current_user)):
-    """Clear all WhatsApp logs (admin only)"""
-    if current_user['role'] != 'admin':
-        raise HTTPException(status_code=403, detail="Only admins can clear logs")
-    
-    result = await db.whatsapp_logs.delete_many({})
-    return {"message": f"Deleted {result.deleted_count} logs"}
-
 
 # ============== ADMIN PROFILE ROUTES ==============
 

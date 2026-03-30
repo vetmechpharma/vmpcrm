@@ -221,7 +221,7 @@ const Reports = () => {
 
           {/* Top Products Chart */}
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Top Products by Revenue</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Top Products by Order Quantity (Confirmed Orders)</CardTitle></CardHeader>
             <CardContent>
               {topProducts.length ? (
                 <ResponsiveContainer width="100%" height={350}>
@@ -229,37 +229,40 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={140} />
-                    <Tooltip formatter={(v, n) => [n === 'revenue' ? `Rs.${v.toLocaleString()}` : v, n === 'revenue' ? 'Revenue' : n === 'qty' ? 'Qty Sold' : 'Orders']} />
+                    <Tooltip formatter={(v, n) => [n === 'value' ? `Rs.${v.toLocaleString()}` : v, n === 'value' ? 'Value (Rate x Qty)' : n === 'qty' ? 'Total Qty' : 'Orders']} />
                     <Legend />
-                    <Bar dataKey="revenue" fill="#10b981" name="Revenue" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="qty" fill="#2563eb" name="Total Qty" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : <EmptyState text="No product data" />}
             </CardContent>
           </Card>
 
-          {/* Top Products Table + Qty */}
+          {/* Top Products Table */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Top Products - Details</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Product Performance — Details</CardTitle></CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm" data-testid="top-products-table">
                     <thead><tr className="border-b text-left text-xs text-slate-500">
-                      <th className="pb-2 pr-2">#</th><th className="pb-2 pr-2">Product</th><th className="pb-2 pr-2 text-right">Qty</th><th className="pb-2 pr-2 text-right">Revenue</th><th className="pb-2 text-right">Orders</th>
+                      <th className="pb-2 pr-2">#</th><th className="pb-2 pr-2">Product</th><th className="pb-2 pr-2">Code</th><th className="pb-2 pr-2 text-right">Qty</th><th className="pb-2 pr-2 text-right">Avg Rate</th><th className="pb-2 pr-2 text-right">Value</th><th className="pb-2 text-right">Orders</th>
                     </tr></thead>
                     <tbody>
                       {topProducts.map((p, i) => (
                         <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                           <td className="py-1.5 pr-2 text-xs text-slate-400">{i + 1}</td>
                           <td className="py-1.5 pr-2 font-medium text-xs">{p.name}</td>
-                          <td className="py-1.5 pr-2 text-right text-xs">{p.qty}</td>
-                          <td className="py-1.5 pr-2 text-right text-xs text-green-600 font-medium">Rs.{p.revenue.toLocaleString()}</td>
+                          <td className="py-1.5 pr-2 text-xs text-slate-400">{p.code}</td>
+                          <td className="py-1.5 pr-2 text-right text-xs font-bold text-blue-600">{p.qty}</td>
+                          <td className="py-1.5 pr-2 text-right text-xs text-slate-600">Rs.{p.avg_rate}</td>
+                          <td className="py-1.5 pr-2 text-right text-xs text-green-600 font-medium">Rs.{p.value?.toLocaleString()}</td>
                           <td className="py-1.5 text-right text-xs">{p.orders}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  <p className="text-[10px] text-slate-400 mt-2">* Value = Rate x Qty (confirmed orders only, excl. tax)</p>
                 </div>
               </CardContent>
             </Card>
@@ -270,31 +273,33 @@ const Reports = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="slow-movers-table">
                       <thead><tr className="border-b text-left text-xs text-slate-500">
-                        <th className="pb-2 pr-2">Product</th><th className="pb-2 pr-2">Code</th><th className="pb-2 text-right">Orders</th>
+                        <th className="pb-2 pr-2">Product</th><th className="pb-2 pr-2">Code</th><th className="pb-2 pr-2 text-right">Qty Sold</th><th className="pb-2 text-right">Orders</th>
                       </tr></thead>
                       <tbody>
                         {slowMovers.map((p, i) => (
                           <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                             <td className="py-1.5 pr-2 font-medium text-xs">{p.name}</td>
                             <td className="py-1.5 pr-2 text-xs text-slate-400">{p.code}</td>
-                            <td className="py-1.5 text-right text-xs">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.orders === 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                                {p.orders === 0 ? 'No orders' : `${p.orders} orders`}
+                            <td className="py-1.5 pr-2 text-right text-xs">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.qty === 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                {p.qty === 0 ? '0 pcs' : `${p.qty} pcs`}
                               </span>
                             </td>
+                            <td className="py-1.5 text-right text-xs text-slate-500">{p.orders}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                    <p className="text-[10px] text-slate-400 mt-2">* Confirmed orders only</p>
                   </div>
                 ) : <EmptyState text="All products are selling well!" />}
               </CardContent>
             </Card>
           </div>
 
-          {/* Products by Qty Chart */}
+          {/* Products Value Chart (Rate x Qty) */}
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Products by Quantity Sold</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Product Value (Rate x Qty) — Confirmed Orders</CardTitle></CardHeader>
             <CardContent>
               {topProducts.length ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -302,9 +307,10 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="name" tick={{ fontSize: 9, angle: -35, textAnchor: 'end' }} height={80} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="qty" fill="#2563eb" name="Qty Sold" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="orders" fill="#f59e0b" name="Order Count" radius={[4, 4, 0, 0]} />
+                    <Tooltip formatter={(v, n) => [n === 'value' ? `Rs.${v.toLocaleString()}` : `${v} pcs`, n === 'value' ? 'Value' : 'Qty']} />
+                    <Legend />
+                    <Bar dataKey="value" fill="#10b981" name="Value (Rs.)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="qty" fill="#2563eb" name="Qty (pcs)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : <EmptyState text="No data" />}

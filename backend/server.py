@@ -3598,51 +3598,55 @@ async def get_analytics_reports(period: str = "6months", current_user: dict = De
     status_data = await db.orders.aggregate(status_pipeline).to_list(20)
     order_status_dist = [{'status': s['_id'] or 'unknown', 'count': s['count']} for s in status_data]
 
-    # ---- TOP PRODUCTS BY REVENUE & QUANTITY ----
+    # ---- TOP PRODUCTS BY QTY (confirmed orders only: rate * qty = value) ----
+    confirmed_statuses = ['confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'transferred']
     product_pipeline = [
-        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$match': {'created_at': {'$gte': start_date}, 'status': {'$in': confirmed_statuses}}},
         {'$unwind': '$items'},
         {'$addFields': {
             'qty_num': {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}},
         }},
-        {'$addFields': {'item_rev': {'$multiply': ['$qty_num', {'$ifNull': ['$items.rate', 0]}]}}},
+        {'$addFields': {'item_value': {'$multiply': ['$qty_num', {'$ifNull': ['$items.rate', 0]}]}}},
         {'$group': {
             '_id': '$items.item_name',
+            'item_code': {'$first': '$items.item_code'},
             'total_qty': {'$sum': '$qty_num'},
-            'total_revenue': {'$sum': '$item_rev'},
+            'total_value': {'$sum': '$item_value'},
+            'avg_rate': {'$avg': {'$ifNull': ['$items.rate', 0]}},
             'order_count': {'$sum': 1}
         }},
-        {'$sort': {'total_revenue': -1}},
-        {'$limit': 15}
+        {'$sort': {'total_qty': -1}},
+        {'$limit': 20}
     ]
     try:
-        product_data = await db.orders.aggregate(product_pipeline).to_list(15)
+        product_data = await db.orders.aggregate(product_pipeline).to_list(20)
     except Exception:
         product_pipeline_simple = [
-            {'$match': {'created_at': {'$gte': start_date}}},
+            {'$match': {'created_at': {'$gte': start_date}, 'status': {'$in': confirmed_statuses}}},
             {'$unwind': '$items'},
-            {'$group': {'_id': '$items.item_name', 'order_count': {'$sum': 1}}},
+            {'$group': {'_id': '$items.item_name', 'item_code': {'$first': '$items.item_code'}, 'order_count': {'$sum': 1}}},
             {'$sort': {'order_count': -1}},
-            {'$limit': 15}
+            {'$limit': 20}
         ]
-        product_data = await db.orders.aggregate(product_pipeline_simple).to_list(15)
-    top_products = [{'name': p['_id'] or 'Unknown', 'qty': int(p.get('total_qty', 0)), 'revenue': round(p.get('total_revenue', 0), 2), 'orders': p.get('order_count', 0)} for p in product_data]
+        product_data = await db.orders.aggregate(product_pipeline_simple).to_list(20)
+    top_products = [{'name': p['_id'] or 'Unknown', 'code': p.get('item_code', ''), 'qty': int(p.get('total_qty', 0)), 'value': round(p.get('total_value', 0), 2), 'avg_rate': round(p.get('avg_rate', 0), 2), 'orders': p.get('order_count', 0)} for p in product_data]
 
-    # ---- SLOW MOVERS (items with 0 or very few orders) ----
+    # ---- SLOW MOVERS (items with 0 or very few confirmed orders) ----
     all_items = await db.items.find({'is_hidden': {'$ne': True}}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1}).to_list(5000)
     ordered_items_pipeline = [
-        {'$match': {'created_at': {'$gte': start_date}}},
+        {'$match': {'created_at': {'$gte': start_date}, 'status': {'$in': confirmed_statuses}}},
         {'$unwind': '$items'},
-        {'$group': {'_id': '$items.item_name', 'count': {'$sum': 1}}}
+        {'$addFields': {'qty_num': {'$convert': {'input': {'$ifNull': ['$items.quantity', '1']}, 'to': 'double', 'onError': 1, 'onNull': 1}}}},
+        {'$group': {'_id': '$items.item_name', 'total_qty': {'$sum': '$qty_num'}, 'count': {'$sum': 1}}}
     ]
     ordered_items = await db.orders.aggregate(ordered_items_pipeline).to_list(5000)
-    ordered_map = {o['_id']: o['count'] for o in ordered_items if o['_id']}
+    ordered_map = {o['_id']: {'count': o['count'], 'qty': int(o.get('total_qty', 0))} for o in ordered_items if o['_id']}
     slow_movers = []
     for item in all_items:
         n = item.get('item_name')
-        cnt = ordered_map.get(n, 0)
-        slow_movers.append({'name': n, 'code': item.get('item_code', ''), 'orders': cnt})
-    slow_movers.sort(key=lambda x: x['orders'])
+        info = ordered_map.get(n, {'count': 0, 'qty': 0})
+        slow_movers.append({'name': n, 'code': item.get('item_code', ''), 'orders': info['count'], 'qty': info['qty']})
+    slow_movers.sort(key=lambda x: x['qty'])
     slow_movers = slow_movers[:15]
 
     # ---- TOP DOCTORS BY REVENUE ----

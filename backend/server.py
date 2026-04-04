@@ -14,7 +14,7 @@ from deps import db, client, logger
 from routes import (
     auth, doctors, medicals, agencies, tasks,
     email_routes, dashboard, items, payments,
-    company_settings, customers, otp_orders, fallback_otp,
+    company_settings, customers, fallback_otp,
     marketing, orders_admin, pending_items, transport,
     expenses, greeting_templates, followups, reminders,
     whatsapp_config, message_templates, push,
@@ -49,7 +49,7 @@ async def health_check():
 route_modules = [
     auth, doctors, medicals, agencies, tasks,
     email_routes, dashboard, items, payments,
-    company_settings, customers, otp_orders, fallback_otp,
+    company_settings, customers, fallback_otp,
     marketing, orders_admin, pending_items, transport,
     expenses, greeting_templates, followups, reminders,
     whatsapp_config, message_templates, push,

@@ -118,6 +118,80 @@ async def execute_rest_api_wa(config, receiver, message=None, file_url=None, fil
         return response
 
 
+async def execute_botmaster_v3_media(config, receiver, message=None, file_url=None, file_caption=None):
+    """Send media via BotMasterSender v3 API (JSON with mediaurl, fallback to uploadFile)."""
+    # Build v3 URL from existing v1 URL
+    base_url = config.get('api_url', '')
+    v3_url = base_url.replace('/v1/', '/v3/').replace('/v1', '/v3')
+    if '/v3' not in v3_url:
+        v3_url = 'https://api.botmastersender.com/api/v3/'
+
+    auth_token = config.get('auth_token', '')
+    caption = file_caption or message or ''
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Attempt 1: JSON POST with mediaurl
+        try:
+            payload = {
+                'authToken': auth_token,
+                'receiverId': receiver,
+                'action': 'sendFile',
+                'mediaurl': file_url,
+                'messageText': caption,
+            }
+            logger.info(f"BotMaster v3 mediaurl: {v3_url} -> {receiver}, url={file_url[:80]}")
+            response = await client.post(v3_url, json=payload, headers={'Content-Type': 'application/json'})
+            body = response.text.strip()
+
+            if response.status_code == 200 and ('"success":true' in body or '"success": true' in body):
+                logger.info(f"BotMaster v3 mediaurl success: {body[:200]}")
+                return response
+            else:
+                logger.warning(f"BotMaster v3 mediaurl failed (status={response.status_code}, body={body[:300]}). Trying uploadFile...")
+        except Exception as e:
+            logger.warning(f"BotMaster v3 mediaurl error: {e}. Trying uploadFile...")
+
+        # Attempt 2: Download file and re-upload via multipart/form-data
+        try:
+            file_resp = await client.get(file_url, follow_redirects=True)
+            if file_resp.status_code != 200:
+                logger.error(f"Failed to download file for upload: {file_url} -> {file_resp.status_code}")
+                return None
+
+            # Determine filename from URL
+            from urllib.parse import urlparse
+            path = urlparse(file_url).path
+            filename = path.split('/')[-1] or 'file'
+            if '.' not in filename:
+                content_type = file_resp.headers.get('content-type', '')
+                if 'pdf' in content_type:
+                    filename = 'document.pdf'
+                elif 'image' in content_type:
+                    filename = 'image.jpg'
+                else:
+                    filename = 'file.bin'
+
+            files = {'uploadFile': (filename, file_resp.content)}
+            data = {
+                'authToken': auth_token,
+                'receiverId': receiver,
+                'action': 'sendFile',
+                'messageText': caption,
+            }
+            logger.info(f"BotMaster v3 uploadFile: {v3_url} -> {receiver}, file={filename} ({len(file_resp.content)} bytes)")
+            response = await client.post(v3_url, data=data, files=files)
+            body = response.text.strip()
+
+            if response.status_code == 200 and ('"success":true' in body or '"success": true' in body):
+                logger.info(f"BotMaster v3 uploadFile success: {body[:200]}")
+            else:
+                logger.error(f"BotMaster v3 uploadFile failed: status={response.status_code}, body={body[:300]}")
+            return response
+        except Exception as e:
+            logger.error(f"BotMaster v3 uploadFile error: {e}")
+            return None
+
+
 async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_caption: str = None, config=None):
     """Universal WhatsApp message sender."""
     if not config:
@@ -142,22 +216,27 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
                     logger.warning(f"REST API WA failed: status={response.status_code}, body={body[:300]}")
             return response
         else:
-            params = build_wa_params(config, message=message, receiver=clean_receiver, file_url=file_url, file_caption=file_caption)
-            response = await execute_wa_request(config, params)
-            if response and response.status_code == 200 and file_url:
-                body = response.text.strip()
-                is_success = '"success":true' in body or '"success": true' in body
-                if not is_success:
-                    logger.warning(f"WhatsApp file send failed (body={body[:200]}). Falling back to text-only.")
-                    text_params = build_wa_params(config, message=file_caption or message, receiver=clean_receiver)
-                    response = await execute_wa_request(config, text_params)
-                    if response:
-                        logger.info(f"WhatsApp text fallback: status={response.status_code}, body={response.text[:200]}")
-                else:
-                    logger.info(f"WhatsApp file send success: file_url={file_url[:100]}")
-            elif response and response.status_code != 200:
-                logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
-            return response
+            # BotMasterSender (query_param type)
+            if file_url:
+                # Use v3 API for media (mediaurl + uploadFile fallback)
+                response = await execute_botmaster_v3_media(config, clean_receiver, message, file_url, file_caption)
+                if response:
+                    body = response.text.strip()
+                    is_success = response.status_code == 200 and ('"success":true' in body or '"success": true' in body)
+                    if not is_success:
+                        logger.warning(f"BotMaster v3 media failed. Falling back to text-only.")
+                        text_params = build_wa_params(config, message=file_caption or message, receiver=clean_receiver)
+                        response = await execute_wa_request(config, text_params)
+                        if response:
+                            logger.info(f"WhatsApp text fallback: status={response.status_code}, body={response.text[:200]}")
+                return response
+            else:
+                # Text messages - use existing v1 GET method
+                params = build_wa_params(config, message=message, receiver=clean_receiver)
+                response = await execute_wa_request(config, params)
+                if response and response.status_code != 200:
+                    logger.error(f"WhatsApp API error: status={response.status_code}, body={response.text[:500]}")
+                return response
     except Exception as e:
         logger.error(f"WhatsApp send error: {e}")
         return None

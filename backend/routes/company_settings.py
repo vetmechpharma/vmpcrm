@@ -7,6 +7,7 @@ import json
 import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
+from utils.image import process_image_to_webp
 from models.schemas import CompanySettingsCreate, CompanySettingsResponse
 from india_locations import get_all_states, get_districts_by_state
 

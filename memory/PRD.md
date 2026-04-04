@@ -52,6 +52,9 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 - **Follow-up UI** extracted to shared FollowUpDialog component
 - **VPS install.sh** for Ubuntu 22.04/24.04 with web-based installer
 
+## Bug Fixes
+- **Apr 4, 2026**: Fixed missing `process_image_to_webp` import in `routes/marketing.py` and `routes/company_settings.py` — marketing campaign images and company logo/background uploads were silently failing post-refactor.
+
 ## VPS Installation System
 - `install.sh` at `/app/install.sh`
 - Supports: check-only, install, update, setup-web modes

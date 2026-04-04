@@ -8,6 +8,9 @@ import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from pydantic import BaseModel
+from utils.image import process_image_to_webp
+from PIL import Image
+from io import BytesIO
 from models.schemas import (MarketingTemplateCreate, MarketingTemplateResponse,
     MarketingCampaignCreate, MarketingCampaignResponse, CampaignLogResponse,
     OrderItem, OTPRequest, OrderResponse, OTPVerify)

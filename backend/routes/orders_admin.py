@@ -264,9 +264,14 @@ async def get_orders(
     
     result = []
     for order in orders:
-        created_at = order['created_at']
-        if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        created_at = order.get('created_at', '')
+        if created_at and isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            except (ValueError, TypeError):
+                created_at = datetime.now(timezone.utc)
+        elif not created_at:
+            created_at = datetime.now(timezone.utc)
         
         items = [OrderItem(**item) for item in order.get('items', [])]
         

@@ -193,9 +193,14 @@ async def get_items(
     
     result = []
     for item in items:
-        created_at = item['created_at']
-        if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        created_at = item.get('created_at', '')
+        if created_at and isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            except (ValueError, TypeError):
+                created_at = datetime.now(timezone.utc)
+        elif not created_at:
+            created_at = datetime.now(timezone.utc)
         
         custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
         
@@ -277,9 +282,14 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    created_at = item['created_at']
-    if isinstance(created_at, str):
-        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    created_at = item.get('created_at', '')
+    if created_at and isinstance(created_at, str):
+        try:
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            created_at = datetime.now(timezone.utc)
+    elif not created_at:
+        created_at = datetime.now(timezone.utc)
     
     custom_fields = [CustomField(**cf) for cf in item.get('custom_fields', [])]
     
@@ -359,9 +369,14 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
     
     updated_item = await db.items.find_one({'id': item_id}, {'_id': 0, 'image_webp': 0})
     
-    created_at = updated_item['created_at']
-    if isinstance(created_at, str):
-        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+    created_at = updated_item.get('created_at', '')
+    if created_at and isinstance(created_at, str):
+        try:
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            created_at = datetime.now(timezone.utc)
+    elif not created_at:
+        created_at = datetime.now(timezone.utc)
     
     custom_fields = [CustomField(**cf) for cf in updated_item.get('custom_fields', [])]
     

@@ -20,7 +20,7 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 │   ├── email_utils.py     # SMTP email sending
 │   ├── templates.py       # WA/Email template defaults + rendering
 │   ├── image.py           # Image processing (WebP)
-│   ├── notifications.py   # Order WA/Email notifications (NEW - Apr 5, 2026)
+│   ├── notifications.py   # Order WA/Email notifications
 │   ├── code_gen.py        # Customer/Medical/Agency/Item codes
 │   ├── ledger.py          # Ledger calculation + PDF generation
 │   └── push.py            # Web push notifications
@@ -49,6 +49,14 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 - Added admin auto-seeding in `server.py` startup
 - Fixed `install.sh`: Python venv detection, getcwd error, IP-only support
 - Removed `emergentintegrations` from `requirements.txt`
+
+## WhatsApp Template Fix (Apr 5, 2026)
+- Fixed `+None` appearing in WhatsApp messages when company phone is null
+- Fixed `get_company_short_name()` to handle `None` phone values with `or` operator
+- Added cleanup in `render_wa_template()` to strip `+None` patterns
+- Fixed `int()` casting for quantity in notification item calculations (was causing email error)
+- All order notifications now use `render_wa_template` for proper variable interpolation
+- VPS code package rebuilt with latest fixes
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884

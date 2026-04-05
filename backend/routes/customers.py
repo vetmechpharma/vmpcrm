@@ -14,7 +14,7 @@ from pydantic import BaseModel, EmailStr
 from deps import create_customer_token, get_current_customer
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message, send_whatsapp_otp
 from utils.email_utils import send_notification_email
-from utils.templates import render_wa_template, get_company_short_name
+from utils.templates import render_wa_template, get_company_short_name, get_wa_template
 from utils.push import send_push_to_admins
 from utils.ledger import get_customer_ledger, generate_ledger_pdf_bytes
 import base64

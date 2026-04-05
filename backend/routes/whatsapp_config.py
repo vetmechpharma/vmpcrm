@@ -10,6 +10,7 @@ from deps import db, logger, get_current_user, hash_password, verify_password, c
 from pydantic import BaseModel
 from models.schemas import WhatsAppConfigCreate, WhatsAppConfigResponse
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
+from utils.templates import get_wa_template
 import httpx
 
 router = APIRouter(prefix="/api")

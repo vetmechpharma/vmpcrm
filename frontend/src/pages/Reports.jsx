@@ -554,7 +554,7 @@ const Reports = () => {
           <SectionTitle icon={ShoppingCart}>Order Analytics</SectionTitle>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard title="Avg Order Value" value={`Rs.${fmt(ordersTime.length ? ordersTime.reduce((a, m) => a + m.avg_value, 0) / ordersTime.length : 0)}`} icon={IndianRupee} color="blue" />
+            <StatCard title="Avg Order Value" value={`Rs.${fmt(ordersTime.length ? ordersTime.reduce((a, m) => a + (m.avg_value || 0), 0) / ordersTime.length : 0)}`} icon={IndianRupee} color="blue" />
             <StatCard title="This Period Orders" value={fmt(s.total_orders)} icon={ShoppingCart} color="green" />
             <StatCard title="Revenue" value={`Rs.${fmt(s.total_revenue)}`} icon={TrendingUp} color="purple" />
             <StatCard title="Payments Collected" value={`Rs.${fmt(s.total_payments)}`} icon={IndianRupee} color="amber" />
@@ -571,7 +571,7 @@ const Reports = () => {
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v, n) => [n === 'avg_value' ? `Rs.${v.toLocaleString()}` : v, n === 'avg_value' ? 'Avg Value' : 'Orders']} />
+                    <Tooltip formatter={(v, n) => [n === 'avg_value' ? `Rs.${(v || 0).toLocaleString()}` : v, n === 'avg_value' ? 'Avg Value' : 'Orders']} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="orders" stroke="#2563eb" strokeWidth={2} dot={{ fill: '#2563eb', r: 4 }} name="Orders" />
                     <Line yAxisId="right" type="monotone" dataKey="avg_value" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', r: 4 }} name="Avg Value" />
@@ -604,16 +604,18 @@ const Reports = () => {
               <CardContent>
                 {orderStatus.length ? (
                   <div className="space-y-2">
-                    {orderStatus.sort((a, b) => b.count - a.count).map((s, i) => (
+                    {[...orderStatus].sort((a, b) => b.count - a.count).map((s, i) => {
+                      const maxCount = Math.max(...orderStatus.map(x => x.count), 1);
+                      return (
                       <div key={i} className="flex items-center gap-3">
                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[s.status] || COLORS[i] }} />
                         <span className="text-xs font-medium text-slate-700 flex-1 capitalize">{s.status?.replace(/_/g, ' ')}</span>
                         <div className="w-32 bg-slate-100 rounded-full h-2">
-                          <div className="h-2 rounded-full" style={{ width: `${(s.count / Math.max(...orderStatus.map(x => x.count))) * 100}%`, background: STATUS_COLORS[s.status] || COLORS[i] }} />
+                          <div className="h-2 rounded-full" style={{ width: `${(s.count / maxCount) * 100}%`, background: STATUS_COLORS[s.status] || COLORS[i] }} />
                         </div>
                         <span className="text-xs text-slate-500 w-10 text-right">{s.count}</span>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 ) : <EmptyState text="No data" />}
               </CardContent>

@@ -214,6 +214,8 @@ setup_application() {
     elif [ -f "/tmp/vmpcrm_upload.tar.gz" ]; then
         # Extract uploaded archive
         tar -xzf /tmp/vmpcrm_upload.tar.gz -C "$CRM_DIR"
+        rm -f /tmp/vmpcrm_upload.tar.gz
+        log_ok "Archive extracted and cleaned up"
     else
         log_error "No source specified. Provide REPO_URL or upload a tar.gz"
         exit 1
@@ -390,6 +392,9 @@ update_application() {
         tar -xzf /tmp/vmpcrm_upload.tar.gz -C "$CRM_DIR" --overwrite
         cp /tmp/vmpcrm_backend_env_backup backend/.env
         cp /tmp/vmpcrm_frontend_env_backup frontend/.env 2>/dev/null || true
+        # Auto-cleanup: remove downloaded archive to free storage
+        rm -f /tmp/vmpcrm_upload.tar.gz /tmp/vmpcrm_backend_env_backup /tmp/vmpcrm_frontend_env_backup
+        log_ok "Update archive extracted and cleaned up"
     fi
 
     # Update backend dependencies

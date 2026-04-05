@@ -446,6 +446,15 @@ export const Orders = () => {
       };
     }));
     setItemsToMarkPending({});
+    setEditItemSearch('');
+    // Fetch pending items for this customer
+    if (order.doctor_phone) {
+      pendingItemsAPI.getByDoctor(order.doctor_phone)
+        .then(res => setPendingItemsForOrder(res.data || []))
+        .catch(() => setPendingItemsForOrder([]));
+    } else {
+      setPendingItemsForOrder([]);
+    }
     setShowEditModal(true);
   };
 
@@ -562,6 +571,45 @@ export const Orders = () => {
     const search = editItemSearch.toLowerCase();
     return (item.item_name?.toLowerCase().includes(search) || item.item_code?.toLowerCase().includes(search));
   });
+
+  const addPendingToEditOrder = (pItem) => {
+    const existingIndex = editItems.findIndex(i => i.item_id === pItem.item_id && !i.remove);
+    if (existingIndex >= 0) {
+      toast.info(`${pItem.item_name} is already in this order`);
+      return;
+    }
+    const cType = selectedOrder?.customer_type || 'doctor';
+    const fullItem = items.find(i => i.id === pItem.item_id);
+    let defaultRate = 0;
+    let offer = '';
+    let special_offer = '';
+    if (fullItem) {
+      if (cType === 'medical') defaultRate = fullItem.rate_medicals || fullItem.rate || 0;
+      else if (cType === 'agency') defaultRate = fullItem.rate_agencies || fullItem.rate || 0;
+      else defaultRate = fullItem.rate_doctors || fullItem.rate || 0;
+      offer = fullItem[`offer_${cType}s`] || fullItem.offer_doctors || fullItem.offer || '';
+      special_offer = fullItem[`special_offer_${cType}s`] || fullItem.special_offer_doctors || fullItem.special_offer || '';
+    }
+    setEditItems([...editItems, {
+      item_id: pItem.item_id,
+      item_code: pItem.item_code,
+      item_name: pItem.item_name,
+      quantity: pItem.quantity || '1',
+      editQty: pItem.quantity || '1',
+      mrp: fullItem?.mrp || 0,
+      rate: defaultRate,
+      originalQty: '0',
+      originalRate: 0,
+      gst: fullItem?.gst || 0,
+      remove: false,
+      isNew: true,
+      fromPending: true,
+      defaultRate,
+      offer,
+      special_offer
+    }]);
+    toast.success(`Added pending item: ${pItem.item_name}`);
+  };
 
   const handleSaveEditedItems = async () => {
     setSaving(true);
@@ -1964,6 +2012,37 @@ export const Orders = () => {
                 </div>
               )}
             </div>
+
+            {/* Previous Pending Items */}
+            {pendingItemsForOrder.length > 0 && (
+              <div className="mb-4 p-3 border border-orange-200 bg-orange-50 rounded-lg">
+                <p className="text-sm font-medium text-orange-800 mb-2">Previous Pending Items (Out of Stock)</p>
+                <div className="space-y-2">
+                  {pendingItemsForOrder
+                    .filter(p => !editItems.some(ei => ei.item_id === p.item_id && !ei.remove))
+                    .map((pItem) => (
+                    <div key={pItem.id} className="flex items-center justify-between bg-white p-2 rounded border border-orange-100">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{pItem.item_name}</p>
+                        <p className="text-xs text-slate-500">{pItem.item_code} | Qty: {pItem.quantity} | Order #{pItem.original_order_number}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addPendingToEditOrder(pItem)}
+                        className="text-orange-600 border-orange-300 hover:bg-orange-100 h-7 text-xs"
+                        data-testid={`edit-add-pending-${pItem.id}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />Add to Order
+                      </Button>
+                    </div>
+                  ))}
+                  {pendingItemsForOrder.filter(p => !editItems.some(ei => ei.item_id === p.item_id && !ei.remove)).length === 0 && (
+                    <p className="text-xs text-orange-600 italic">All pending items are already in this order</p>
+                  )}
+                </div>
+              </div>
+            )}
             
             <div className="space-y-3">
               {editItems.map((item, index) => (

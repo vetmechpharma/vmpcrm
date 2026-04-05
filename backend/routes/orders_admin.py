@@ -189,15 +189,23 @@ async def create_manual_order(order_data: ManualOrderCreate, background_tasks: B
     # Handle pending items (out of stock items)
     if order_data.pending_items and len(order_data.pending_items) > 0:
         for pending_item in order_data.pending_items:
+            item_id = pending_item.get('item_id')
+            
+            # Dedup: Remove existing pending for same customer + item
+            await db.pending_items.delete_many({
+                'doctor_phone': clean_phone,
+                'item_id': item_id
+            })
+            
             pending_doc = {
                 'id': str(uuid.uuid4()),
                 'order_id': order_id,
-                'original_order_id': order_id,  # Add original_order_id for compatibility
+                'original_order_id': order_id,
                 'original_order_number': order_number,
-                'original_order_date': now.isoformat(),  # Add order date
+                'original_order_date': now.isoformat(),
                 'doctor_phone': clean_phone,
                 'doctor_name': order_data.customer_name,
-                'item_id': pending_item.get('item_id'),
+                'item_id': item_id,
                 'item_code': pending_item.get('item_code'),
                 'item_name': pending_item.get('item_name'),
                 'quantity': pending_item.get('quantity', '1'),
@@ -613,11 +621,20 @@ async def update_order_items(order_id: str, update_data: OrderItemsUpdate, backg
             order_date = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
         
         for pending_item in update_data.pending_items:
+            doctor_phone = order.get('doctor_phone')
+            item_id = pending_item.get('item_id')
+            
+            # Dedup: Remove existing pending for same customer + item
+            await db.pending_items.delete_many({
+                'doctor_phone': doctor_phone,
+                'item_id': item_id
+            })
+            
             pending_doc = {
                 'id': str(uuid.uuid4()),
-                'doctor_phone': order.get('doctor_phone'),
+                'doctor_phone': doctor_phone,
                 'doctor_name': order.get('doctor_name'),
-                'item_id': pending_item.get('item_id'),
+                'item_id': item_id,
                 'item_code': pending_item.get('item_code'),
                 'item_name': pending_item.get('item_name'),
                 'quantity': pending_item.get('quantity'),

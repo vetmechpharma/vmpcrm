@@ -7,7 +7,7 @@ import json
 import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
-from models.schemas import ManualOrderCreate, OrderResponse, OrderStatusUpdate, OrderItemsUpdate, OrderCustomerUpdate
+from models.schemas import ManualOrderCreate, OrderResponse, OrderStatusUpdate, OrderItemsUpdate, OrderCustomerUpdate, OrderItem
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
 from utils.email_utils import send_notification_email
 from utils.templates import render_wa_template, get_company_short_name

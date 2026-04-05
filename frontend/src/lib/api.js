@@ -377,6 +377,16 @@ export const databaseAPI = {
   sendEmailBackup: () => api.post('/database/send-email-backup'),
   deleteEmailLogs: () => api.delete('/email-logs'),
   deleteWhatsappLogs: () => api.delete('/whatsapp-logs'),
+  restoreDatabase: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/database/restore', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  restoreDatabaseReplace: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/database/restore-replace', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };
 
 export default api;

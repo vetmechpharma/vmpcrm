@@ -531,3 +531,44 @@ async def send_monthly_ledger_statements():
         except Exception as e:
             logger.error(f"Monthly ledger task error: {e}")
             await asyncio.sleep(3600)  # Retry in 1 hour on error
+
+
+
+async def cleanup_temp_files():
+    """Background task to clean up expired temp PDFs and backup files every 6 hours"""
+    while True:
+        try:
+            await asyncio.sleep(6 * 3600)  # Run every 6 hours
+            
+            now_iso = datetime.now(timezone.utc).isoformat()
+            
+            # Clean expired ledger PDFs (older than 48 hours)
+            result = await db.temp_ledger_pdfs.delete_many({
+                'expires_at': {'$lt': now_iso}
+            })
+            if result.deleted_count:
+                logger.info(f"Cleaned up {result.deleted_count} expired ledger PDFs")
+            
+            # Clean expired backup files (older than 48 hours)
+            result = await db.temp_backup_files.delete_many({
+                'expires_at': {'$lt': now_iso}
+            })
+            if result.deleted_count:
+                logger.info(f"Cleaned up {result.deleted_count} expired backup files")
+            
+            # Also clean any really old entries without expires_at (2 days old)
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            for coll_name in ['temp_ledger_pdfs', 'temp_backup_files']:
+                result = await db[coll_name].delete_many({
+                    'expires_at': {'$exists': False},
+                    'created_at': {'$lt': cutoff}
+                })
+                if result.deleted_count:
+                    logger.info(f"Cleaned up {result.deleted_count} old entries from {coll_name}")
+                    
+        except asyncio.CancelledError:
+            logger.info("Temp file cleanup task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Temp file cleanup error: {e}")
+            await asyncio.sleep(3600)

@@ -28,6 +28,7 @@ from background_tasks import (
     send_birthday_anniversary_greetings,
     seed_default_greeting_templates,
     send_monthly_ledger_statements,
+    cleanup_temp_files,
 )
 
 # Create the main app
@@ -80,17 +81,17 @@ daily_reminder_task = None
 greeting_task = None
 monthly_ledger_task = None
 backup_scheduler_task = None
+cleanup_task = None
 
 
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on app startup"""
-    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task, cleanup_task
 
     daily_reminder_task = asyncio.create_task(send_daily_reminder_summary())
     logger.info("Daily reminder background task started")
 
-    # Import run_scheduled_backups from the database routes module
     from routes.database import run_scheduled_backups
     backup_scheduler_task = asyncio.create_task(run_scheduled_backups())
     logger.info("Backup scheduler task started")
@@ -100,6 +101,9 @@ async def startup_event():
 
     monthly_ledger_task = asyncio.create_task(send_monthly_ledger_statements())
     logger.info("Monthly ledger statement task started")
+
+    cleanup_task = asyncio.create_task(cleanup_temp_files())
+    logger.info("Temp file cleanup task started (runs every 6 hours)")
 
     # Seed default templates
     await seed_default_greeting_templates()
@@ -124,13 +128,14 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task, cleanup_task
 
     for task_name, task in [
         ("daily_reminder", daily_reminder_task),
         ("backup_scheduler", backup_scheduler_task),
         ("greeting", greeting_task),
         ("monthly_ledger", monthly_ledger_task),
+        ("cleanup", cleanup_task),
     ]:
         if task:
             task.cancel()

@@ -247,6 +247,177 @@ async def trigger_backup(background_tasks: BackgroundTasks, current_user: dict =
     background_tasks.add_task(perform_scheduled_backup, current_user['name'])
     return {"message": "Backup triggered. You will receive it shortly via WhatsApp and Email."}
 
+
+@router.post("/database/restore")
+async def restore_database(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Restore database from a JSON backup file. Merges data without deleting existing records."""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can restore database")
+    
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON backup files are supported")
+    
+    try:
+        content = await file.read()
+        backup_data = json.loads(content.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON file: {str(e)}")
+    
+    collections = backup_data.get('collections', {})
+    if not collections:
+        raise HTTPException(status_code=400, detail="No collections found in backup file")
+    
+    restore_summary = {}
+    total_inserted = 0
+    total_skipped = 0
+    errors = []
+    
+    for coll_name, docs in collections.items():
+        if not isinstance(docs, list) or not docs:
+            continue
+        
+        inserted = 0
+        skipped = 0
+        
+        for doc in docs:
+            if not isinstance(doc, dict):
+                continue
+            
+            # Remove _id if present to avoid conflicts
+            doc.pop('_id', None)
+            
+            # Check if document already exists by 'id' field
+            doc_id = doc.get('id')
+            if doc_id:
+                existing = await db[coll_name].find_one({'id': doc_id}, {'_id': 1})
+                if existing:
+                    skipped += 1
+                    continue
+            
+            # For collections without 'id', check by unique keys
+            if not doc_id:
+                if coll_name == 'company_settings':
+                    existing = await db[coll_name].find_one({}, {'_id': 1})
+                    if existing:
+                        # Update existing company settings
+                        await db[coll_name].update_one({}, {'$set': doc})
+                        inserted += 1
+                        continue
+                elif coll_name == 'system_settings' and doc.get('type'):
+                    existing = await db[coll_name].find_one({'type': doc['type']}, {'_id': 1})
+                    if existing:
+                        await db[coll_name].update_one({'type': doc['type']}, {'$set': doc})
+                        inserted += 1
+                        continue
+            
+            try:
+                await db[coll_name].insert_one(doc)
+                inserted += 1
+            except Exception as e:
+                errors.append(f"{coll_name}: {str(e)[:100]}")
+        
+        if inserted > 0 or skipped > 0:
+            restore_summary[coll_name] = {'inserted': inserted, 'skipped': skipped}
+            total_inserted += inserted
+            total_skipped += skipped
+    
+    # Log the restore
+    await db.backup_history.insert_one({
+        'id': str(uuid.uuid4()),
+        'filename': file.filename,
+        'status': 'success',
+        'type': 'restore',
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'created_by': current_user['name'],
+        'total_inserted': total_inserted,
+        'total_skipped': total_skipped,
+        'details': restore_summary
+    })
+    
+    return {
+        "message": f"Database restored: {total_inserted} records inserted, {total_skipped} duplicates skipped",
+        "total_inserted": total_inserted,
+        "total_skipped": total_skipped,
+        "collections": restore_summary,
+        "errors": errors[:10] if errors else []
+    }
+
+
+@router.post("/database/restore-replace")
+async def restore_database_replace(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """Full restore - replaces all data in collections with backup data. Use with caution!"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can restore database")
+    
+    if not file.filename.endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON backup files are supported")
+    
+    try:
+        content = await file.read()
+        backup_data = json.loads(content.decode('utf-8'))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON file: {str(e)}")
+    
+    collections = backup_data.get('collections', {})
+    if not collections:
+        raise HTTPException(status_code=400, detail="No collections found in backup file")
+    
+    # Protected collections that should only be merged, not replaced
+    protected = {'users', 'system_settings', 'whatsapp_config', 'smtp_settings'}
+    
+    restore_summary = {}
+    total_replaced = 0
+    
+    for coll_name, docs in collections.items():
+        if not isinstance(docs, list) or not docs:
+            continue
+        
+        # Clean _id from all docs
+        for doc in docs:
+            if isinstance(doc, dict):
+                doc.pop('_id', None)
+        
+        if coll_name in protected:
+            # Merge protected collections
+            inserted = 0
+            for doc in docs:
+                if not isinstance(doc, dict):
+                    continue
+                doc_id = doc.get('id')
+                if doc_id:
+                    await db[coll_name].update_one({'id': doc_id}, {'$set': doc}, upsert=True)
+                elif coll_name == 'system_settings' and doc.get('type'):
+                    await db[coll_name].update_one({'type': doc['type']}, {'$set': doc}, upsert=True)
+                else:
+                    await db[coll_name].insert_one(doc)
+                inserted += 1
+            restore_summary[coll_name] = {'action': 'merged', 'count': inserted}
+            total_replaced += inserted
+        else:
+            # Replace entire collection
+            await db[coll_name].delete_many({})
+            if docs:
+                await db[coll_name].insert_many([d for d in docs if isinstance(d, dict)])
+            restore_summary[coll_name] = {'action': 'replaced', 'count': len(docs)}
+            total_replaced += len(docs)
+    
+    await db.backup_history.insert_one({
+        'id': str(uuid.uuid4()),
+        'filename': file.filename,
+        'status': 'success',
+        'type': 'full_restore',
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'created_by': current_user['name'],
+        'total_records': total_replaced,
+        'details': restore_summary
+    })
+    
+    return {
+        "message": f"Full database restore completed: {total_replaced} records processed",
+        "total_records": total_replaced,
+        "collections": restore_summary
+    }
+
 async def perform_scheduled_backup(triggered_by: str = "System"):
     """Perform database backup and send via WhatsApp and Email"""
     try:

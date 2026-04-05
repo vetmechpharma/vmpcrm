@@ -17,7 +17,7 @@ async def send_whatsapp_order(customer_phone: str, items: list, order_number: st
         for item in items:
             item_dict = item.dict() if hasattr(item, 'dict') else item
             name = item_dict.get('item_name', 'Item')
-            qty = item_dict.get('quantity', 1)
+            qty = int(item_dict.get('quantity', 1))
             rate = float(item_dict.get('rate', 0))
             amount = qty * rate
             total += amount
@@ -63,7 +63,7 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
         for item in items:
             item_dict = item if isinstance(item, dict) else item.dict()
             name = item_dict.get('item_name', 'Item')
-            qty = item_dict.get('quantity', 1)
+            qty = int(item_dict.get('quantity', 1))
             rate = float(item_dict.get('rate', 0))
             amount = qty * rate
             total += amount

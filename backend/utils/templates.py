@@ -244,7 +244,7 @@ async def get_company_short_name():
     if not company:
         return 'CRM', ''
     short = company.get('company_short_name') or company.get('company_name', 'CRM')
-    phone = company.get('phone', '')
+    phone = company.get('phone') or ''
     return short, phone
 
 
@@ -277,12 +277,17 @@ async def render_wa_template(key: str, **kwargs):
         return ''
     short_name, phone = await get_company_short_name()
     kwargs.setdefault('company_short_name', short_name)
-    kwargs.setdefault('company_phone', phone)
+    kwargs.setdefault('company_phone', phone or '')
     try:
-        return tmpl.format(**kwargs)
+        rendered = tmpl.format(**kwargs)
     except KeyError:
         # If template has variables not in kwargs, do partial format
+        rendered = tmpl
         for k, v in kwargs.items():
-            tmpl = tmpl.replace('{' + k + '}', str(v))
-        return tmpl
+            rendered = rendered.replace('{' + k + '}', str(v))
+    # Clean up empty phone line (e.g., "\n+" or "\n+None")
+    rendered = rendered.replace('\n+None', '').replace('\n+\n', '\n')
+    if rendered.endswith('\n+'):
+        rendered = rendered[:-2]
+    return rendered
 

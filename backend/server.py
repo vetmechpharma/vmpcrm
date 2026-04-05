@@ -7,6 +7,7 @@ from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 import os
 import asyncio
+from datetime import datetime, timezone
 
 from deps import db, client, logger
 
@@ -102,6 +103,23 @@ async def startup_event():
 
     # Seed default templates
     await seed_default_greeting_templates()
+
+    # Seed default admin if no users exist
+    existing_admin = await db.users.find_one({'role': 'admin'}, {'_id': 1})
+    if not existing_admin:
+        from deps import hash_password
+        import uuid as _uuid
+        admin_doc = {
+            'id': str(_uuid.uuid4()),
+            'email': 'info@vetmech.in',
+            'password': hash_password('Kongu@@44884'),
+            'name': 'Admin VETMECH',
+            'role': 'admin',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(admin_doc)
+        logger.info("Default admin user seeded (info@vetmech.in)")
 
 
 @app.on_event("shutdown")

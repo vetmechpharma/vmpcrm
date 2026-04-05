@@ -36,7 +36,6 @@ import {
   Minus,
   Search,
   Printer,
-  MessageSquare,
   ArrowRightLeft
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';

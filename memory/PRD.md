@@ -8,23 +8,19 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 - **Backend**: FastAPI (modular routes), MongoDB (Motor), Multi-WhatsApp API
 - **Database**: `CRM_VETMECH`
 
-### Backend Structure (Refactored Mar 30, 2026)
+### Backend Structure
 ```
 /app/backend/
-├── server.py              # ~145 lines - slim orchestrator with admin seeding
-├── deps.py                # Shared: db, auth, JWT, logger, VAPID
-├── migrate.py             # Database migration script (non-destructive, idempotent)
-├── background_tasks.py    # Daily reminders, greetings, ledger
+├── server.py              # Entry point with admin seeding
+├── deps.py                # Shared: db, auth, JWT, logger
+├── migrate.py             # Database migration (non-destructive, idempotent)
 ├── models/schemas.py      # All Pydantic models
 ├── utils/
 │   ├── whatsapp.py        # WA send, log, OTP
 │   ├── email_utils.py     # SMTP email sending
 │   ├── templates.py       # WA/Email template defaults + rendering
-│   ├── image.py           # Image processing (WebP)
-│   ├── notifications.py   # Order WA/Email notifications
-│   ├── code_gen.py        # Customer/Medical/Agency/Item codes
-│   ├── ledger.py          # Ledger calculation + PDF generation
-│   └── push.py            # Web push notifications
+│   ├── notifications.py   # Order/Payment WA/Email notifications
+│   ├── code_gen.py, ledger.py, image.py, push.py
 └── routes/                # 28 route modules
 ```
 
@@ -36,22 +32,28 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 └── frontend/public/vmpcrm_code.tar.gz  # Downloadable VPS package
 ```
 
-## Migration Script (Apr 5, 2026)
-- `backend/migrate.py` — Non-destructive, idempotent database migration
-- Creates 47+ collections if missing
-- Creates 50 indexes for performance
-- Seeds default WA + Email message templates (if none exist)
-- Adds new fields to existing docs: whatsapp_config (api_type, is_active, field mappings), orders (customer_type, source), users (permissions), items (role_rates, offer_rate), entities (state, district)
-- Seeds default admin if no admin exists
-- Integrated into `install.sh --install`, `install.sh --update`, and `install.sh --migrate`
-- Also available as standalone `migrate.sh`
+## Implemented Features
 
-## Bug Fixes Applied (Apr 5, 2026)
-- Fixed `+None` in WhatsApp messages when company phone is null
-- Fixed `get_company_short_name()` None phone handling
-- Fixed email notification crash (quantity type casting)
-- Fixed all post-refactor missing imports across 15+ route files
-- Full list in previous PRD entries
+### Apr 5, 2026 — WhatsApp Template Notifications
+- **Order Updated Notification**: When order items are added/removed/qty changed, WhatsApp + Email sent with full updated items list
+- **Payment Reminder (Template-based)**: Payments page now sends reminders via backend API using `payment_reminder` template instead of raw `wa.me` links
+- **Removed raw WhatsApp button** from Orders page (was using `wa.me` link, replaced by proper template notifications)
+- New templates: `order_updated`, `payment_reminder`, `order_updated_email`, `payment_reminder_email`
+- Templates visible and editable in Message Templates admin page
+
+### Apr 5, 2026 — Database Migration Script
+- `migrate.py` — Non-destructive, idempotent DB migration
+- Auto-seeds new templates when updating existing DB
+- Integrated into `install.sh --install`, `--update`, and `--migrate`
+
+### Previous Sessions (Completed)
+- Full monolith → modular routes refactor
+- Multi-WhatsApp API support (BotMasterSender + AKNexus)
+- Edit Order: role rates, add/delete items, pending items injection
+- State/District filters on entity tables
+- Payment Click-to-Call and WA buttons
+- VPS install script with auto-migration
+- Post-refactor comprehensive import audit
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884

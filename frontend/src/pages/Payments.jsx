@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import {
   IndianRupee, Plus, Search, Trash2, Loader2, FileText, Download,
   Users, ArrowUpDown, Filter, Calendar, CreditCard, Wallet, BookOpen,
-  Edit2, MessageCircle, Send
+  Edit2, MessageCircle, Send, Phone, MapPin
 } from 'lucide-react';
 
 const PAYMENT_MODES = ['Cash', 'UPI', 'GPay', 'Netbanking', 'Cheque', 'Credit'];
@@ -204,8 +204,8 @@ export const Payments = () => {
     } catch { toast.error('Failed to delete'); }
   };
 
-  const openLedger = async (customerId, customerType, customerName) => {
-    setLedgerCustomer({ id: customerId, type: customerType, name: customerName });
+  const openLedger = async (customerId, customerType, customerName, customerPhone) => {
+    setLedgerCustomer({ id: customerId, type: customerType, name: customerName, phone: customerPhone || '' });
     setShowLedger(true);
     setLedgerLoading(true);
     try {
@@ -370,7 +370,7 @@ export const Payments = () => {
                   <th className="text-right p-3 font-medium">Invoiced</th>
                   <th className="text-right p-3 font-medium">Paid</th>
                   <th className="text-right p-3 font-medium">Outstanding</th>
-                  <th className="text-center p-3 font-medium">Actions</th>
+                  <th className="text-center p-3 font-medium">Contact & Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -379,6 +379,10 @@ export const Payments = () => {
                     <td className="p-3">
                       <p className="font-medium">{o.customer_name}</p>
                       <p className="text-xs text-slate-400">{o.customer_code}</p>
+                      {o.customer_phone && (
+                        <p className="text-xs text-slate-500 mt-0.5">{o.customer_phone}</p>
+                      )}
+                      {o.city && <p className="text-[10px] text-slate-400 flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{o.city}</p>}
                     </td>
                     <td className="p-3 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded ${typeBg(o.customer_type)}`}>{typeLabel(o.customer_type)}</span>
@@ -386,12 +390,26 @@ export const Payments = () => {
                     <td className="p-3 text-right">₹{(o.opening_balance + o.total_invoiced).toLocaleString('en-IN')}</td>
                     <td className="p-3 text-right text-emerald-600">₹{o.total_paid.toLocaleString('en-IN')}</td>
                     <td className="p-3 text-right font-bold text-red-600">₹{o.outstanding.toLocaleString('en-IN')}</td>
-                    <td className="p-3 text-center">
-                      <div className="flex gap-1 justify-center">
-                        <Button variant="outline" size="sm" onClick={() => openLedger(o.customer_id, o.customer_type, o.customer_name)} data-testid={`ledger-${o.customer_id}`}>
+                    <td className="p-3">
+                      <div className="flex gap-1 justify-center flex-wrap">
+                        {o.customer_phone && (
+                          <>
+                            <a href={`tel:${o.customer_phone}`} title="Call customer">
+                              <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50 h-8" data-testid={`call-${o.customer_id}`}>
+                                <Phone className="w-3.5 h-3.5" />
+                              </Button>
+                            </a>
+                            <a href={`https://wa.me/91${o.customer_phone?.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Dear ${o.customer_name},\n\nThis is a payment reminder. Your outstanding balance is ₹${o.outstanding.toLocaleString('en-IN')}.\n\nPlease arrange the payment at your earliest convenience.\n\nThank you.`)}`} target="_blank" rel="noreferrer" title="WhatsApp reminder">
+                              <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 h-8" data-testid={`wa-${o.customer_id}`}>
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </Button>
+                            </a>
+                          </>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => openLedger(o.customer_id, o.customer_type, o.customer_name, o.customer_phone)} data-testid={`ledger-${o.customer_id}`} className="h-8">
                           <BookOpen className="w-3 h-3 mr-1" />Ledger
                         </Button>
-                        <Button size="sm" onClick={() => {
+                        <Button size="sm" className="h-8" onClick={() => {
                           setPayForm(prev => ({ ...prev, customer_id: o.customer_id, customer_name: o.customer_name, customer_type: o.customer_type, customer_phone: o.customer_phone }));
                           setCustomerSearch(o.customer_name);
                           setShowPayForm(true);
@@ -603,9 +621,27 @@ export const Payments = () => {
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5" />
               Ledger: {ledgerCustomer?.name}
+              {ledgerCustomer?.phone && (
+                <span className="text-sm font-normal text-slate-500 ml-2">({ledgerCustomer.phone})</span>
+              )}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex gap-2 items-center mb-3">
+          <div className="flex gap-2 items-center mb-3 flex-wrap">
+            {ledgerCustomer?.phone && (
+              <>
+                <a href={`tel:${ledgerCustomer.phone}`}>
+                  <Button size="sm" variant="outline" className="text-green-600 border-green-300 hover:bg-green-50" data-testid="ledger-call-btn">
+                    <Phone className="w-3 h-3 mr-1" />Call
+                  </Button>
+                </a>
+                <a href={`https://wa.me/91${ledgerCustomer.phone?.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Dear ${ledgerCustomer?.name},\n\nThis is a payment reminder regarding your outstanding balance.\n\nPlease arrange the payment at your earliest convenience.\n\nThank you.`)}`} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50" data-testid="ledger-wa-reminder-btn">
+                    <MessageCircle className="w-3 h-3 mr-1" />Remind
+                  </Button>
+                </a>
+                <div className="h-6 w-px bg-slate-200" />
+              </>
+            )}
             <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-36" />
             <span className="text-sm text-slate-400">to</span>
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-36" />

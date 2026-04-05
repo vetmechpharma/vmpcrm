@@ -323,6 +323,8 @@ async def get_outstanding(
                     'customer_code': cust.get('customer_code', ''),
                     'customer_name': cust['name'],
                     'customer_phone': cust.get('phone', ''),
+                    'customer_email': cust.get('email', ''),
+                    'city': cust.get('city', ''),
                     'customer_type': ctype,
                     'opening_balance': opening_bal,
                     'total_invoiced': total_invoiced,

@@ -151,13 +151,20 @@ install_dependencies() {
     fi
     log_ok "Node.js $(node -v) installed"
 
-    # Python 3.11+
-    update_progress "python" "running" "Installing Python 3.11..." 25
-    if ! command -v python3 &>/dev/null || [[ $(python3 -c 'import sys; print(sys.version_info.minor)') -lt 10 ]]; then
+    # Python 3.11+ with venv support
+    update_progress "python" "running" "Installing Python & venv..." 25
+    PYTHON_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "0.0")
+    PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)' 2>/dev/null || echo "0")
+    if [ "$PYTHON_MINOR" -lt 10 ]; then
         add-apt-repository -y ppa:deadsnakes/ppa
+        apt-get update -y
         apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
+    else
+        # Install venv for whatever Python 3.x version is present
+        apt-get install -y python3-venv python3-dev python3-pip "python${PYTHON_VER}-venv" 2>/dev/null || \
+        apt-get install -y python3-venv python3-dev python3-pip
     fi
-    log_ok "Python $(python3 --version) installed"
+    log_ok "Python $(python3 --version) installed with venv"
 
     # MongoDB 7.x
     update_progress "mongodb" "running" "Installing MongoDB 7.x..." 35
@@ -199,7 +206,7 @@ setup_application() {
     if [ -n "$REPO_URL" ]; then
         # Clone from Git
         if [ -d "$CRM_DIR/.git" ]; then
-            cd "$CRM_DIR"
+            cd "$CRM_DIR" || { log_error "Cannot enter $CRM_DIR"; exit 1; }
             git pull origin main
         else
             git clone "$REPO_URL" "$CRM_DIR"
@@ -242,7 +249,12 @@ ENVEOF
     
     # Set backend URL in .env
     if [ -n "$DOMAIN" ]; then
-        echo "REACT_APP_BACKEND_URL=https://$DOMAIN" > .env
+        # Check if domain is an IP address
+        if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "REACT_APP_BACKEND_URL=http://$DOMAIN" > .env
+        else
+            echo "REACT_APP_BACKEND_URL=https://$DOMAIN" > .env
+        fi
     fi
     
     yarn build
@@ -727,6 +739,9 @@ PYEOF
 
 main() {
     check_root
+
+    # Fix getcwd errors from deleted directories
+    cd /root 2>/dev/null || cd /tmp
 
     # Parse arguments
     local ACTION=""

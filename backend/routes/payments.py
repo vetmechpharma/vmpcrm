@@ -139,7 +139,7 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
     
     # Send WhatsApp
     config = await get_whatsapp_config()
-    if not (config.get('api_url') and config.get('auth_token') and config.get('sender_id')):
+    if not (config.get('api_url') and config.get('auth_token')):
         raise HTTPException(status_code=400, detail="WhatsApp not configured")
     
     if not cust_phone:
@@ -393,7 +393,7 @@ async def send_ledger_whatsapp(
     
     # Send WhatsApp with PDF attachment
     config = await get_whatsapp_config()
-    if not (config.get('api_url') and config.get('auth_token') and config.get('sender_id')):
+    if not (config.get('api_url') and config.get('auth_token')):
         raise HTTPException(status_code=400, detail="WhatsApp not configured")
     
     wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"

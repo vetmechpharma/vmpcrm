@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import json
 import os
+import bcrypt
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from pydantic import BaseModel

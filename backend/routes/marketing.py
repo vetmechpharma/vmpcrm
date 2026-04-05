@@ -5,6 +5,9 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import json
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from pydantic import BaseModel

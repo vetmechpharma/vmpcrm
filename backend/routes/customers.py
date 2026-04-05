@@ -18,6 +18,8 @@ from utils.templates import render_wa_template, get_company_short_name
 from utils.push import send_push_to_admins
 from utils.ledger import get_customer_ledger, generate_ledger_pdf_bytes
 import base64
+import bcrypt
+import asyncio
 from fpdf import FPDF
 import random
 import string
@@ -87,7 +89,7 @@ async def customer_send_otp(request: CustomerOTPRequest):
     
     # Send OTP via WhatsApp using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+    if config.get('api_url') and config.get('auth_token'):
         try:
             purpose_text = "registration" if request.purpose == "register" else "password reset"
             message = f"Your VMP CRM verification code for {purpose_text} is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
@@ -319,7 +321,7 @@ async def customer_login_otp_send(request: CustomerOTPRequest):
     }
     
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+    if config.get('api_url') and config.get('auth_token'):
         try:
             await send_whatsapp_otp(clean_phone, otp)
         except Exception as e:
@@ -1105,7 +1107,7 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     
     # Send WhatsApp notification using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+    if config.get('api_url') and config.get('auth_token'):
         try:
             if approval.status == 'approved':
                 message = await render_wa_template('account_approved', customer_name=customer['name'], customer_code=customer['customer_code'])
@@ -1291,7 +1293,7 @@ async def send_new_password_to_customer(customer_id: str, current_user: dict = D
     
     # Send new password via WhatsApp
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+    if config.get('api_url') and config.get('auth_token'):
         try:
             rendered = await render_wa_template('password_reset', customer_name=customer.get('name', 'Customer'), new_password=new_password)
             if rendered:
@@ -1447,7 +1449,7 @@ async def update_ticket_status(ticket_id: str, status: str, current_user: dict =
     # Send WhatsApp notification if status actually changed
     if old_status != status and ticket.get('customer_phone'):
         config = await get_whatsapp_config()
-        if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+        if config.get('api_url') and config.get('auth_token'):
             try:
                 # Get company name
                 company = await db.company_settings.find_one({}, {'_id': 0})
@@ -1525,7 +1527,7 @@ async def add_admin_ticket_reply(ticket_id: str, reply: TicketReply, current_use
     
     # Notify customer via WhatsApp using BotMasterSender API
     config = await get_whatsapp_config()
-    if config.get('api_url') and config.get('auth_token') and config.get('sender_id'):
+    if config.get('api_url') and config.get('auth_token'):
         try:
             # Get company name
             company = await db.company_settings.find_one({}, {'_id': 0})

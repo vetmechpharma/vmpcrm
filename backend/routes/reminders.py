@@ -8,6 +8,7 @@ import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from models.schemas import ReminderCreate, ReminderUpdate, ReminderResponse
+from utils.whatsapp import send_wa_msg, get_whatsapp_config, log_whatsapp_message
 
 router = APIRouter(prefix="/api")
 

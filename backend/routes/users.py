@@ -7,7 +7,7 @@ import json
 import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
-from models.schemas import UserCreateByAdmin, UserUpdateByAdmin, UserWithPermissions
+from models.schemas import UserCreateByAdmin, UserUpdateByAdmin, UserWithPermissions, UserPermissions
 
 router = APIRouter(prefix="/api")
 

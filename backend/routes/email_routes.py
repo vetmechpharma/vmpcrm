@@ -12,6 +12,7 @@ from utils.email_utils import send_email_task, send_notification_email
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 router = APIRouter(prefix="/api")
 

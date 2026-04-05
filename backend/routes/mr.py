@@ -7,13 +7,14 @@ import json
 import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
-from models.schemas import MRCreate, MRUpdate
+from models.schemas import MRCreate, MRUpdate, OrderItem
 from pydantic import BaseModel
 from deps import create_mr_token, get_current_mr
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
 from utils.email_utils import send_notification_email
 from utils.templates import render_wa_template, get_company_short_name
-from utils.push import send_push_to_admins
+from utils.push import send_push_to_admins, send_push_to_user
+from utils.notifications import send_whatsapp_order
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter(prefix="/api")

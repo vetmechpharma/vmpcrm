@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 import uuid
 import json
 import os
+import base64
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from utils.image import process_image_to_webp

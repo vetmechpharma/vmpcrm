@@ -17,7 +17,7 @@ from io import BytesIO
 from models.schemas import (MarketingTemplateCreate, MarketingTemplateResponse,
     MarketingCampaignCreate, MarketingCampaignResponse, CampaignLogResponse,
     OrderItem, OTPRequest, OrderResponse, OTPVerify)
-from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
+from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message, send_whatsapp_otp
 from utils.email_utils import send_notification_email
 from utils.push import send_push_to_all_customers
 import random

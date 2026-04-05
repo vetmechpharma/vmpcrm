@@ -11,62 +11,47 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 ### Backend Structure (Refactored Mar 30, 2026)
 ```
 /app/backend/
-├── server.py              # 125 lines - slim orchestrator
-├── deps.py                # Shared: db, auth, JWT, logger
+├── server.py              # ~145 lines - slim orchestrator with admin seeding
+├── deps.py                # Shared: db, auth, JWT, logger, VAPID
 ├── background_tasks.py    # Daily reminders, greetings, ledger
-├── models/
-│   └── schemas.py         # All Pydantic models
+├── models/schemas.py      # All Pydantic models
 ├── utils/
 │   ├── whatsapp.py        # WA send, log, OTP
 │   ├── email_utils.py     # SMTP email sending
 │   ├── templates.py       # WA/Email template defaults + rendering
 │   ├── image.py           # Image processing (WebP)
+│   ├── notifications.py   # Order WA/Email notifications (NEW - Apr 5, 2026)
 │   ├── code_gen.py        # Customer/Medical/Agency/Item codes
 │   ├── ledger.py          # Ledger calculation + PDF generation
 │   └── push.py            # Web push notifications
-└── routes/                # 30 route modules
-    ├── auth.py, doctors.py, medicals.py, agencies.py
-    ├── items.py, orders_admin.py, payments.py, expenses.py
-    ├── customers.py, marketing.py, whatsapp_config.py
-    ├── dashboard.py, database.py, mr.py, visual_aids.py
-    └── ... (15 more modules)
+└── routes/                # 28 route modules
 ```
 
-### Frontend Shared Components
-- `FollowUpDialog.jsx` - Shared follow-up modal (Doctors/Medicals/Agencies)
-- `WhatsAppDirectDialog.jsx` - Direct WA messaging
-
-## Completed Features
-- Admin/MR/Customer portals with authentication
-- Doctor/Medical/Agency CRUD with lead management & follow-ups
-- Order management with role-based pricing
-- Item/Product management with images
-- Email & WhatsApp dual notifications
-- Dual WhatsApp API (BotMasterSender + AKNexus)
-- Individual WA messaging (Text/Image/PDF/Product)
-- Marketing campaigns with image + PDF attachments
-- 18 WA + 13 Email templates with edit/preview UI
-- Reports dashboard (Revenue, Products, Customers, Dormant tracking)
-- Database Management (Export, Email Backup, Factory Reset, Log Cleanup)
-- **server.py refactored** from 13,500 → 125 lines (30 route modules)
-- **Follow-up UI** extracted to shared FollowUpDialog component
-- **VPS install.sh** for Ubuntu 22.04/24.04 with web-based installer
-
-## Bug Fixes
-- **Apr 4, 2026**: Fixed missing `process_image_to_webp` import in `routes/marketing.py` and `routes/company_settings.py` — marketing campaign images and company logo/background uploads were silently failing post-refactor.
-
-## VPS Installation System
-- `install.sh` at `/app/install.sh`
-- Supports: check-only, install, update, setup-web modes
-- Web installer at `domain.com/install` with progress tracking
-- Non-destructive updates (preserves database + .env files)
-- Let's Encrypt SSL auto-setup
-- PM2 process management + Nginx reverse proxy
+## Bug Fixes Applied (Apr 5, 2026 - Post-Refactor Audit)
+- Fixed `process_image_to_webp` import in `marketing.py`, `company_settings.py`
+- Fixed `bcrypt`/`asyncio` imports in `customers.py`
+- Fixed `bcrypt` import in `admin_profile.py`
+- Fixed `smtplib`/`MIMEMultipart` imports in `marketing.py`
+- Fixed `MIMEApplication` import in `email_routes.py`
+- Fixed `base64` import in `company_settings.py`
+- Fixed `PIL.Image` import in `items.py`
+- Fixed `get_wa_template` import in `customers.py`, `whatsapp_config.py`
+- Fixed `get_company_short_name` import in `whatsapp_config.py`
+- Fixed `send_whatsapp_otp` import in `marketing.py`
+- Fixed `send_wa_msg` import in `reminders.py`
+- Fixed `send_push_to_admins` import in `orders_admin.py`
+- Fixed `send_push_to_user` import in `mr.py`
+- Fixed `OrderItem` import in `orders_admin.py`, `mr.py`
+- Fixed `UserPermissions` import in `users.py`
+- Removed unnecessary `sender_id` check blocking OTP sending
+- Created `utils/notifications.py` with order notification functions lost during refactoring
+- Removed duplicate push notification functions from `routes/push.py`
+- Added admin auto-seeding in `server.py` startup
+- Fixed `install.sh`: Python venv detection, getcwd error, IP-only support
+- Removed `emergentintegrations` from `requirements.txt`
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884
-- MR: 9876543211 / testpass
-- Customer: 9999777766 / test123
 
 ## Backlog (P2)
 - AI Insights for Reports dashboard

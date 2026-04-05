@@ -10,6 +10,7 @@ from deps import db, logger, get_current_user, hash_password, verify_password, c
 from models.schemas import PendingItemCreate, PendingItemResponse
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
 from utils.templates import render_wa_template, get_company_short_name
+from utils.notifications import send_whatsapp_stock_arrived
 
 router = APIRouter(prefix="/api")
 

@@ -12,6 +12,7 @@ from utils.image import process_image_to_webp
 from utils.code_gen import generate_item_code
 import base64
 from io import BytesIO
+from PIL import Image
 from fpdf import FPDF
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side

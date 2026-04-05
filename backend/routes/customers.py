@@ -16,6 +16,7 @@ from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_messag
 from utils.email_utils import send_notification_email
 from utils.templates import render_wa_template, get_company_short_name, get_wa_template
 from utils.push import send_push_to_admins
+from utils.notifications import send_whatsapp_order, send_order_confirmation_email
 from utils.ledger import get_customer_ledger, generate_ledger_pdf_bytes
 import base64
 import bcrypt
@@ -26,6 +27,12 @@ import string
 from fastapi.security import HTTPBearer
 
 router = APIRouter(prefix="/api")
+
+DEFAULT_SUBCATEGORY_ORDER = [
+    'Injection', 'Dry Injections', 'Hormones', 'Schedule X Drugs',
+    'Liquids', 'Bolus', 'Powder', 'Feed Supplements',
+    'Shampoo / Soap', 'Spray / Ointments', 'Tablets', 'Syrups', 'Vaccines'
+]
 
 # ============== CUSTOMER PORTAL ROUTES ==============
 

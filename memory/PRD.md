@@ -13,32 +13,39 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 ├── server.py, deps.py, migrate.py
 ├── models/schemas.py
 ├── utils/ (whatsapp, email, templates, notifications, image, ledger, push, code_gen)
-└── routes/ (28 modules)
+└── routes/ (28 modules including database.py with restore)
 ```
 
-## Recent Changes (Apr 5, 2026)
+## Implemented Features (Apr 5, 2026)
 
-### Order Edit WhatsApp Notification
-- Items add/remove/qty change triggers WA + Email with full updated list
-- New templates: order_updated, payment_reminder (WA + Email)
+### WhatsApp Template Audit
+- All templates use `render_wa_template` with proper `company_short_name` and `company_phone`
+- Fixed `+None` display when company phone is null
+- Templates: otp, order_confirmation, status_confirmed/processing/ready/dispatched/delivered/cancelled, payment_receipt, out_of_stock, stock_arrived, account_approved/declined, password_reset, daily_reminder, ledger_statement, birthday/anniversary_greeting, order_updated, payment_reminder
 
-### Payment Reminder (Template-based)
-- Outstanding table and Ledger WA reminder now uses backend API template
+### Auto-Delete Temp Files
+- Background task `cleanup_temp_files` runs every 6 hours
+- Cleans expired `temp_ledger_pdfs` (48h TTL)
+- Cleans expired `temp_backup_files` (48h TTL)
+- Also cleans entries without `expires_at` that are older than 2 days
 
-### Reports Orders Tab Fix
-- Fixed `orderStatus.sort()` mutating React state (caused re-render crash)
-- Fixed `avg_value` NaN in StatCard calculation
-- Fixed `Math.max()` on empty array returning -Infinity
-- Fixed tooltip formatter crash on null values
+### Database Backup Email Attachment
+- Already existed: `POST /api/database/send-email-backup` sends full JSON backup via SMTP
+- `POST /api/database/trigger-backup` sends via both WhatsApp + Email
 
-### VPS Auto-Cleanup
-- `install.sh --update` now auto-deletes `/tmp/vmpcrm_upload.tar.gz` after extraction
-- Fresh install also auto-cleans
+### Database Restore (NEW)
+- **Merge Mode** (`POST /api/database/restore`): Adds missing records, skips duplicates by `id`
+- **Replace Mode** (`POST /api/database/restore-replace`): Replaces collection data; protected collections (users, system_settings, whatsapp_config, smtp_settings) are always merged safely
+- UI in Settings > Database Management with file picker, Merge/Replace toggle, and Restore button
+- Supports JSON backup files exported by the system
 
-### Database Migration Script
-- `migrate.py` — idempotent, non-destructive
-- Auto-seeds new templates for existing DBs
-- Integrated into install.sh (--install, --update, --migrate)
+### Previous Session Work
+- Order edit WhatsApp notification with updated items list
+- Payment reminder via template-based WhatsApp API
+- Removed raw wa.me WhatsApp button from Orders page
+- Reports Orders tab crash fix (state mutation, NaN, empty arrays)
+- VPS auto-cleanup of downloaded archives
+- Database migration script (migrate.py)
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884
@@ -47,4 +54,4 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 - AI Insights for Reports dashboard
 - Stock/Inventory Management
 - Sales target management for MRs
-- Data import/export
+- Data import/export (CSV)

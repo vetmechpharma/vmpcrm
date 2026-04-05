@@ -419,13 +419,31 @@ export const Orders = () => {
 
   const openEditModal = (order) => {
     setSelectedOrder(order);
-    setEditItems(order.items.map(item => ({ 
-      ...item, 
-      remove: false, 
-      originalQty: item.quantity,
-      originalRate: item.rate || 0,
-      editQty: item.quantity
-    })));
+    const cType = order.customer_type || 'doctor';
+    setEditItems(order.items.map(item => {
+      // Look up full item data for role-based pricing
+      const fullItem = items.find(i => i.id === item.item_id);
+      let defaultRate = 0;
+      let offer = '';
+      let special_offer = '';
+      if (fullItem) {
+        if (cType === 'medical') defaultRate = fullItem.rate_medicals || fullItem.rate || 0;
+        else if (cType === 'agency') defaultRate = fullItem.rate_agencies || fullItem.rate || 0;
+        else defaultRate = fullItem.rate_doctors || fullItem.rate || 0;
+        offer = fullItem[`offer_${cType}s`] || fullItem.offer_doctors || fullItem.offer || '';
+        special_offer = fullItem[`special_offer_${cType}s`] || fullItem.special_offer_doctors || fullItem.special_offer || '';
+      }
+      return {
+        ...item,
+        remove: false,
+        originalQty: item.quantity,
+        originalRate: item.rate || 0,
+        editQty: item.quantity,
+        defaultRate,
+        offer,
+        special_offer
+      };
+    }));
     setItemsToMarkPending({});
     setShowEditModal(true);
   };
@@ -1834,7 +1852,14 @@ export const Orders = () => {
                       <div className="flex gap-3 mt-1 text-xs text-slate-600">
                         {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                         {item.gst > 0 && <span>GST: {item.gst}%</span>}
+                        {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
                       </div>
+                      {(item.offer || item.special_offer) && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {item.offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{item.offer}</span>}
+                          {item.special_offer && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{item.special_offer}</span>}
+                        </div>
+                      )}
                     </div>
                     {!item.remove ? (
                       <div className="flex items-center gap-2 flex-shrink-0">

@@ -104,6 +104,7 @@ export const Orders = () => {
   // Edit order items form
   const [editItems, setEditItems] = useState([]);
   const [itemsToMarkPending, setItemsToMarkPending] = useState({});
+  const [editItemSearch, setEditItemSearch] = useState('');
 
   // Customer edit form
   const [customerForm, setCustomerForm] = useState({
@@ -496,6 +497,71 @@ export const Orders = () => {
       [index]: shouldMarkPending
     }));
   };
+
+  const handleDeleteEditItem = (index) => {
+    const newItems = editItems.filter((_, i) => i !== index);
+    setEditItems(newItems);
+    // Reindex pending items
+    const newPending = {};
+    Object.entries(itemsToMarkPending).forEach(([key, val]) => {
+      const k = parseInt(key);
+      if (k < index) newPending[k] = val;
+      else if (k > index) newPending[k - 1] = val;
+    });
+    setItemsToMarkPending(newPending);
+  };
+
+  const handleAddEditItem = (item) => {
+    const existingIndex = editItems.findIndex(i => i.item_id === item.id);
+    if (existingIndex >= 0) {
+      // Increment quantity of existing item
+      const newItems = [...editItems];
+      const currentQty = String(newItems[existingIndex].quantity || newItems[existingIndex].editQty || '1');
+      const qtyParts = currentQty.split('+').map(p => parseInt(p.trim()) || 0);
+      const newQty = (qtyParts[0] || 0) + 1;
+      newItems[existingIndex].quantity = qtyParts[1] ? `${newQty}+${qtyParts[1]}` : String(newQty);
+      newItems[existingIndex].editQty = newItems[existingIndex].quantity;
+      newItems[existingIndex].remove = false;
+      setEditItems(newItems);
+      toast.success(`Increased qty for ${item.item_name}`);
+    } else {
+      const cType = selectedOrder?.customer_type || 'doctor';
+      let defaultRate = 0;
+      let offer = '';
+      let special_offer = '';
+      if (cType === 'medical') defaultRate = item.rate_medicals || item.rate || 0;
+      else if (cType === 'agency') defaultRate = item.rate_agencies || item.rate || 0;
+      else defaultRate = item.rate_doctors || item.rate || 0;
+      offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
+      special_offer = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
+
+      setEditItems([...editItems, {
+        item_id: item.id,
+        item_code: item.item_code,
+        item_name: item.item_name,
+        quantity: '1',
+        editQty: '1',
+        mrp: item.mrp || 0,
+        rate: defaultRate,
+        originalQty: '0',
+        originalRate: 0,
+        gst: item.gst || 0,
+        remove: false,
+        isNew: true,
+        defaultRate,
+        offer,
+        special_offer
+      }]);
+      toast.success(`Added ${item.item_name}`);
+    }
+    setEditItemSearch('');
+  };
+
+  const editFilteredItems = items.filter(item => {
+    if (!editItemSearch) return false;
+    const search = editItemSearch.toLowerCase();
+    return (item.item_name?.toLowerCase().includes(search) || item.item_code?.toLowerCase().includes(search));
+  });
 
   const handleSaveEditedItems = async () => {
     setSaving(true);
@@ -1836,18 +1902,78 @@ export const Orders = () => {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div className="text-sm text-amber-700">
-                  <p className="font-medium">Edit quantities or mark items as out of stock</p>
-                  <p>Enter qty as number (10) or with free scheme (10+5). Check "Mark as Pending" to track for customer follow-up.</p>
+                  <p className="font-medium">Edit, add, or remove items</p>
+                  <p>Enter qty as number (10) or with free scheme (10+5). Use "Out of Stock" to track pending items.</p>
                 </div>
               </div>
+            </div>
+
+            {/* Add Item Search */}
+            <div className="mb-4">
+              <Label className="text-sm font-medium text-slate-700 mb-1.5 block">Add Item to Order</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Search items to add..."
+                  value={editItemSearch}
+                  onChange={(e) => setEditItemSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="edit-order-add-item-search"
+                />
+              </div>
+              {editItemSearch && (
+                <div className="border rounded-lg max-h-40 overflow-y-auto mt-1">
+                  {editFilteredItems.length > 0 ? (
+                    editFilteredItems.slice(0, 8).map((item) => {
+                      const cType = selectedOrder?.customer_type || 'doctor';
+                      let roleRate = 0;
+                      if (cType === 'medical') roleRate = item.rate_medicals || item.rate || 0;
+                      else if (cType === 'agency') roleRate = item.rate_agencies || item.rate || 0;
+                      else roleRate = item.rate_doctors || item.rate || 0;
+                      const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
+                      const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
+                      const alreadyInOrder = editItems.some(ei => ei.item_id === item.id && !ei.remove);
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-2.5 hover:bg-slate-50 cursor-pointer flex justify-between items-center border-b last:border-0 ${alreadyInOrder ? 'bg-blue-50' : ''}`}
+                          onClick={() => handleAddEditItem(item)}
+                          data-testid={`edit-add-item-${item.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{item.item_name} {alreadyInOrder && <span className="text-blue-500 text-xs">(in order)</span>}</p>
+                            <p className="text-xs text-slate-500">
+                              {item.item_code} | MRP: ₹{item.mrp || 0}
+                              {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
+                            </p>
+                            {(offer || special) && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {offer && <span className="text-[10px] px-1 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">{offer}</span>}
+                                {special && <span className="text-[10px] px-1 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">{special}</span>}
+                              </div>
+                            )}
+                          </div>
+                          <Plus className="w-4 h-4 text-green-600 shrink-0 ml-2" />
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="p-2.5 text-sm text-slate-400 text-center">No items found</p>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="space-y-3">
               {editItems.map((item, index) => (
-                <div key={index} className={`p-4 rounded-lg border ${item.remove ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div key={index} className={`p-4 rounded-lg border ${item.remove ? 'bg-red-50 border-red-200' : item.isNew ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800">{item.item_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800">{item.item_name}</p>
+                        {item.isNew && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">NEW</span>}
+                      </div>
                       <p className="text-sm text-slate-500">{item.item_code}</p>
                       <div className="flex gap-3 mt-1 text-xs text-slate-600">
                         {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
@@ -1886,19 +2012,35 @@ export const Orders = () => {
                             placeholder="10 or 10+5"
                           />
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMarkOutOfStock(index)}
-                          className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9"
-                        >
-                          Out of Stock
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMarkOutOfStock(index)}
+                            className="text-orange-600 border-orange-300 hover:bg-orange-50 h-8 text-xs"
+                          >
+                            Out of Stock
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteEditItem(index)}
+                            className="text-red-600 border-red-300 hover:bg-red-50 h-8 text-xs"
+                            data-testid={`edit-delete-item-${index}`}
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />Delete
+                          </Button>
+                        </div>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => handleRestoreItem(index)} className="text-green-600 border-green-300 hover:bg-green-50">
-                        Restore
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleRestoreItem(index)} className="text-green-600 border-green-300 hover:bg-green-50">
+                          Restore
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteEditItem(index)} className="text-red-600 border-red-300 hover:bg-red-50">
+                          <Trash2 className="w-3 h-3 mr-1" />Delete
+                        </Button>
+                      </div>
                     )}
                   </div>
                   
@@ -1920,11 +2062,14 @@ export const Orders = () => {
               ))}
             </div>
             
-            {(editItems.filter(item => item.remove).length > 0 || editItems.some((item, i) => !item.remove && (item.quantity !== item.originalQty || item.rate !== item.originalRate))) && (
+            {(editItems.filter(item => item.remove).length > 0 || editItems.some((item, i) => !item.remove && (item.quantity !== item.originalQty || item.rate !== item.originalRate)) || editItems.some(item => item.isNew)) && (
               <div className="mt-4 p-3 bg-slate-100 rounded-lg">
                 <p className="text-sm text-slate-600">
-                  {editItems.filter(item => !item.remove && item.quantity !== item.originalQty).length > 0 && (
-                    <><strong>{editItems.filter(item => !item.remove && item.quantity !== item.originalQty).length}</strong> qty changed. </>
+                  {editItems.filter(item => item.isNew && !item.remove).length > 0 && (
+                    <><strong>{editItems.filter(item => item.isNew && !item.remove).length}</strong> item(s) added. </>
+                  )}
+                  {editItems.filter(item => !item.remove && !item.isNew && item.quantity !== item.originalQty).length > 0 && (
+                    <><strong>{editItems.filter(item => !item.remove && !item.isNew && item.quantity !== item.originalQty).length}</strong> qty changed. </>
                   )}
                   {editItems.filter(item => !item.remove && item.rate !== item.originalRate).length > 0 && (
                     <><strong>{editItems.filter(item => !item.remove && item.rate !== item.originalRate).length}</strong> rate changed. </>

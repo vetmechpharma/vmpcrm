@@ -120,7 +120,10 @@ async def get_marketing_recipients(
                     'email': doc.get('email'),
                     'type': recipient_type,
                     'lead_status': doc.get('lead_status', 'Pipeline'),
-                    'customer_code': doc.get('customer_code', '')
+                    'customer_code': doc.get('customer_code', ''),
+                    'state': doc.get('state', ''),
+                    'district': doc.get('district', ''),
+                    'city': doc.get('city', '')
                 })
     
     if entity_type in ['all', 'doctors']:

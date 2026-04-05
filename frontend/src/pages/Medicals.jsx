@@ -32,6 +32,8 @@ export const Medicals = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -146,8 +148,16 @@ export const Medicals = () => {
     finally { setFormLoading(false); }
   };
 
-  const handleSelectAll = (checked) => { setSelectedIds(checked ? medicals.map(m => m.id) : []); };
+  const handleSelectAll = (checked) => { setSelectedIds(checked ? filteredMedicals.map(m => m.id) : []); };
   const handleSelectOne = (id, checked) => { setSelectedIds(checked ? [...selectedIds, id] : selectedIds.filter(i => i !== id)); };
+
+  const uniqueStates = [...new Set(medicals.filter(m => m.state).map(m => m.state))].sort();
+  const uniqueDistricts = [...new Set(medicals.filter(m => m.district && (stateFilter === 'all' || m.state === stateFilter)).map(m => m.district))].sort();
+  const filteredMedicals = medicals.filter(m => {
+    if (stateFilter !== 'all' && m.state !== stateFilter) return false;
+    if (districtFilter !== 'all' && m.district !== districtFilter) return false;
+    return true;
+  });
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
@@ -268,13 +278,21 @@ export const Medicals = () => {
             <SelectTrigger className="w-full sm:w-48" data-testid="status-filter"><SelectValue placeholder="Filter by status" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All Statuses</SelectItem>{LEAD_STATUSES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}</SelectContent>
           </Select>
+          <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setDistrictFilter('all'); }}>
+            <SelectTrigger className="w-full sm:w-44" data-testid="state-filter"><SelectValue placeholder="All States" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All States</SelectItem>{uniqueStates.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
+          </Select>
+          <Select value={districtFilter} onValueChange={setDistrictFilter}>
+            <SelectTrigger className="w-full sm:w-44" data-testid="district-filter"><SelectValue placeholder="All Districts" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Districts</SelectItem>{uniqueDistricts.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}</SelectContent>
+          </Select>
           {selectedIds.length > 0 && (<Button variant="destructive" onClick={() => setShowBulkDeleteModal(true)} data-testid="bulk-delete-btn"><Trash2 className="w-4 h-4 mr-2" />Delete ({selectedIds.length})</Button>)}
         </div>
       </CardContent></Card>
 
       {/* Table */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">Medicals List</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Medicals List {stateFilter !== 'all' || districtFilter !== 'all' ? `(${filteredMedicals.length} of ${medicals.length})` : `(${medicals.length})`}</CardTitle></CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
@@ -282,7 +300,7 @@ export const Medicals = () => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead className="w-12"><Checkbox checked={selectedIds.length === medicals.length && medicals.length > 0} onCheckedChange={handleSelectAll} /></TableHead>
+                  <TableHead className="w-12"><Checkbox checked={selectedIds.length === filteredMedicals.length && filteredMedicals.length > 0} onCheckedChange={handleSelectAll} /></TableHead>
                   <TableHead>Medical</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
@@ -292,7 +310,7 @@ export const Medicals = () => {
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {medicals.map((medical) => (
+                  {filteredMedicals.map((medical) => (
                     <TableRow key={medical.id} className={`${isFollowUpDue(medical) ? 'bg-red-50' : ''} ${selectedIds.includes(medical.id) ? 'bg-blue-50' : ''}`} data-testid={`medical-row-${medical.id}`}>
                       <TableCell><Checkbox checked={selectedIds.includes(medical.id)} onCheckedChange={(c) => handleSelectOne(medical.id, c)} /></TableCell>
                       <TableCell>

@@ -77,6 +77,8 @@ export const Marketing = () => {
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [entityFilter, setEntityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState('all');
+  const [districtFilter, setDistrictFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Templates
@@ -186,12 +188,19 @@ export const Marketing = () => {
   };
 
   const getFilteredRecipients = useCallback(() => {
-    return recipients.filter(r => 
-      r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.phone?.includes(searchTerm) ||
-      r.customer_code?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [recipients, searchTerm]);
+    return recipients.filter(r => {
+      if (stateFilter !== 'all' && r.state !== stateFilter) return false;
+      if (districtFilter !== 'all' && r.district !== districtFilter) return false;
+      if (searchTerm) {
+        const s = searchTerm.toLowerCase();
+        return r.name?.toLowerCase().includes(s) || r.phone?.includes(s) || r.customer_code?.toLowerCase().includes(s);
+      }
+      return true;
+    });
+  }, [recipients, searchTerm, stateFilter, districtFilter]);
+
+  const uniqueStates = [...new Set(recipients.filter(r => r.state).map(r => r.state))].sort();
+  const uniqueDistricts = [...new Set(recipients.filter(r => r.district && (stateFilter === 'all' || r.state === stateFilter)).map(r => r.district))].sort();
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -453,6 +462,26 @@ export const Marketing = () => {
                       {STATUS_OPTIONS.map(opt => (
                         <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setDistrictFilter('all'); }}>
+                    <SelectTrigger data-testid="mkt-state-filter">
+                      <SelectValue placeholder="All States" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All States</SelectItem>
+                      {uniqueStates.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={districtFilter} onValueChange={setDistrictFilter}>
+                    <SelectTrigger data-testid="mkt-district-filter">
+                      <SelectValue placeholder="All Districts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Districts</SelectItem>
+                      {uniqueDistricts.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
                     </SelectContent>
                   </Select>
 

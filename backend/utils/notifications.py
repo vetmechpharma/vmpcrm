@@ -316,3 +316,92 @@ async def send_whatsapp_stock_arrived(doctor_phone: str, doctor_name: str, item_
     except Exception as e:
         logger.error(f"send_whatsapp_stock_arrived error: {e}")
         return False
+
+
+
+async def send_whatsapp_order_updated(order_doc: dict, items: list):
+    """Send WhatsApp notification when order items are updated (added/removed/qty changed)"""
+    try:
+        config = await get_whatsapp_config()
+        if not config.get('api_url') or not config.get('auth_token'):
+            return
+
+        customer_phone = order_doc.get('doctor_phone', '')
+        customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
+        order_number = order_doc.get('order_number', '')
+
+        items_lines = []
+        for item in items:
+            item_dict = item if isinstance(item, dict) else item.dict()
+            name = item_dict.get('item_name', 'Item')
+            qty = int(item_dict.get('quantity', 1))
+            rate = float(item_dict.get('rate', 0))
+            items_lines.append(f"• {name} x{qty} @ Rs.{rate:.2f}")
+
+        items_text = "\n".join(items_lines)
+        item_count = str(len(items_lines))
+
+        message = await render_wa_template('order_updated',
+            customer_name=customer_name,
+            order_number=order_number,
+            items_text=items_text,
+            item_count=item_count
+        )
+
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {customer_name},\n\nYour order *{order_number}* has been *UPDATED*.\n\n*Current Items ({item_count}):*\n{items_text}\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
+
+        wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
+        resp = await send_wa_msg(wa_phone, message, config=config)
+        status = 'success' if resp and resp.status_code == 200 else 'failed'
+        await log_whatsapp_message(wa_phone, 'order_updated', message, status)
+
+        # Also send email
+        customer_email = order_doc.get('doctor_email') or order_doc.get('email')
+        if customer_email:
+            short_name, phone = await get_company_short_name()
+            items_html = "<table style='border-collapse:collapse;width:100%'><tr><th style='padding:8px;border:1px solid #ddd;text-align:left'>Item</th><th style='padding:8px;border:1px solid #ddd;text-align:center'>Qty</th><th style='padding:8px;border:1px solid #ddd;text-align:right'>Rate</th></tr>"
+            for item in items:
+                item_dict = item if isinstance(item, dict) else item.dict()
+                name = item_dict.get('item_name', 'Item')
+                qty = int(item_dict.get('quantity', 1))
+                rate = float(item_dict.get('rate', 0))
+                items_html += f"<tr><td style='padding:8px;border:1px solid #ddd'>{name}</td><td style='padding:8px;border:1px solid #ddd;text-align:center'>{qty}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{rate:.2f}</td></tr>"
+            items_html += "</table>"
+
+            body = f"<h2>Order #{order_number} - Updated</h2><p>Dear {customer_name},</p><p>Your order has been updated with the following items:</p>{items_html}<p>Regards,<br><strong>{short_name}</strong></p>"
+            await send_notification_email(customer_email, f"Order #{order_number} Updated - {short_name}", body, customer_name)
+    except Exception as e:
+        logger.error(f"send_whatsapp_order_updated error: {e}")
+
+
+async def send_whatsapp_payment_reminder(customer_phone: str, customer_name: str, outstanding_amount: float):
+    """Send payment reminder via WhatsApp using template"""
+    try:
+        config = await get_whatsapp_config()
+        if not config.get('api_url') or not config.get('auth_token'):
+            return False
+
+        amount_str = f"{outstanding_amount:,.2f}"
+        message = await render_wa_template('payment_reminder',
+            customer_name=customer_name,
+            outstanding_amount=amount_str
+        )
+
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {customer_name},\n\nThis is a friendly reminder regarding your outstanding balance of *Rs. {amount_str}*.\n\nPlease arrange the payment at your earliest convenience.\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
+
+        wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
+        resp = await send_wa_msg(wa_phone, message, config=config)
+        status = 'success' if resp and resp.status_code == 200 else 'failed'
+        await log_whatsapp_message(wa_phone, 'payment_reminder', message, status, recipient_name=customer_name)
+        return status == 'success'
+    except Exception as e:
+        logger.error(f"send_whatsapp_payment_reminder error: {e}")
+        return False

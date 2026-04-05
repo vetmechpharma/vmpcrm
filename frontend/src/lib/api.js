@@ -326,6 +326,7 @@ export const paymentsAPI = {
   update: (id, data) => api.put(`/payments/${id}`, data),
   delete: (id) => api.delete(`/payments/${id}`),
   sendWhatsApp: (id) => api.post(`/payments/${id}/whatsapp`),
+  sendReminder: (data) => api.post('/payments/send-reminder', data),
   getLedger: (customerType, customerId, params) => api.get(`/ledger/${customerType}/${customerId}`, { params }),
   getOutstanding: (params) => api.get('/outstanding', { params }),
   exportLedgerPDF: (customerType, customerId, params) => api.get(`/ledger/export/pdf/${customerType}/${customerId}`, { params, responseType: 'blob' }),

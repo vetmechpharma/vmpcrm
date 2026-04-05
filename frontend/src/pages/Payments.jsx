@@ -36,6 +36,7 @@ export const Payments = () => {
   const [filterMode, setFilterMode] = useState('');
   const [paySearch, setPaySearch] = useState('');
   const [sendingWA, setSendingWA] = useState(null);
+  const [sendingReminder, setSendingReminder] = useState(null);
 
   // MR Payment Requests
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -193,6 +194,38 @@ export const Payments = () => {
       toast.error(msg);
     }
     finally { setSendingWA(null); }
+  };
+
+  const sendPaymentReminder = async (customer) => {
+    setSendingReminder(customer.customer_id);
+    try {
+      await paymentsAPI.sendReminder({
+        customer_phone: customer.customer_phone,
+        customer_name: customer.customer_name,
+        customer_email: customer.customer_email || '',
+        outstanding: customer.outstanding
+      });
+      toast.success(`Payment reminder sent to ${customer.customer_name}`);
+    } catch (e) {
+      const msg = e.response?.data?.detail || 'Failed to send reminder';
+      toast.error(msg);
+    } finally { setSendingReminder(null); }
+  };
+
+  const sendLedgerReminder = async () => {
+    if (!ledgerCustomer?.phone) return;
+    setSendingReminder('ledger');
+    try {
+      const balance = ledger?.balance || 0;
+      await paymentsAPI.sendReminder({
+        customer_phone: ledgerCustomer.phone,
+        customer_name: ledgerCustomer.name,
+        outstanding: Math.abs(balance)
+      });
+      toast.success(`Payment reminder sent to ${ledgerCustomer.name}`);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed to send reminder');
+    } finally { setSendingReminder(null); }
   };
 
   const deletePayment = async (id) => {
@@ -399,11 +432,11 @@ export const Payments = () => {
                                 <Phone className="w-3.5 h-3.5" />
                               </Button>
                             </a>
-                            <a href={`https://wa.me/91${o.customer_phone?.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Dear ${o.customer_name},\n\nThis is a payment reminder. Your outstanding balance is ₹${o.outstanding.toLocaleString('en-IN')}.\n\nPlease arrange the payment at your earliest convenience.\n\nThank you.`)}`} target="_blank" rel="noreferrer" title="WhatsApp reminder">
-                              <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 h-8" data-testid={`wa-${o.customer_id}`}>
-                                <MessageCircle className="w-3.5 h-3.5" />
-                              </Button>
-                            </a>
+                            <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 h-8"
+                              onClick={() => sendPaymentReminder(o)} disabled={sendingReminder === o.customer_id}
+                              title="Send WhatsApp Reminder" data-testid={`wa-${o.customer_id}`}>
+                              {sendingReminder === o.customer_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5" />}
+                            </Button>
                           </>
                         )}
                         <Button variant="outline" size="sm" onClick={() => openLedger(o.customer_id, o.customer_type, o.customer_name, o.customer_phone)} data-testid={`ledger-${o.customer_id}`} className="h-8">
@@ -634,11 +667,10 @@ export const Payments = () => {
                     <Phone className="w-3 h-3 mr-1" />Call
                   </Button>
                 </a>
-                <a href={`https://wa.me/91${ledgerCustomer.phone?.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(`Dear ${ledgerCustomer?.name},\n\nThis is a payment reminder regarding your outstanding balance.\n\nPlease arrange the payment at your earliest convenience.\n\nThank you.`)}`} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50" data-testid="ledger-wa-reminder-btn">
-                    <MessageCircle className="w-3 h-3 mr-1" />Remind
-                  </Button>
-                </a>
+                <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                  onClick={sendLedgerReminder} disabled={sendingReminder === 'ledger'} data-testid="ledger-wa-reminder-btn">
+                  {sendingReminder === 'ledger' ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <MessageCircle className="w-3 h-3 mr-1" />}Remind
+                </Button>
                 <div className="h-6 w-px bg-slate-200" />
               </>
             )}

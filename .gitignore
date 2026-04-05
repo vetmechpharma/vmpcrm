@@ -130,3 +130,4 @@ frontend/node_modules/.cache/default-development/16.pack
 *.env
 *.env.*
 frontend/public/vmpcrm_code.tar.gz
+frontend/node_modules/.cache/default-development/19.pack

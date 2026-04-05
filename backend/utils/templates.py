@@ -114,6 +114,20 @@ DEFAULT_WA_TEMPLATES = {
         'variables': ['customer_name', 'period', 'total_balance', 'company_short_name', 'company_phone'],
         'template': 'Hello {customer_name},\n\nYour ledger statement for *{period}* is attached.\n\nCurrent Balance: *Rs. {total_balance}*\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
     },
+    'order_updated': {
+        'key': 'order_updated',
+        'name': 'Order Updated',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'items_text', 'item_count', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *UPDATED*.\n\n*Current Items ({item_count}):*\n{items_text}\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
+    'payment_reminder': {
+        'key': 'payment_reminder',
+        'name': 'Payment Reminder',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'outstanding_amount', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nThis is a friendly reminder regarding your outstanding balance of *Rs. {outstanding_amount}*.\n\nPlease arrange the payment at your earliest convenience.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
     'birthday_greeting': {
         'key': 'birthday_greeting',
         'name': 'Birthday Greeting',
@@ -194,6 +208,22 @@ DEFAULT_EMAIL_TEMPLATES = {
         'variables': ['customer_name', 'reason', 'company_name', 'company_short_name'],
         'subject': 'Registration Update | {company_short_name}',
         'template': '<h2>Hello {customer_name},</h2><p>Unfortunately, your registration has been <strong style="color:#ef4444;">declined</strong>.</p><p><strong>Reason:</strong> {reason}</p><p>Please contact support for assistance.</p><p>Regards,<br/><strong>{company_name}</strong></p>',
+    },
+    'order_updated_email': {
+        'key': 'order_updated_email',
+        'name': 'Order Updated Email',
+        'category': 'email',
+        'variables': ['customer_name', 'order_number', 'items_html', 'company_name', 'company_short_name'],
+        'subject': 'Order {order_number} - Updated | {company_short_name}',
+        'template': '<h2>Hello {customer_name},</h2><p>Your order <strong>{order_number}</strong> has been <strong style="color:#3b82f6;">UPDATED</strong>.</p><p><strong>Current Items:</strong></p>{items_html}<p>Regards,<br/><strong>{company_name}</strong></p>',
+    },
+    'payment_reminder_email': {
+        'key': 'payment_reminder_email',
+        'name': 'Payment Reminder Email',
+        'category': 'email',
+        'variables': ['customer_name', 'outstanding_amount', 'company_name', 'company_short_name'],
+        'subject': 'Payment Reminder | {company_short_name}',
+        'template': '<h2>Hello {customer_name},</h2><p>This is a friendly reminder regarding your outstanding balance of <strong>Rs. {outstanding_amount}</strong>.</p><p>Please arrange the payment at your earliest convenience.</p><p>Regards,<br/><strong>{company_name}</strong></p>',
     },
     'ledger_statement_email': {
         'key': 'ledger_statement_email',

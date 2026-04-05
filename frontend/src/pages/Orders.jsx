@@ -668,38 +668,6 @@ export const Orders = () => {
     setShowPrintModal(true);
   };
 
-  // Send order via WhatsApp
-  const sendOrderWhatsApp = (order) => {
-    const companyName = companySettings?.company_name || 'VMP CRM';
-    const companyPhone = companySettings?.phone || '';
-    
-    let message = `*${companyName}*\n`;
-    message += `📦 *Order: ${order.order_number}*\n\n`;
-    message += `👤 *Customer:* ${order.doctor_name}\n`;
-    message += `📱 *Phone:* ${order.doctor_phone}\n`;
-    if (order.doctor_address) message += `📍 *Address:* ${order.doctor_address}\n`;
-    message += `\n*━━━━ ORDER ITEMS ━━━━*\n\n`;
-    
-    order.items?.forEach((item, idx) => {
-      message += `${idx + 1}. *${item.item_name}*\n`;
-      message += `   Code: ${item.item_code}\n`;
-      message += `   Qty: ${item.quantity}`;
-      if (item.rate) message += ` | Rate: ₹${item.rate}`;
-      if (item.mrp) message += ` | MRP: ₹${item.mrp}`;
-      message += `\n\n`;
-    });
-    
-    message += `*━━━━━━━━━━━━━━━━━*\n`;
-    message += `📅 Date: ${formatDateTime(order.created_at)}\n`;
-    if (order.status) message += `📊 Status: ${STATUS_CONFIG[order.status]?.label || order.status}\n`;
-    if (companyPhone) message += `\n📞 Contact: ${companyPhone}`;
-    
-    const encodedMessage = encodeURIComponent(message);
-    const phone = order.doctor_phone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/91${phone}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
   const openCustomerModal = async (order) => {
     setSelectedOrder(order);
     setCustomerForm({
@@ -1127,9 +1095,6 @@ export const Orders = () => {
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openPrintModal(order)} title="Print Order" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                               <Printer className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => sendOrderWhatsApp(order)} title="Send WhatsApp" className="text-green-600 hover:text-green-700 hover:bg-green-50">
-                              <MessageSquare className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openUpdateModal(order)} title="Update Status">
                               <Truck className="w-4 h-4" />
@@ -2343,9 +2308,6 @@ export const Orders = () => {
           </div>
           <DialogFooter className="flex gap-2">
             <Button variant="outline" onClick={() => setShowPrintModal(false)}>Close</Button>
-            <Button variant="outline" onClick={() => sendOrderWhatsApp(selectedOrder)} className="text-green-600 border-green-300 hover:bg-green-50">
-              <MessageSquare className="w-4 h-4 mr-2" /> Send WhatsApp
-            </Button>
             <Button onClick={handlePrint} data-testid="print-order-btn">
               <Printer className="w-4 h-4 mr-2" /> Print
             </Button>

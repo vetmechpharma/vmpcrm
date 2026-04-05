@@ -14,7 +14,7 @@ from utils.templates import render_wa_template, get_company_short_name
 from utils.push import send_push_to_user, send_push_to_admins
 from utils.notifications import (send_whatsapp_order, send_order_confirmation_email,
     send_whatsapp_out_of_stock, send_whatsapp_status_update, send_whatsapp_ready_to_despatch,
-    send_order_status_email)
+    send_order_status_email, send_whatsapp_order_updated)
 from routes.expenses import ensure_default_categories
 
 router = APIRouter(prefix="/api")
@@ -647,6 +647,9 @@ async def update_order_items(order_id: str, update_data: OrderItemsUpdate, backg
         
         # Send WhatsApp notification for out of stock items
         background_tasks.add_task(send_whatsapp_out_of_stock, order, update_data.pending_items)
+    
+    # Send order updated notification (items changed)
+    background_tasks.add_task(send_whatsapp_order_updated, order, items_data)
     
     return {"message": "Order items updated successfully"}
 

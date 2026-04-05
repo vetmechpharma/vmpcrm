@@ -175,6 +175,58 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
         logger.error(f"WhatsApp receipt error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"WhatsApp error: {str(e)}")
 
+
+@router.post("/payments/send-reminder")
+async def send_payment_reminder(data: dict, current_user: dict = Depends(get_current_user)):
+    """Send payment reminder via WhatsApp (template-based) and optionally Email"""
+    customer_phone = data.get('customer_phone', '')
+    customer_name = data.get('customer_name', 'Customer')
+    customer_email = data.get('customer_email', '')
+    outstanding = float(data.get('outstanding', 0))
+
+    if not customer_phone:
+        raise HTTPException(status_code=400, detail="Customer phone is required")
+
+    config = await get_whatsapp_config()
+    if not (config.get('api_url') and config.get('auth_token')):
+        raise HTTPException(status_code=400, detail="WhatsApp not configured")
+
+    amount_str = f"{outstanding:,.2f}"
+
+    # Send WhatsApp using template
+    message = await render_wa_template('payment_reminder',
+        customer_name=customer_name,
+        outstanding_amount=amount_str
+    )
+    if not message:
+        short_name, phone = await get_company_short_name()
+        message = f"Hello {customer_name},\n\nThis is a friendly reminder regarding your outstanding balance of *Rs. {amount_str}*.\n\nPlease arrange the payment at your earliest convenience.\n\nRegards,\n*{short_name}*"
+        if phone:
+            message += f"\n+{phone}"
+
+    wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
+    try:
+        response = await send_wa_msg(wa_phone, message, config=config)
+        if response and response.status_code == 200:
+            await log_whatsapp_message(wa_phone, 'payment_reminder', message, 'success', recipient_name=customer_name)
+
+            # Also send email if available
+            if customer_email:
+                short_name, phone = await get_company_short_name()
+                email_body = f"<p>Dear <strong>{customer_name}</strong>,</p><p>This is a friendly reminder regarding your outstanding balance of <strong>Rs. {amount_str}</strong>.</p><p>Please arrange the payment at your earliest convenience.</p><p>Regards,<br><strong>{short_name}</strong></p>"
+                await send_notification_email(customer_email, f"Payment Reminder - {short_name}", email_body, customer_name)
+
+            return {"message": "Payment reminder sent via WhatsApp", "wa_status": "success"}
+        else:
+            await log_whatsapp_message(wa_phone, 'payment_reminder', message, 'failed')
+            raise HTTPException(status_code=500, detail="WhatsApp send failed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payment reminder error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/ledger/{customer_type}/{customer_id}")
 async def get_customer_ledger(
     customer_type: str,

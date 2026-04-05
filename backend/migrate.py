@@ -362,7 +362,37 @@ async def migrate():
         log_ok(f"  Seeded {len(default_email_templates)} default Email templates")
         changes += len(default_email_templates)
     else:
-        log_skip(f"  message_templates already has {existing_templates} templates — not overwriting")
+        log_skip(f"  message_templates already has {existing_templates} templates — checking for missing keys...")
+        # Insert individual missing templates (for incremental updates)
+        new_templates = [
+            {'key': 'order_updated', 'name': 'Order Updated', 'category': 'whatsapp',
+             'variables': ['customer_name', 'order_number', 'items_text', 'item_count', 'company_short_name', 'company_phone'],
+             'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *UPDATED*.\n\n*Current Items ({item_count}):*\n{items_text}\n\nRegards,\n*{company_short_name}*\n+{company_phone}'},
+            {'key': 'payment_reminder', 'name': 'Payment Reminder', 'category': 'whatsapp',
+             'variables': ['customer_name', 'outstanding_amount', 'company_short_name', 'company_phone'],
+             'template': 'Hello {customer_name},\n\nThis is a friendly reminder regarding your outstanding balance of *Rs. {outstanding_amount}*.\n\nPlease arrange the payment at your earliest convenience.\n\nRegards,\n*{company_short_name}*\n+{company_phone}'},
+            {'key': 'order_updated_email', 'name': 'Order Updated Email', 'category': 'email',
+             'variables': ['customer_name', 'order_number', 'items_html', 'company_name', 'company_short_name'],
+             'subject': 'Order {order_number} - Updated | {company_short_name}',
+             'template': '<h2>Hello {customer_name},</h2><p>Your order <strong>{order_number}</strong> has been <strong style="color:#3b82f6;">UPDATED</strong>.</p><p><strong>Current Items:</strong></p>{items_html}<p>Regards,<br/><strong>{company_name}</strong></p>'},
+            {'key': 'payment_reminder_email', 'name': 'Payment Reminder Email', 'category': 'email',
+             'variables': ['customer_name', 'outstanding_amount', 'company_name', 'company_short_name'],
+             'subject': 'Payment Reminder | {company_short_name}',
+             'template': '<h2>Hello {customer_name},</h2><p>This is a friendly reminder regarding your outstanding balance of <strong>Rs. {outstanding_amount}</strong>.</p><p>Please arrange the payment at your earliest convenience.</p><p>Regards,<br/><strong>{company_name}</strong></p>'},
+        ]
+        added = 0
+        for t in new_templates:
+            exists = await db.message_templates.find_one({'key': t['key'], 'category': t['category']})
+            if not exists:
+                t['id'] = str(uuid.uuid4())
+                t['created_at'] = datetime.now(timezone.utc).isoformat()
+                await db.message_templates.insert_one(t)
+                log_ok(f"  Added missing template: {t['key']} ({t['category']})")
+                added += 1
+        if added:
+            changes += added
+        else:
+            log_skip("  All templates present")
 
     # ------------------------------------------------------------------
     # Step 5: Add missing fields to existing orders

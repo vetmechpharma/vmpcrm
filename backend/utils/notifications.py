@@ -2,7 +2,7 @@
 from deps import db, logger
 from utils.whatsapp import get_whatsapp_config, send_wa_msg, log_whatsapp_message
 from utils.email_utils import send_notification_email
-from utils.templates import render_wa_template, get_company_short_name, get_wa_template, get_email_template
+from utils.templates import render_wa_template, get_company_short_name, get_email_template
 
 
 async def send_whatsapp_order(customer_phone: str, items: list, order_number: str, customer_name: str):
@@ -12,7 +12,6 @@ async def send_whatsapp_order(customer_phone: str, items: list, order_number: st
         if not config.get('api_url') or not config.get('auth_token'):
             return
 
-        # Build items text
         items_lines = []
         total = 0
         for item in items:
@@ -22,26 +21,23 @@ async def send_whatsapp_order(customer_phone: str, items: list, order_number: st
             rate = float(item_dict.get('rate', 0))
             amount = qty * rate
             total += amount
-            items_lines.append(f"• {name} x{qty} = ₹{amount:.2f}")
+            items_lines.append(f"• {name} x{qty} = Rs.{amount:.2f}")
 
         items_text = "\n".join(items_lines)
-        short_name, _ = await get_company_short_name()
+        item_count = len(items_lines)
 
-        # Try template first
-        tmpl = await get_wa_template('order_confirmation')
-        if tmpl:
-            try:
-                message = tmpl.format(
-                    customer_name=customer_name,
-                    order_number=order_number,
-                    items_text=items_text,
-                    total=f"₹{total:.2f}",
-                    company_short_name=short_name
-                )
-            except Exception:
-                message = f"Order Confirmed! #{order_number}\n\nDear {customer_name},\n\n{items_text}\n\nTotal: ₹{total:.2f}\n\nThank you - {short_name}"
-        else:
-            message = f"Order Confirmed! #{order_number}\n\nDear {customer_name},\n\n{items_text}\n\nTotal: ₹{total:.2f}\n\nThank you - {short_name}"
+        message = await render_wa_template('order_confirmation',
+            customer_name=customer_name,
+            order_number=order_number,
+            item_count=str(item_count),
+            items_text=items_text
+        )
+
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {customer_name},\n\nYour order *{order_number}* has been received!\n\n*Items:*\n{items_text}\n\nWe will process your order shortly.\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
 
         wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
@@ -58,7 +54,7 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
         if not customer_email:
             return
 
-        short_name, _ = await get_company_short_name()
+        short_name, phone = await get_company_short_name()
         order_number = order_doc.get('order_number', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
 
@@ -71,29 +67,29 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
             rate = float(item_dict.get('rate', 0))
             amount = qty * rate
             total += amount
-            items_html += f"<tr><td>{name}</td><td>{qty}</td><td>₹{rate:.2f}</td><td>₹{amount:.2f}</td></tr>"
+            items_html += f"<tr><td style='padding:8px;border:1px solid #ddd'>{name}</td><td style='padding:8px;border:1px solid #ddd;text-align:center'>{qty}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{rate:.2f}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{amount:.2f}</td></tr>"
 
-        tmpl = await get_email_template('order_confirmation')
-        if tmpl:
+        tmpl_body, tmpl_subject = await get_email_template('order_confirmation')
+        if tmpl_body:
             try:
-                body = tmpl.format(
+                body = tmpl_body.format(
                     customer_name=customer_name,
                     order_number=order_number,
                     items_html=items_html,
-                    total=f"₹{total:.2f}",
-                    company_short_name=short_name
+                    total=f"Rs.{total:.2f}",
+                    company_short_name=short_name,
+                    company_name=short_name,
+                    company_phone=phone
                 )
+                subject = (tmpl_subject or '').format(order_number=order_number, company_short_name=short_name) or f"Order #{order_number} Confirmed - {short_name}"
             except Exception:
-                body = f"<h2>Order #{order_number} Confirmed</h2><p>Dear {customer_name}, your order has been placed successfully. Total: ₹{total:.2f}</p>"
+                body = f"<h2>Order #{order_number} Confirmed</h2><p>Dear {customer_name},</p><p>Your order has been placed successfully.</p><table style='border-collapse:collapse;width:100%'><tr><th style='padding:8px;border:1px solid #ddd'>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>{items_html}</table><p><strong>Total: Rs.{total:.2f}</strong></p><p>Regards,<br><strong>{short_name}</strong></p>"
+                subject = f"Order #{order_number} Confirmed - {short_name}"
         else:
-            body = f"<h2>Order #{order_number} Confirmed</h2><p>Dear {customer_name}, your order has been placed successfully. Total: ₹{total:.2f}</p>"
+            body = f"<h2>Order #{order_number} Confirmed</h2><p>Dear {customer_name},</p><p>Your order has been placed successfully.</p><table style='border-collapse:collapse;width:100%'><tr><th style='padding:8px;border:1px solid #ddd'>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>{items_html}</table><p><strong>Total: Rs.{total:.2f}</strong></p><p>Regards,<br><strong>{short_name}</strong></p>"
+            subject = f"Order #{order_number} Confirmed - {short_name}"
 
-        await send_notification_email(
-            customer_email,
-            f"Order #{order_number} Confirmed - {short_name}",
-            body,
-            customer_name
-        )
+        await send_notification_email(customer_email, subject, body, customer_name)
     except Exception as e:
         logger.error(f"send_order_confirmation_email error: {e}")
 
@@ -108,11 +104,20 @@ async def send_whatsapp_out_of_stock(order_doc: dict, pending_items: list):
         customer_phone = order_doc.get('doctor_phone', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
         order_number = order_doc.get('order_number', '')
-        short_name, _ = await get_company_short_name()
 
         items_text = "\n".join([f"• {p.get('item_name', 'Item')} x{p.get('quantity', 1)}" for p in pending_items])
 
-        message = f"Dear {customer_name},\n\nSome items from your order #{order_number} are currently out of stock:\n\n{items_text}\n\nWe will notify you once they are available.\n\n- {short_name}"
+        message = await render_wa_template('out_of_stock',
+            customer_name=customer_name,
+            order_number=order_number,
+            items_text=items_text
+        )
+
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {customer_name},\n\nSome items in your order *{order_number}* are currently *OUT OF STOCK*:\n\n{items_text}\n\nWe will notify you when they are available.\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
 
         wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
@@ -132,42 +137,68 @@ async def send_whatsapp_status_update(order_doc: dict, new_status: str, update_d
         customer_phone = order_doc.get('doctor_phone', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
         order_number = order_doc.get('order_number', '')
-        short_name, _ = await get_company_short_name()
+
+        # Map to correct template key
+        status_template_map = {
+            'confirmed': 'status_confirmed',
+            'processing': 'status_processing',
+            'ready_to_despatch': 'status_ready',
+            'shipped': 'status_dispatched',
+            'delivered': 'status_delivered',
+            'cancelled': 'status_cancelled'
+        }
 
         status_labels = {
-            'confirmed': 'Confirmed', 'processing': 'Processing',
-            'ready_to_despatch': 'Ready to Dispatch', 'shipped': 'Dispatched',
-            'delivered': 'Delivered', 'cancelled': 'Cancelled'
+            'confirmed': 'CONFIRMED', 'processing': 'PROCESSING',
+            'ready_to_despatch': 'READY TO DISPATCH', 'shipped': 'DISPATCHED',
+            'delivered': 'DELIVERED', 'cancelled': 'CANCELLED'
         }
-        status_label = status_labels.get(new_status, new_status.title())
+        status_label = status_labels.get(new_status, new_status.upper())
 
-        tmpl = await get_wa_template('order_status_update')
-        if tmpl:
-            try:
-                message = tmpl.format(
-                    customer_name=customer_name,
-                    order_number=order_number,
-                    status=status_label,
-                    company_short_name=short_name
-                )
-            except Exception:
-                message = f"Dear {customer_name},\n\nYour order #{order_number} status: *{status_label}*\n\n- {short_name}"
+        # Build items text for ready_to_despatch
+        items_text = ''
+        transport_name = ''
+        tracking_number = ''
+        if update_data:
+            transport_name = update_data.get('transport_name', '')
+            tracking_number = update_data.get('tracking_number', '')
+
+        if new_status == 'ready_to_despatch':
+            order_items = order_doc.get('items', [])
+            items_lines = [f"• {i.get('item_name', 'Item')} x{i.get('quantity', 1)}" for i in order_items]
+            items_text = "\n".join(items_lines) if items_lines else ''
+
+        tmpl_key = status_template_map.get(new_status, '')
+        message = ''
+        if tmpl_key:
+            message = await render_wa_template(tmpl_key,
+                customer_name=customer_name,
+                order_number=order_number,
+                items_text=items_text,
+                transport_name=transport_name or 'N/A'
+            )
+
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {customer_name},\n\nYour order *{order_number}* has been *{status_label}*!"
+            if new_status == 'shipped' and tracking_number:
+                message += f"\n\nTracking: {tracking_number}"
+            if transport_name:
+                message += f"\nTransport: {transport_name}"
+            message += f"\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
         else:
-            message = f"Dear {customer_name},\n\nYour order #{order_number} status: *{status_label}*\n\n- {short_name}"
-
-        # Add tracking info for shipped
-        if new_status == 'shipped' and update_data:
-            tracking = update_data.get('tracking_number', '')
-            transport = update_data.get('transport_name', '')
-            if tracking:
-                message += f"\n\nTracking: {tracking}"
-            if transport:
-                message += f"\nTransport: {transport}"
+            # Append tracking info if shipped
+            if new_status == 'shipped' and tracking_number:
+                message += f"\n\nTracking: {tracking_number}"
+                if transport_name:
+                    message += f"\nTransport: {transport_name}"
 
         wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
-        status = 'success' if resp and resp.status_code == 200 else 'failed'
-        await log_whatsapp_message(wa_phone, 'order_status', message, status)
+        status_val = 'success' if resp and resp.status_code == 200 else 'failed'
+        await log_whatsapp_message(wa_phone, f'order_{new_status}', message, status_val)
     except Exception as e:
         logger.error(f"send_whatsapp_status_update error: {e}")
 
@@ -175,7 +206,6 @@ async def send_whatsapp_status_update(order_doc: dict, new_status: str, update_d
 async def send_whatsapp_ready_to_despatch(order_doc: dict, update_data: dict = None):
     """Send WhatsApp notification when order is ready to dispatch"""
     try:
-        # Notify customer
         await send_whatsapp_status_update(order_doc, 'ready_to_despatch', update_data)
 
         # Notify transporter if available
@@ -187,17 +217,23 @@ async def send_whatsapp_ready_to_despatch(order_doc: dict, update_data: dict = N
         if not transport_phone:
             return
 
-        short_name, _ = await get_company_short_name()
+        short_name, phone = await get_company_short_name()
         transport_name = order_doc.get('transport_name') or (update_data or {}).get('transport_name', 'Transporter')
         order_number = order_doc.get('order_number', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
+        customer_city = order_doc.get('doctor_city', order_doc.get('city', ''))
 
-        message = f"Dear {transport_name},\n\nOrder #{order_number} for {customer_name} is ready for pickup/dispatch.\n\n- {short_name}"
+        message = f"Hello {transport_name},\n\nOrder *{order_number}* for *{customer_name}*"
+        if customer_city:
+            message += f" ({customer_city})"
+        message += f" is ready for pickup/dispatch.\n\nRegards,\n*{short_name}*"
+        if phone:
+            message += f"\n+{phone}"
 
         wa_phone = transport_phone if transport_phone.startswith('91') else f"91{transport_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
         status = 'success' if resp and resp.status_code == 200 else 'failed'
-        await log_whatsapp_message(wa_phone, 'ready_to_despatch', message, status)
+        await log_whatsapp_message(wa_phone, 'transport_ready', message, status)
     except Exception as e:
         logger.error(f"send_whatsapp_ready_to_despatch error: {e}")
 
@@ -209,7 +245,7 @@ async def send_order_status_email(order_doc: dict, new_status: str, update_data:
         if not customer_email:
             return
 
-        short_name, _ = await get_company_short_name()
+        short_name, phone = await get_company_short_name()
         order_number = order_doc.get('order_number', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
 
@@ -220,20 +256,28 @@ async def send_order_status_email(order_doc: dict, new_status: str, update_data:
         }
         status_label = status_labels.get(new_status, new_status.title())
 
-        body = f"<h2>Order #{order_number} - {status_label}</h2><p>Dear {customer_name},</p><p>Your order status has been updated to <strong>{status_label}</strong>.</p>"
+        body = f"<h2>Order #{order_number} - {status_label}</h2>"
+        body += f"<p>Dear {customer_name},</p>"
+        body += f"<p>Your order <strong>#{order_number}</strong> status has been updated to <strong>{status_label}</strong>.</p>"
 
         if new_status == 'shipped' and update_data:
             tracking = update_data.get('tracking_number', '')
             transport = update_data.get('transport_name', '')
             if tracking or transport:
-                body += "<p>"
+                body += "<p><strong>Shipping Details:</strong><br>"
                 if transport:
                     body += f"Transport: {transport}<br>"
                 if tracking:
                     body += f"Tracking Number: {tracking}"
                 body += "</p>"
 
-        body += f"<p>Thank you,<br>{short_name}</p>"
+        if new_status == 'delivered':
+            body += "<p>Thank you for your business!</p>"
+
+        body += f"<br><p>Regards,<br><strong>{short_name}</strong>"
+        if phone:
+            body += f"<br>Phone: {phone}"
+        body += "</p>"
 
         await send_notification_email(
             customer_email,
@@ -252,22 +296,17 @@ async def send_whatsapp_stock_arrived(doctor_phone: str, doctor_name: str, item_
         if not config.get('api_url') or not config.get('auth_token'):
             return False
 
-        short_name, _ = await get_company_short_name()
+        message = await render_wa_template('stock_arrived',
+            customer_name=doctor_name,
+            item_name=item_name,
+            item_code=item_code
+        )
 
-        tmpl = await get_wa_template('stock_arrived')
-        if tmpl:
-            try:
-                message = tmpl.format(
-                    doctor_name=doctor_name,
-                    item_name=item_name,
-                    item_code=item_code,
-                    quantity=quantity,
-                    company_short_name=short_name
-                )
-            except Exception:
-                message = f"Dear {doctor_name},\n\nGood news! *{item_name}* ({item_code}) is now back in stock.\n\nYou can place your order now.\n\n- {short_name}"
-        else:
-            message = f"Dear {doctor_name},\n\nGood news! *{item_name}* ({item_code}) is now back in stock.\n\nYou can place your order now.\n\n- {short_name}"
+        if not message:
+            short_name, phone = await get_company_short_name()
+            message = f"Hello {doctor_name},\n\n*{item_name}* ({item_code}) is now back in stock!\n\nYou can place your order now.\n\nRegards,\n*{short_name}*"
+            if phone:
+                message += f"\n+{phone}"
 
         wa_phone = doctor_phone if doctor_phone.startswith('91') else f"91{doctor_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)

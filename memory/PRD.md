@@ -13,6 +13,7 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 /app/backend/
 ├── server.py              # ~145 lines - slim orchestrator with admin seeding
 ├── deps.py                # Shared: db, auth, JWT, logger, VAPID
+├── migrate.py             # Database migration script (non-destructive, idempotent)
 ├── background_tasks.py    # Daily reminders, greetings, ledger
 ├── models/schemas.py      # All Pydantic models
 ├── utils/
@@ -27,36 +28,30 @@ Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distrib
 └── routes/                # 28 route modules
 ```
 
-## Bug Fixes Applied (Apr 5, 2026 - Post-Refactor Audit)
-- Fixed `process_image_to_webp` import in `marketing.py`, `company_settings.py`
-- Fixed `bcrypt`/`asyncio` imports in `customers.py`
-- Fixed `bcrypt` import in `admin_profile.py`
-- Fixed `smtplib`/`MIMEMultipart` imports in `marketing.py`
-- Fixed `MIMEApplication` import in `email_routes.py`
-- Fixed `base64` import in `company_settings.py`
-- Fixed `PIL.Image` import in `items.py`
-- Fixed `get_wa_template` import in `customers.py`, `whatsapp_config.py`
-- Fixed `get_company_short_name` import in `whatsapp_config.py`
-- Fixed `send_whatsapp_otp` import in `marketing.py`
-- Fixed `send_wa_msg` import in `reminders.py`
-- Fixed `send_push_to_admins` import in `orders_admin.py`
-- Fixed `send_push_to_user` import in `mr.py`
-- Fixed `OrderItem` import in `orders_admin.py`, `mr.py`
-- Fixed `UserPermissions` import in `users.py`
-- Removed unnecessary `sender_id` check blocking OTP sending
-- Created `utils/notifications.py` with order notification functions lost during refactoring
-- Removed duplicate push notification functions from `routes/push.py`
-- Added admin auto-seeding in `server.py` startup
-- Fixed `install.sh`: Python venv detection, getcwd error, IP-only support
-- Removed `emergentintegrations` from `requirements.txt`
+### VPS Deployment
+```
+/app/
+├── install.sh             # Full install, update, and migrate commands
+├── migrate.sh             # Standalone DB migration wrapper
+└── frontend/public/vmpcrm_code.tar.gz  # Downloadable VPS package
+```
 
-## WhatsApp Template Fix (Apr 5, 2026)
-- Fixed `+None` appearing in WhatsApp messages when company phone is null
-- Fixed `get_company_short_name()` to handle `None` phone values with `or` operator
-- Added cleanup in `render_wa_template()` to strip `+None` patterns
-- Fixed `int()` casting for quantity in notification item calculations (was causing email error)
-- All order notifications now use `render_wa_template` for proper variable interpolation
-- VPS code package rebuilt with latest fixes
+## Migration Script (Apr 5, 2026)
+- `backend/migrate.py` — Non-destructive, idempotent database migration
+- Creates 47+ collections if missing
+- Creates 50 indexes for performance
+- Seeds default WA + Email message templates (if none exist)
+- Adds new fields to existing docs: whatsapp_config (api_type, is_active, field mappings), orders (customer_type, source), users (permissions), items (role_rates, offer_rate), entities (state, district)
+- Seeds default admin if no admin exists
+- Integrated into `install.sh --install`, `install.sh --update`, and `install.sh --migrate`
+- Also available as standalone `migrate.sh`
+
+## Bug Fixes Applied (Apr 5, 2026)
+- Fixed `+None` in WhatsApp messages when company phone is null
+- Fixed `get_company_short_name()` None phone handling
+- Fixed email notification crash (quantity type casting)
+- Fixed all post-refactor missing imports across 15+ route files
+- Full list in previous PRD entries
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884

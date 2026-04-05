@@ -405,6 +405,14 @@ update_application() {
     yarn install
     yarn build
 
+    # Run database migration (non-destructive)
+    update_progress "update" "running" "Running database migration..." 85
+    cd "$CRM_DIR/backend"
+    source venv/bin/activate
+    python3 migrate.py
+    deactivate
+    log_ok "Database migration complete"
+
     # Restart services
     update_progress "update" "running" "Restarting services..." 90
     pm2 restart all
@@ -750,6 +758,7 @@ main() {
             --check-only)   ACTION="check" ;;
             --install)      ACTION="install" ;;
             --update)       ACTION="update" ;;
+            --migrate)      ACTION="migrate" ;;
             --domain=*)     DOMAIN="${arg#*=}" ;;
             --email=*)      ADMIN_EMAIL="${arg#*=}" ;;
             --password=*)   ADMIN_PASS="${arg#*=}" ;;
@@ -762,6 +771,18 @@ main() {
         check)
             check_requirements
             ;;
+        migrate)
+            log_step "Running Database Migration (standalone)"
+            cd "$CRM_DIR/backend"
+            if [ -f venv/bin/activate ]; then
+                source venv/bin/activate
+                python3 migrate.py
+                deactivate
+            else
+                python3 migrate.py
+            fi
+            log_ok "Database migration complete"
+            ;;
         install)
             echo -e "\n${CYAN}╔══════════════════════════════════════════╗${NC}"
             echo -e "${CYAN}║      VMP CRM - Full Installation         ║${NC}"
@@ -770,6 +791,16 @@ main() {
             check_requirements || true
             install_dependencies
             setup_application
+
+            # Run database migration on fresh install
+            log_step "Running Database Migration"
+            update_progress "migration" "running" "Running database migration..." 77
+            cd "$CRM_DIR/backend"
+            source venv/bin/activate
+            python3 migrate.py
+            deactivate
+            log_ok "Database migration complete"
+
             configure_nginx
             setup_pm2
             setup_firewall

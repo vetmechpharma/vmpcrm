@@ -1,0 +1,71 @@
+{
+  "summary": "Bug fixes verified successfully. All 3 bugs fixed: 1) Customer push notification token key (customerToken), 2) Customer profile API URL (/api/customer/profile), 3) PWA install banners exist with correct data-testid attributes. Backend: 13/13 tests passed. Frontend: Customer login, session persistence, profile fetch, and change password all working.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/customer/push/subscribe", "issue": "Fixed - was missing jwt import and JWT_SECRET/JWT_ALGORITHM imports in push.py", "priority": "FIXED"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bug_fixes_iteration56.py",
+    "/app/test_reports/pytest/pytest_bug_fixes_iter56.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: /app/backend/routes/push.py - Added missing imports: jwt, JWT_SECRET, JWT_ALGORITHM from deps"
+  ],
+  "updated_files": [
+    "/app/backend/routes/push.py",
+    "/app/backend/tests/test_bug_fixes_iteration56.py"
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "100% (all flows working)"
+  },
+  "test_credentials": {
+    "customer": {"phone": "9999777766", "password": "test123"},
+    "admin": {"email": "info@vetmech.in", "password": "Kongu@@44884"},
+    "mr": {"phone": "9876543211", "password": "testpass", "note": "MR credentials may not be set up in database"}
+  },
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bug fixes verified: 1) usePushNotifications.js line 18 uses 'customerToken' (correct), 2) CustomerLayout.jsx line 64 uses '/api/customer/profile' (correct), 3) PWA install banners have data-testid='pwa-install-banner' (customer) and data-testid='mr-install-banner' (MR). Note: PWA install banners only show when beforeinstallprompt event fires (browser-specific). Customer portal routes: /portal/* (dashboard, profile, etc). Login at /customer/login stores token as 'customerToken' in localStorage.",
+  "features_tested": {
+    "Customer login": "PASS - Returns access_token and customer data",
+    "Customer session persistence": "PASS - customerToken persists in localStorage after refresh",
+    "GET /api/customer/profile": "PASS - Returns correct customer profile data (BUG FIX VERIFIED)",
+    "POST /api/customer/push/subscribe": "PASS - Customer can subscribe to push notifications (BUG FIX VERIFIED)",
+    "POST /api/customer/change-password": "PASS - All validations working (regression check)",
+    "PWA install banner (Customer)": "PASS - data-testid='pwa-install-banner' exists in CustomerLayout.jsx",
+    "PWA install banner (MR)": "PASS - data-testid='mr-install-banner' exists in MRLayout.jsx",
+    "usePushNotifications token key": "PASS - Uses 'customerToken' for customer type (BUG FIX VERIFIED)"
+  },
+  "bugs_fixed_in_this_session": {
+    "bug_1": {
+      "file": "/app/frontend/src/hooks/usePushNotifications.js",
+      "line": 18,
+      "issue": "Was using 'customer_token' instead of 'customerToken'",
+      "fix": "Changed to localStorage.getItem('customerToken')",
+      "status": "VERIFIED"
+    },
+    "bug_2": {
+      "file": "/app/frontend/src/pages/CustomerLayout.jsx",
+      "line": 64,
+      "issue": "Was calling '/api/portal/profile' which doesn't exist",
+      "fix": "Changed to '/api/customer/profile'",
+      "status": "VERIFIED"
+    },
+    "bug_3": {
+      "file": "/app/backend/routes/push.py",
+      "issue": "Missing jwt, JWT_SECRET, JWT_ALGORITHM imports causing 'Invalid token' error",
+      "fix": "Added imports from deps module",
+      "status": "FIXED AND VERIFIED"
+    }
+  }
+}

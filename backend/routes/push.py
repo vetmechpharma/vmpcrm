@@ -8,9 +8,10 @@ import os
 
 from deps import db, logger, get_current_user, hash_password, verify_password, create_token, security
 from utils.push import send_push_notification, send_push_to_user, send_push_to_role, send_push_to_all_customers, send_push_to_admins
-from deps import VAPID_PUBLIC_KEY
+from deps import VAPID_PUBLIC_KEY, JWT_SECRET, JWT_ALGORITHM
 from fastapi.security import HTTPBearer
 from deps import get_current_customer
+import jwt
 
 router = APIRouter(prefix="/api")
 

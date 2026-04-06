@@ -61,7 +61,7 @@ const CustomerLayout = () => {
 
   const fetchProfile = async (token) => {
     try {
-      const response = await axios.get(`${API_URL}/api/portal/profile`, {
+      const response = await axios.get(`${API_URL}/api/customer/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCustomer(response.data);

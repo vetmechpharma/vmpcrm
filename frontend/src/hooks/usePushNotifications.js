@@ -15,7 +15,7 @@ function urlBase64ToUint8Array(base64String) {
 
 export function usePushNotifications(userType = 'admin') {
   const getToken = useCallback(() => {
-    if (userType === 'customer') return localStorage.getItem('customer_token');
+    if (userType === 'customer') return localStorage.getItem('customerToken');
     if (userType === 'mr') return localStorage.getItem('mr_token');
     return localStorage.getItem('token');
   }, [userType]);

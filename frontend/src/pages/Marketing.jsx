@@ -368,6 +368,17 @@ export const Marketing = () => {
     }
   };
 
+  const handleDeleteCampaign = async (campaignId) => {
+    if (!window.confirm('Delete this campaign and all its data (logs, images, files)? This cannot be undone.')) return;
+    try {
+      const res = await marketingAPI.deleteCampaign(campaignId);
+      toast.success(res.data?.message || 'Campaign deleted');
+      fetchCampaigns();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete campaign');
+    }
+  };
+
   const filteredRecipients = getFilteredRecipients();
   const filteredItems = items.filter(item => 
     item.name?.toLowerCase().includes(itemSearch.toLowerCase()) ||
@@ -1058,6 +1069,16 @@ export const Marketing = () => {
                                   <XCircle className="w-4 h-4" />
                                 </Button>
                               )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-400 hover:text-red-600"
+                                onClick={() => handleDeleteCampaign(campaign.id)}
+                                title="Delete campaign"
+                                data-testid={`delete-campaign-${campaign.id}`}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>

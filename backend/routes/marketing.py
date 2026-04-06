@@ -315,6 +315,29 @@ async def create_marketing_campaign(campaign: MarketingCampaignCreate, current_u
     del campaign_doc['_id']
     return campaign_doc
 
+
+@router.delete("/marketing/campaigns/{campaign_id}")
+async def delete_marketing_campaign(campaign_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a marketing campaign and all associated data (logs, images, PDFs)"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can delete campaigns")
+    
+    campaign = await db.marketing_campaigns.find_one({'id': campaign_id}, {'_id': 1, 'name': 1})
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    # Delete all campaign logs
+    logs_result = await db.campaign_logs.delete_many({'campaign_id': campaign_id})
+    
+    # Delete the campaign (includes image_webp and pdf_data stored inline)
+    await db.marketing_campaigns.delete_one({'id': campaign_id})
+    
+    return {
+        "message": f"Campaign deleted successfully",
+        "logs_deleted": logs_result.deleted_count
+    }
+
+
 @router.post("/marketing/campaigns/{campaign_id}/send")
 async def send_marketing_campaign(campaign_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     """Start sending a marketing campaign"""

@@ -266,27 +266,53 @@ async def send_whatsapp_ready_to_despatch(order_doc: dict, update_data: dict = N
         if not config.get('api_url') or not config.get('auth_token'):
             return
 
-        transport_phone = order_doc.get('transport_phone') or (update_data or {}).get('transport_phone', '')
+        # Look up transport phone from transports collection
+        ud = update_data or {}
+        transport_id = ud.get('transport_id') or order_doc.get('transport_id')
+        transport_phone = ''
+        transport_contact_name = ''
+        
+        if transport_id:
+            transport = await db.transports.find_one({'id': transport_id}, {'_id': 0})
+            if transport:
+                transport_phone = transport.get('contact_number', '')
+                transport_contact_name = transport.get('name', '')
+        
         if not transport_phone:
             return
 
         short_name, phone = await get_company_short_name()
-        transport_name = order_doc.get('transport_name') or (update_data or {}).get('transport_name', 'Transporter')
+        transport_name = ud.get('transport_name') or order_doc.get('transport_name') or transport_contact_name or 'Transporter'
         order_number = order_doc.get('order_number', '')
         customer_name = order_doc.get('doctor_name', order_doc.get('customer_name', 'Customer'))
         customer_city = order_doc.get('doctor_city', order_doc.get('city', ''))
+        delivery_station = ud.get('delivery_station') or order_doc.get('delivery_station', '')
+
+        # Build package details
+        boxes = ud.get('boxes_count') or order_doc.get('boxes_count', 0)
+        cans = ud.get('cans_count') or order_doc.get('cans_count', 0)
+        bags = ud.get('bags_count') or order_doc.get('bags_count', 0)
+        pkg_lines = []
+        if boxes: pkg_lines.append(f"Boxes: {boxes}")
+        if cans: pkg_lines.append(f"Cans: {cans}")
+        if bags: pkg_lines.append(f"Bags: {bags}")
 
         message = f"Hello {transport_name},\n\nOrder *{order_number}* for *{customer_name}*"
         if customer_city:
             message += f" ({customer_city})"
-        message += f" is ready for pickup/dispatch.\n\nRegards,\n*{short_name}*"
+        message += f" is ready for pickup/dispatch."
+        if delivery_station:
+            message += f"\n\n*Delivery Station:* {delivery_station}"
+        if pkg_lines:
+            message += f"\n\n*Package:*\n" + "\n".join(pkg_lines)
+        message += f"\n\nRegards,\n*{short_name}*"
         if phone:
             message += f"\n+{phone}"
 
         wa_phone = transport_phone if transport_phone.startswith('91') else f"91{transport_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
         status = 'success' if resp and resp.status_code == 200 else 'failed'
-        await log_whatsapp_message(wa_phone, 'transport_ready', message, status)
+        await log_whatsapp_message(wa_phone, 'transport_ready', message, status, recipient_name=transport_name)
     except Exception as e:
         logger.error(f"send_whatsapp_ready_to_despatch error: {e}")
 

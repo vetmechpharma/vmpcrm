@@ -301,6 +301,7 @@ export const marketingAPI = {
   createCampaign: (data) => api.post('/marketing/campaigns', data),
   sendCampaign: (id) => api.post(`/marketing/campaigns/${id}/send`),
   cancelCampaign: (id) => api.post(`/marketing/campaigns/${id}/cancel`),
+  deleteCampaign: (id) => api.delete(`/marketing/campaigns/${id}`),
   getStats: () => api.get('/marketing/stats'),
 };
 

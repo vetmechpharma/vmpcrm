@@ -116,6 +116,9 @@ const CustomerItems = () => {
       );
     }
     
+    // Always sort alphabetically by item name
+    filtered.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''));
+    
     setFilteredItems(filtered);
   };
 

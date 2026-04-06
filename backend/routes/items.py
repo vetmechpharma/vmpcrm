@@ -214,7 +214,7 @@ async def get_items(
             main_categories=item.get('main_categories', []) or item.get('main_category', []) if isinstance(item.get('main_category'), list) else ([item.get('main_category')] if item.get('main_category') else []),
             subcategories=item.get('subcategories', []),
             composition=item.get('composition'),
-            mrp=item['mrp'],
+            mrp=item.get('mrp', 0),
             gst=item.get('gst', 0),
             # Role-based pricing
             rate_doctors=item.get('rate_doctors') or item.get('rate', 0),
@@ -305,7 +305,7 @@ async def get_item(item_id: str, current_user: dict = Depends(get_current_user))
         composition=item.get('composition'),
         offer=item.get('offer'),
         special_offer=item.get('special_offer'),
-        mrp=item['mrp'],
+        mrp=item.get('mrp', 0),
         rate=item['rate'],
         gst=item.get('gst', 0),
         # Role-based pricing - Doctors
@@ -392,7 +392,7 @@ async def update_item(item_id: str, item_data: ItemUpdate, current_user: dict = 
         composition=updated_item.get('composition'),
         offer=updated_item.get('offer'),
         special_offer=updated_item.get('special_offer'),
-        mrp=updated_item['mrp'],
+        mrp=updated_item.get('mrp', 0),
         rate=updated_item['rate'],
         gst=updated_item.get('gst', 0),
         # Role-based pricing - Doctors

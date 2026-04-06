@@ -1,57 +1,44 @@
 # VMP CRM - Product Requirements Document
 
-## Original Problem Statement
-Full-stack Veterinary CRM (FastAPI + React + MongoDB) for pharmaceutical distribution management.
-
 ## Architecture
-- **Frontend**: React, Tailwind, Shadcn UI, Recharts
+- **Frontend**: React, Tailwind, Shadcn UI
 - **Backend**: FastAPI (modular routes), MongoDB (Motor), Multi-WhatsApp API
 
-### Backend Structure
-```
-/app/backend/
-├── server.py, deps.py, migrate.py
-├── models/schemas.py
-├── utils/ (whatsapp, email, templates, notifications, image, ledger, push, code_gen)
-└── routes/ (28 modules including database.py with restore)
-```
+## Recent Changes (Apr 6, 2026)
 
-## Implemented Features (Apr 5, 2026)
+### Order Update WhatsApp Fix
+- Fixed: qty formats "10+5" (scheme) and "1 case offer" now send WhatsApp correctly
+- Fixed: Subsequent edits always trigger WhatsApp (was silently crashing on non-int qty)
+- All `int(quantity)` replaced with safe `str(quantity)` across all notification functions
 
-### WhatsApp Template Audit
-- All templates use `render_wa_template` with proper `company_short_name` and `company_phone`
-- Fixed `+None` display when company phone is null
-- Templates: otp, order_confirmation, status_confirmed/processing/ready/dispatched/delivered/cancelled, payment_receipt, out_of_stock, stock_arrived, account_approved/declined, password_reset, daily_reminder, ledger_statement, birthday/anniversary_greeting, order_updated, payment_reminder
+### Transport Notifications
+- Ready to Dispatch now correctly sends WhatsApp to transporter by looking up phone from transports collection
+- Message includes delivery station, package details (boxes/cans/bags)
 
-### Auto-Delete Temp Files
-- Background task `cleanup_temp_files` runs every 6 hours
-- Cleans expired `temp_ledger_pdfs` (48h TTL)
-- Cleans expired `temp_backup_files` (48h TTL)
-- Also cleans entries without `expires_at` that are older than 2 days
+### Updated WhatsApp Templates
+- **Delivered**: Now includes Invoice No, Invoice Date, Invoice Value
+- **Shipped/Dispatched**: Now includes Transport, Tracking No, Delivery Station, Package Details, Payment mode (to_pay only)
 
-### Database Backup Email Attachment
-- Already existed: `POST /api/database/send-email-backup` sends full JSON backup via SMTP
-- `POST /api/database/trigger-backup` sends via both WhatsApp + Email
+### Transport Edit
+- New PUT /api/transports/{id} endpoint
+- Edit button in Orders > Manage Transports UI
 
-### Database Restore (NEW)
-- **Merge Mode** (`POST /api/database/restore`): Adds missing records, skips duplicates by `id`
-- **Replace Mode** (`POST /api/database/restore-replace`): Replaces collection data; protected collections (users, system_settings, whatsapp_config, smtp_settings) are always merged safely
-- UI in Settings > Database Management with file picker, Merge/Replace toggle, and Restore button
-- Supports JSON backup files exported by the system
+### Customer Portal Items
+- Always sorted alphabetically by item name (with or without filters)
 
-### Previous Session Work
-- Order edit WhatsApp notification with updated items list
-- Payment reminder via template-based WhatsApp API
-- Removed raw wa.me WhatsApp button from Orders page
-- Reports Orders tab crash fix (state mutation, NaN, empty arrays)
-- VPS auto-cleanup of downloaded archives
-- Database migration script (migrate.py)
+### Marketing Campaign Delete
+- New DELETE /api/marketing/campaigns/{id} endpoint
+- Cascades: deletes campaign logs + inline images/PDFs
+- Delete button (Trash2 icon) on each campaign row
+
+### Pre-existing Fix
+- Items without 'mrp' field no longer cause 500 error
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884
 
 ## Backlog (P2)
-- AI Insights for Reports dashboard
+- AI Insights for Reports
 - Stock/Inventory Management
 - Sales target management for MRs
 - Data import/export (CSV)

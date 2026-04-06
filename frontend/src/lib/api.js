@@ -214,6 +214,7 @@ export const pendingItemsAPI = {
 export const transportAPI = {
   getAll: () => api.get('/transports'),
   create: (data) => api.post('/transports', data),
+  update: (id, data) => api.put(`/transports/${id}`, data),
   delete: (id) => api.delete(`/transports/${id}`),
 };
 

@@ -394,6 +394,26 @@ async def migrate():
         else:
             log_skip("  All templates present")
 
+        # Update existing dispatched/delivered templates with new variables
+        updated_templates = {
+            'status_dispatched': {
+                'variables': ['customer_name', 'order_number', 'transport_name', 'tracking_number', 'delivery_station', 'package_details', 'payment_info', 'company_short_name', 'company_phone'],
+                'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *SHIPPED*!\n\n*Transport:* {transport_name}\n*Tracking No:* {tracking_number}\n*Delivery Station:* {delivery_station}\n\n*Package Details:*\n{package_details}\n{payment_info}\nRegards,\n*{company_short_name}*\n+{company_phone}',
+            },
+            'status_delivered': {
+                'variables': ['customer_name', 'order_number', 'invoice_number', 'invoice_date', 'invoice_value', 'company_short_name', 'company_phone'],
+                'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *DELIVERED*!\n\n*Invoice No:* {invoice_number}\n*Invoice Date:* {invoice_date}\n*Invoice Value:* Rs. {invoice_value}\n\nThank you for your business.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+            }
+        }
+        for key, updates in updated_templates.items():
+            result = await db.message_templates.update_one(
+                {'key': key, 'category': 'whatsapp'},
+                {'$set': updates}
+            )
+            if result.modified_count:
+                log_ok(f"  Updated template: {key}")
+                changes += 1
+
     # ------------------------------------------------------------------
     # Step 5: Add missing fields to existing orders
     # ------------------------------------------------------------------

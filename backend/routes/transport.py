@@ -99,3 +99,45 @@ async def delete_transport(transport_id: str, current_user: dict = Depends(get_c
     return {"message": "Transport deleted successfully"}
 
 
+@router.put("/transports/{transport_id}")
+async def update_transport(transport_id: str, transport: TransportCreate, current_user: dict = Depends(get_current_user)):
+    """Update transport name, contact details, and tracking URL"""
+    if current_user['role'] != 'admin':
+        raise HTTPException(status_code=403, detail="Only admins can edit transports")
+    
+    existing = await db.transports.find_one({'id': transport_id}, {'_id': 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Transport not found")
+    
+    update_data = {
+        'name': transport.name,
+        'contact_number': transport.contact_number,
+        'alternate_number': transport.alternate_number,
+        'is_local': transport.is_local,
+        'tracking_url_template': transport.tracking_url_template if not transport.is_local else None,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.transports.update_one({'id': transport_id}, {'$set': update_data})
+    
+    updated = await db.transports.find_one({'id': transport_id}, {'_id': 0})
+    created_at = updated.get('created_at', '')
+    if created_at and isinstance(created_at, str):
+        try:
+            created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            created_at = datetime.now(timezone.utc)
+    elif not created_at:
+        created_at = datetime.now(timezone.utc)
+    
+    return TransportResponse(
+        id=updated['id'],
+        name=updated['name'],
+        tracking_url_template=updated.get('tracking_url_template'),
+        is_local=updated.get('is_local', False),
+        contact_number=updated.get('contact_number'),
+        alternate_number=updated.get('alternate_number'),
+        created_at=created_at
+    )
+
+

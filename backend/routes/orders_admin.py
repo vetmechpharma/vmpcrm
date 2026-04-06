@@ -448,15 +448,18 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
     
     await db.orders.update_one({'id': order_id}, {'$set': update_data})
     
+    # Fetch updated order for notification (includes all stored fields + new updates)
+    updated_order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    
     # Send WhatsApp notification for status change
     if new_status in ['confirmed', 'ready_to_despatch', 'shipped', 'delivered', 'cancelled']:
         # For ready_to_despatch, we need to send to both transporter and customer
         if new_status == 'ready_to_despatch':
-            background_tasks.add_task(send_whatsapp_ready_to_despatch, order, update_data)
+            background_tasks.add_task(send_whatsapp_ready_to_despatch, updated_order, update_data)
         else:
-            background_tasks.add_task(send_whatsapp_status_update, order, new_status, update_data)
+            background_tasks.add_task(send_whatsapp_status_update, updated_order, new_status, update_data)
         # Send email notification for all status changes
-        background_tasks.add_task(send_order_status_email, order, new_status, update_data)
+        background_tasks.add_task(send_order_status_email, updated_order, new_status, update_data)
     
     # Send push notification to customer
     status_labels = {'confirmed': 'Confirmed', 'processing': 'Processing', 'ready_to_despatch': 'Ready to Dispatch', 'shipped': 'Dispatched', 'delivered': 'Delivered', 'cancelled': 'Cancelled'}

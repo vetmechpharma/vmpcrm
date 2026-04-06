@@ -99,6 +99,7 @@ export const Orders = () => {
     contact_number: '',
     alternate_number: ''
   });
+  const [editingTransport, setEditingTransport] = useState(null);
 
   // Edit order items form
   const [editItems, setEditItems] = useState([]);
@@ -391,6 +392,28 @@ export const Orders = () => {
       fetchTransports();
     } catch (error) {
       toast.error('Failed to delete transport');
+    }
+  };
+
+  const handleEditTransport = (t) => {
+    setEditingTransport({ ...t });
+  };
+
+  const handleSaveTransport = async () => {
+    if (!editingTransport?.name?.trim()) {
+      toast.error('Transport name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await transportAPI.update(editingTransport.id, editingTransport);
+      toast.success('Transport updated');
+      setEditingTransport(null);
+      fetchTransports();
+    } catch (error) {
+      toast.error('Failed to update transport');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1887,13 +1910,35 @@ export const Orders = () => {
               {transports.length > 0 ? (
                 <div className="space-y-2">
                   {transports.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{t.name}</p>
-                        {t.is_local ? <p className="text-xs text-slate-500">Local Supply</p> : t.tracking_url_template ? <p className="text-xs text-slate-500 truncate max-w-[250px]">{t.tracking_url_template}</p> : null}
-                        {(t.contact_number || t.alternate_number) && <p className="text-xs text-slate-600 mt-1">📞 {t.contact_number || '-'}{t.alternate_number && ` / ${t.alternate_number}`}</p>}
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteTransport(t.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></Button>
+                    <div key={t.id} className="p-3 bg-slate-50 rounded-lg">
+                      {editingTransport?.id === t.id ? (
+                        <div className="space-y-2">
+                          <Input value={editingTransport.name} onChange={(e) => setEditingTransport({...editingTransport, name: e.target.value})} placeholder="Transport Name" />
+                          <div className="flex items-center gap-2">
+                            <input type="checkbox" checked={editingTransport.is_local} onChange={(e) => setEditingTransport({...editingTransport, is_local: e.target.checked, tracking_url_template: ''})} className="rounded" />
+                            <span className="text-xs">Local Supply</span>
+                          </div>
+                          {!editingTransport.is_local && <Input value={editingTransport.tracking_url_template || ''} onChange={(e) => setEditingTransport({...editingTransport, tracking_url_template: e.target.value})} placeholder="Transport URL" />}
+                          <Input value={editingTransport.contact_number || ''} onChange={(e) => setEditingTransport({...editingTransport, contact_number: e.target.value})} placeholder="Contact Number" />
+                          <Input value={editingTransport.alternate_number || ''} onChange={(e) => setEditingTransport({...editingTransport, alternate_number: e.target.value})} placeholder="Alternate Number" />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={handleSaveTransport} disabled={saving}>{saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}Save</Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingTransport(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium">{t.name}</p>
+                            {t.is_local ? <p className="text-xs text-slate-500">Local Supply</p> : t.tracking_url_template ? <p className="text-xs text-slate-500 truncate max-w-[250px]">{t.tracking_url_template}</p> : null}
+                            {(t.contact_number || t.alternate_number) && <p className="text-xs text-slate-600 mt-1">Ph: {t.contact_number || '-'}{t.alternate_number && ` / ${t.alternate_number}`}</p>}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditTransport(t)} className="text-blue-500 hover:text-blue-700"><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteTransport(t.id)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

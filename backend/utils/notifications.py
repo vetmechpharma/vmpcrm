@@ -17,9 +17,17 @@ async def send_whatsapp_order(customer_phone: str, items: list, order_number: st
         for item in items:
             item_dict = item.dict() if hasattr(item, 'dict') else item
             name = item_dict.get('item_name', 'Item')
-            qty = int(item_dict.get('quantity', 1))
-            rate = float(item_dict.get('rate', 0))
-            amount = qty * rate
+            qty_raw = item_dict.get('quantity', 1)
+            rate_raw = item_dict.get('rate', 0)
+            try:
+                qty = int(qty_raw)
+            except (ValueError, TypeError):
+                qty = str(qty_raw)
+            try:
+                rate = float(rate_raw)
+            except (ValueError, TypeError):
+                rate = 0
+            amount = (qty if isinstance(qty, int) else 1) * rate
             total += amount
             items_lines.append(f"• {name} x{qty} = Rs.{amount:.2f}")
 
@@ -63,9 +71,17 @@ async def send_order_confirmation_email(order_doc: dict, items: list):
         for item in items:
             item_dict = item if isinstance(item, dict) else item.dict()
             name = item_dict.get('item_name', 'Item')
-            qty = int(item_dict.get('quantity', 1))
-            rate = float(item_dict.get('rate', 0))
-            amount = qty * rate
+            qty_raw = item_dict.get('quantity', 1)
+            rate_raw = item_dict.get('rate', 0)
+            try:
+                qty = int(qty_raw)
+            except (ValueError, TypeError):
+                qty = str(qty_raw)
+            try:
+                rate = float(rate_raw)
+            except (ValueError, TypeError):
+                rate = 0
+            amount = (qty if isinstance(qty, int) else 1) * rate
             total += amount
             items_html += f"<tr><td style='padding:8px;border:1px solid #ddd'>{name}</td><td style='padding:8px;border:1px solid #ddd;text-align:center'>{qty}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{rate:.2f}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{amount:.2f}</td></tr>"
 
@@ -159,9 +175,39 @@ async def send_whatsapp_status_update(order_doc: dict, new_status: str, update_d
         items_text = ''
         transport_name = ''
         tracking_number = ''
-        if update_data:
-            transport_name = update_data.get('transport_name', '')
-            tracking_number = update_data.get('tracking_number', '')
+        delivery_station = ''
+        package_details = ''
+        payment_info = ''
+        invoice_number = ''
+        invoice_date = ''
+        invoice_value = ''
+
+        # Get data from update_data (fresh status change) or order_doc (already stored)
+        ud = update_data or {}
+        transport_name = ud.get('transport_name') or order_doc.get('transport_name', '')
+        tracking_number = ud.get('tracking_number') or order_doc.get('tracking_number', '')
+        delivery_station = ud.get('delivery_station') or order_doc.get('delivery_station', '')
+        invoice_number = ud.get('invoice_number') or order_doc.get('invoice_number', '')
+        invoice_date = ud.get('invoice_date') or order_doc.get('invoice_date', '')
+        invoice_value = ud.get('invoice_value') or order_doc.get('invoice_value', '')
+
+        # Build package details
+        boxes = ud.get('boxes_count') or order_doc.get('boxes_count', 0)
+        cans = ud.get('cans_count') or order_doc.get('cans_count', 0)
+        bags = ud.get('bags_count') or order_doc.get('bags_count', 0)
+        pkg_lines = []
+        if boxes: pkg_lines.append(f"Boxes: {boxes}")
+        if cans: pkg_lines.append(f"Cans: {cans}")
+        if bags: pkg_lines.append(f"Bags: {bags}")
+        package_details = "\n".join(pkg_lines) if pkg_lines else "N/A"
+
+        # Build payment info (only show if to_pay)
+        payment_mode = ud.get('payment_mode') or order_doc.get('payment_mode', '')
+        payment_amount = ud.get('payment_amount') or order_doc.get('payment_amount', 0)
+        if payment_mode == 'to_pay' and payment_amount:
+            payment_info = f"\n*Payment:* To Pay - Rs. {payment_amount}\n"
+        else:
+            payment_info = ''
 
         if new_status == 'ready_to_despatch':
             order_items = order_doc.get('items', [])
@@ -175,25 +221,32 @@ async def send_whatsapp_status_update(order_doc: dict, new_status: str, update_d
                 customer_name=customer_name,
                 order_number=order_number,
                 items_text=items_text,
-                transport_name=transport_name or 'N/A'
+                transport_name=transport_name or 'N/A',
+                tracking_number=tracking_number or 'N/A',
+                delivery_station=delivery_station or 'N/A',
+                package_details=package_details,
+                payment_info=payment_info,
+                invoice_number=invoice_number or 'N/A',
+                invoice_date=invoice_date or 'N/A',
+                invoice_value=str(invoice_value) if invoice_value else 'N/A'
             )
 
         if not message:
             short_name, phone = await get_company_short_name()
             message = f"Hello {customer_name},\n\nYour order *{order_number}* has been *{status_label}*!"
-            if new_status == 'shipped' and tracking_number:
-                message += f"\n\nTracking: {tracking_number}"
-            if transport_name:
-                message += f"\nTransport: {transport_name}"
+            if new_status == 'shipped':
+                if transport_name: message += f"\n\n*Transport:* {transport_name}"
+                if tracking_number: message += f"\n*Tracking:* {tracking_number}"
+                if delivery_station: message += f"\n*Delivery Station:* {delivery_station}"
+                if pkg_lines: message += f"\n\n*Package:*\n{package_details}"
+                if payment_info: message += payment_info
+            elif new_status == 'delivered':
+                if invoice_number: message += f"\n\n*Invoice No:* {invoice_number}"
+                if invoice_date: message += f"\n*Invoice Date:* {invoice_date}"
+                if invoice_value: message += f"\n*Invoice Value:* Rs. {invoice_value}"
             message += f"\n\nRegards,\n*{short_name}*"
             if phone:
                 message += f"\n+{phone}"
-        else:
-            # Append tracking info if shipped
-            if new_status == 'shipped' and tracking_number:
-                message += f"\n\nTracking: {tracking_number}"
-                if transport_name:
-                    message += f"\nTransport: {transport_name}"
 
         wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
         resp = await send_wa_msg(wa_phone, message, config=config)
@@ -334,9 +387,13 @@ async def send_whatsapp_order_updated(order_doc: dict, items: list):
         for item in items:
             item_dict = item if isinstance(item, dict) else item.dict()
             name = item_dict.get('item_name', 'Item')
-            qty = int(item_dict.get('quantity', 1))
-            rate = float(item_dict.get('rate', 0))
-            items_lines.append(f"• {name} x{qty} @ Rs.{rate:.2f}")
+            qty = str(item_dict.get('quantity', '1'))
+            rate = item_dict.get('rate', 0)
+            try:
+                rate = float(rate)
+                items_lines.append(f"• {name} x{qty} @ Rs.{rate:.2f}")
+            except (ValueError, TypeError):
+                items_lines.append(f"• {name} x{qty}")
 
         items_text = "\n".join(items_lines)
         item_count = str(len(items_lines))
@@ -367,9 +424,13 @@ async def send_whatsapp_order_updated(order_doc: dict, items: list):
             for item in items:
                 item_dict = item if isinstance(item, dict) else item.dict()
                 name = item_dict.get('item_name', 'Item')
-                qty = int(item_dict.get('quantity', 1))
-                rate = float(item_dict.get('rate', 0))
-                items_html += f"<tr><td style='padding:8px;border:1px solid #ddd'>{name}</td><td style='padding:8px;border:1px solid #ddd;text-align:center'>{qty}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>Rs.{rate:.2f}</td></tr>"
+                qty = str(item_dict.get('quantity', '1'))
+                rate = item_dict.get('rate', 0)
+                try:
+                    rate_str = f"Rs.{float(rate):.2f}"
+                except (ValueError, TypeError):
+                    rate_str = str(rate)
+                items_html += f"<tr><td style='padding:8px;border:1px solid #ddd'>{name}</td><td style='padding:8px;border:1px solid #ddd;text-align:center'>{qty}</td><td style='padding:8px;border:1px solid #ddd;text-align:right'>{rate_str}</td></tr>"
             items_html += "</table>"
 
             body = f"<h2>Order #{order_number} - Updated</h2><p>Dear {customer_name},</p><p>Your order has been updated with the following items:</p>{items_html}<p>Regards,<br><strong>{short_name}</strong></p>"

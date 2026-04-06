@@ -3,56 +3,53 @@
 ## Architecture
 - **Frontend**: React, Tailwind, Shadcn UI
 - **Backend**: FastAPI (modular routes), MongoDB (Motor), Multi-WhatsApp API
+- **PWA**: Service workers for both Customer (`sw.js`) and MR (`mr-sw.js`) portals
 
 ## Recent Changes (Apr 6, 2026)
 
+### Bug Fixes - Push Notifications, Sessions, PWA
+- **Fixed**: Customer push notifications broken — `usePushNotifications.js` was reading `customer_token` instead of `customerToken` from localStorage
+- **Fixed**: Customer profile never refreshing — `CustomerLayout.jsx` was calling non-existent `/api/portal/profile` instead of `/api/customer/profile`
+- **Fixed**: Customer push subscribe endpoint — missing `jwt`, `JWT_SECRET`, `JWT_ALGORITHM` imports in `push.py`
+- **Verified**: PWA install prompts exist for both Customer and MR portals
+- **Verified**: Login session persistence works for Admin, Customer, and MR (all use localStorage)
+
 ### Customer Portal - Change Password
-- New `POST /api/customer/change-password` endpoint in `routes/customers.py`
-- Requires old password verification + min 6 char new password
-- UI added to `CustomerProfile.jsx` with password visibility toggles
-- Fully tested (7/7 backend, all frontend validations pass)
+- `POST /api/customer/change-password` endpoint — validates old password, enforces min 6-char new password
+- UI in `CustomerProfile.jsx` with password visibility toggles and confirm-match validation
 
 ### Order Update WhatsApp Fix
 - Fixed: qty formats "10+5" (scheme) and "1 case offer" now send WhatsApp correctly
-- Fixed: Subsequent edits always trigger WhatsApp (was silently crashing on non-int qty)
 - All `int(quantity)` replaced with safe `str(quantity)` across all notification functions
 
 ### Transport Notifications
-- Ready to Dispatch now correctly sends WhatsApp to transporter by looking up phone from transports collection
-- Message includes delivery station, package details (boxes/cans/bags)
+- Ready to Dispatch sends WhatsApp to transporter with delivery station, package details
 
 ### Updated WhatsApp Templates
-- **Delivered**: Now includes Invoice No, Invoice Date, Invoice Value
-- **Shipped/Dispatched**: Now includes Transport, Tracking No, Delivery Station, Package Details, Payment mode (to_pay only)
+- **Delivered**: Includes Invoice No, Invoice Date, Invoice Value
+- **Shipped/Dispatched**: Includes Transport, Tracking No, Delivery Station, Package Details
 
 ### Transport Edit
-- New PUT /api/transports/{id} endpoint
-- Edit button in Orders > Manage Transports UI
+- PUT /api/transports/{id} endpoint + Edit button in UI
 
 ### Customer Portal Items
-- Always sorted alphabetically by item name (with or without filters)
+- Always sorted alphabetically by item name
 
 ### Marketing Campaign Delete
-- New DELETE /api/marketing/campaigns/{id} endpoint
-- Cascades: deletes campaign logs + inline images/PDFs
-- Delete button (Trash2 icon) on each campaign row
+- DELETE /api/marketing/campaigns/{id} — cascades to logs + inline images/PDFs
 
 ### VPS Deployment
-- `vmpcrm_code.tar.gz` rebuilt with latest changes
+- `vmpcrm_code.tar.gz` rebuilt with all latest changes
 - `install.sh` supports --update and --migrate flags
-- `migrate.py` for non-destructive DB migrations
-- Auto-cleanup of temp ledger PDFs and backup files (24h TTL)
+- Background auto-cleanup of temp ledger PDFs and backup files (24h TTL)
 
 ### Database Restore
-- `POST /api/database/restore` for JSON upload restore
-- UI in Admin Settings
-
-### Pre-existing Fix
-- Items without 'mrp' field no longer cause 500 error
+- POST /api/database/restore for JSON upload restore with Settings UI
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884
 - Customer: 9999777766 / test123
+- MR: 9876543211 / testpass
 
 ## Backlog (P2)
 - AI Insights for Reports

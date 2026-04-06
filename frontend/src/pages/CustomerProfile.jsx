@@ -17,7 +17,10 @@ import {
   Stethoscope, 
   Store,
   Truck,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { locationAPI } from '../lib/api';
 import axios from 'axios';
@@ -32,6 +35,11 @@ const CustomerProfile = () => {
   const [districts, setDistricts] = useState([]);
   const [transports, setTransports] = useState([]);
   const [saved, setSaved] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ old_password: '', new_password: '', confirm_password: '' });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -128,6 +136,29 @@ const CustomerProfile = () => {
       toast.error(error.response?.data?.detail || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.old_password) return toast.error('Enter your current password');
+    if (!passwordForm.new_password) return toast.error('Enter a new password');
+    if (passwordForm.new_password.length < 6) return toast.error('New password must be at least 6 characters');
+    if (passwordForm.new_password !== passwordForm.confirm_password) return toast.error('Passwords do not match');
+
+    setChangingPassword(true);
+    try {
+      const token = localStorage.getItem('customerToken');
+      await axios.post(`${API_URL}/api/customer/change-password`, {
+        old_password: passwordForm.old_password,
+        new_password: passwordForm.new_password
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      toast.success('Password changed successfully!');
+      setPasswordForm({ old_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -373,6 +404,80 @@ const CustomerProfile = () => {
               ))}
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      {/* Change Password */}
+      <Card className="rounded-2xl border-0 shadow-sm">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Lock className="w-5 h-5 text-emerald-600" />
+            <h2 className="font-semibold text-slate-800">Change Password</h2>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-500">Current Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showOldPassword ? 'text' : 'password'}
+                  value={passwordForm.old_password}
+                  onChange={(e) => setPasswordForm({...passwordForm, old_password: e.target.value})}
+                  placeholder="Enter current password"
+                  className="h-12 rounded-xl border-0 bg-slate-50 text-base pr-12"
+                  data-testid="old-password-input"
+                />
+                <button type="button" className="absolute right-3 top-3 text-slate-400" onClick={() => setShowOldPassword(!showOldPassword)}>
+                  {showOldPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-500">New Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={passwordForm.new_password}
+                  onChange={(e) => setPasswordForm({...passwordForm, new_password: e.target.value})}
+                  placeholder="Enter new password (min 6 chars)"
+                  className="h-12 rounded-xl border-0 bg-slate-50 text-base pr-12"
+                  data-testid="new-password-input"
+                />
+                <button type="button" className="absolute right-3 top-3 text-slate-400" onClick={() => setShowNewPassword(!showNewPassword)}>
+                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-500">Confirm New Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={passwordForm.confirm_password}
+                  onChange={(e) => setPasswordForm({...passwordForm, confirm_password: e.target.value})}
+                  placeholder="Re-enter new password"
+                  className="h-12 rounded-xl border-0 bg-slate-50 text-base pr-12"
+                  data-testid="confirm-password-input"
+                />
+                <button type="button" className="absolute right-3 top-3 text-slate-400" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+            
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={changingPassword}
+              variant="outline"
+              className="w-full h-12 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-semibold"
+              data-testid="change-password-btn"
+            >
+              {changingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+              Change Password
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

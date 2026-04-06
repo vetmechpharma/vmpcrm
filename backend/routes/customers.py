@@ -412,6 +412,33 @@ async def customer_reset_password(request: CustomerResetPassword):
     
     return {"message": "Password reset successfully"}
 
+
+@router.post("/customer/change-password")
+async def customer_change_password(data: dict, customer: dict = Depends(get_current_customer)):
+    """Change password using old password (for logged-in customers)"""
+    old_password = data.get('old_password', '')
+    new_password = data.get('new_password', '')
+    
+    if not old_password or not new_password:
+        raise HTTPException(status_code=400, detail="Old password and new password are required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    # Verify old password
+    if not bcrypt.checkpw(old_password.encode(), customer['password_hash'].encode()):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Hash new password
+    password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    await db.portal_customers.update_one(
+        {'id': customer['id']},
+        {'$set': {'password_hash': password_hash, 'updated_at': datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
+
 @router.get("/customer/profile", response_model=CustomerResponse)
 async def get_customer_profile(customer: dict = Depends(get_current_customer)):
     """Get current customer profile"""

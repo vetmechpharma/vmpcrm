@@ -157,25 +157,26 @@ const CustomerRegister = () => {
   };
 
   const handleRegister = async () => {
-    if (!formData.name || !formData.password) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
+    // Common required fields
+    if (!formData.name.trim()) return toast.error('Name is required');
+    if (!formData.email.trim()) return toast.error('Email is required');
+    if (!formData.address_line_1.trim()) return toast.error('Address Line 1 is required');
+    if (!formData.state) return toast.error('State is required');
+    if (!formData.district) return toast.error('District is required');
+    if (!formData.pincode || formData.pincode.length !== 6) return toast.error('Valid 6-digit Pincode is required');
+    if (!formData.delivery_station.trim()) return toast.error('Delivery Station is required');
+    if (!formData.password) return toast.error('Password is required');
+    if (formData.password.length < 6) return toast.error('Password must be at least 6 characters');
+    if (formData.password !== formData.confirmPassword) return toast.error('Passwords do not match');
 
     // Role-specific validation
-    if (formData.role === 'doctor' && !formData.reg_no) {
-      toast.error('Registration number is required for doctors');
-      return;
+    if (formData.role === 'doctor') {
+      if (!formData.reg_no.trim()) return toast.error('Registration Number is required');
+    }
+    if (formData.role === 'medical' || formData.role === 'agency') {
+      if (!formData.proprietor_name.trim()) return toast.error('Proprietor Name is required');
+      if (!formData.gst_number.trim()) return toast.error('GST Number is required');
+      if (!formData.drug_license.trim()) return toast.error('Drug License Number is required');
     }
 
     setLoading(true);
@@ -441,6 +442,7 @@ const CustomerRegister = () => {
                         placeholder="Medical registration number"
                         className="h-12 pl-12 rounded-xl border-slate-200 text-base"
                         data-testid="reg-no-input"
+                        required
                       />
                     </div>
                   </div>
@@ -462,35 +464,38 @@ const CustomerRegister = () => {
               {(formData.role === 'medical' || formData.role === 'agency') && (
                 <>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Proprietor Name</Label>
+                    <Label className="text-sm font-medium text-slate-700">Proprietor Name *</Label>
                     <Input
                       value={formData.proprietor_name}
                       onChange={(e) => setFormData({...formData, proprietor_name: e.target.value})}
                       placeholder="Owner/Proprietor name"
                       className="h-12 rounded-xl border-slate-200"
                       data-testid="proprietor-input"
+                      required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">GST Number</Label>
+                      <Label className="text-sm font-medium text-slate-700">GST Number *</Label>
                       <Input
                         value={formData.gst_number}
                         onChange={(e) => setFormData({...formData, gst_number: e.target.value.toUpperCase()})}
                         placeholder="GST Number"
                         className="h-12 rounded-xl border-slate-200"
                         data-testid="gst-input"
+                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-slate-700">Drug License</Label>
+                      <Label className="text-sm font-medium text-slate-700">Drug License *</Label>
                       <Input
                         value={formData.drug_license}
                         onChange={(e) => setFormData({...formData, drug_license: e.target.value})}
                         placeholder="License No."
                         className="h-12 rounded-xl border-slate-200"
                         data-testid="drug-license-input"
+                        required
                       />
                     </div>
                   </div>
@@ -533,7 +538,7 @@ const CustomerRegister = () => {
 
               {/* Email - Common */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Email (Optional)</Label>
+                <Label className="text-sm font-medium text-slate-700">Email *</Label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <Input
@@ -543,6 +548,7 @@ const CustomerRegister = () => {
                     placeholder="your@email.com"
                     className="h-12 pl-12 rounded-xl border-slate-200"
                     data-testid="register-email-input"
+                    required
                   />
                 </div>
               </div>
@@ -555,67 +561,88 @@ const CustomerRegister = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Input
-                    value={formData.address_line_1}
-                    onChange={(e) => setFormData({...formData, address_line_1: e.target.value})}
-                    placeholder="Address Line 1"
-                    className="h-12 rounded-xl border-slate-200"
-                    data-testid="address1-input"
-                  />
-                  <Input
-                    value={formData.address_line_2}
-                    onChange={(e) => setFormData({...formData, address_line_2: e.target.value})}
-                    placeholder="Address Line 2"
-                    className="h-12 rounded-xl border-slate-200"
-                    data-testid="address2-input"
-                  />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select
-                      value={formData.state}
-                      onValueChange={(value) => setFormData({...formData, state: value, district: ''})}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl border-slate-200" data-testid="state-select">
-                        <SelectValue placeholder="State" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {states.map((state) => (
-                          <SelectItem key={state} value={state}>{state}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={formData.district}
-                      onValueChange={(value) => setFormData({...formData, district: value})}
-                      disabled={!formData.state}
-                    >
-                      <SelectTrigger className="h-12 rounded-xl border-slate-200" data-testid="district-select">
-                        <SelectValue placeholder="District" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {districts.map((district) => (
-                          <SelectItem key={district} value={district}>{district}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Address Line 1 *</Label>
+                    <Input
+                      value={formData.address_line_1}
+                      onChange={(e) => setFormData({...formData, address_line_1: e.target.value})}
+                      placeholder="Address Line 1"
+                      className="h-12 rounded-xl border-slate-200"
+                      data-testid="address1-input"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Address Line 2</Label>
+                    <Input
+                      value={formData.address_line_2}
+                      onChange={(e) => setFormData({...formData, address_line_2: e.target.value})}
+                      placeholder="Address Line 2"
+                      className="h-12 rounded-xl border-slate-200"
+                      data-testid="address2-input"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      value={formData.pincode}
-                      onChange={(e) => setFormData({...formData, pincode: e.target.value.replace(/\D/g, '').slice(0, 6)})}
-                      placeholder="Pincode"
-                      className="h-12 rounded-xl border-slate-200"
-                      data-testid="pincode-input"
-                    />
-                    <Input
-                      value={formData.delivery_station}
-                      onChange={(e) => setFormData({...formData, delivery_station: e.target.value})}
-                      placeholder="Delivery Station"
-                      className="h-12 rounded-xl border-slate-200"
-                      data-testid="delivery-station-input"
-                    />
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">State *</Label>
+                      <Select
+                        value={formData.state}
+                        onValueChange={(value) => setFormData({...formData, state: value, district: ''})}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl border-slate-200" data-testid="state-select">
+                          <SelectValue placeholder="State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {states.map((state) => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">District *</Label>
+                      <Select
+                        value={formData.district}
+                        onValueChange={(value) => setFormData({...formData, district: value})}
+                        disabled={!formData.state}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl border-slate-200" data-testid="district-select">
+                          <SelectValue placeholder="District" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districts.map((district) => (
+                            <SelectItem key={district} value={district}>{district}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Pincode *</Label>
+                      <Input
+                        value={formData.pincode}
+                        onChange={(e) => setFormData({...formData, pincode: e.target.value.replace(/\D/g, '').slice(0, 6)})}
+                        placeholder="Pincode"
+                        className="h-12 rounded-xl border-slate-200"
+                        data-testid="pincode-input"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-500">Delivery Station *</Label>
+                      <Input
+                        value={formData.delivery_station}
+                        onChange={(e) => setFormData({...formData, delivery_station: e.target.value})}
+                        placeholder="Delivery Station"
+                        className="h-12 rounded-xl border-slate-200"
+                        data-testid="delivery-station-input"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -628,31 +655,39 @@ const CustomerRegister = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="relative">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Password *</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        placeholder="Password (min 6 characters)"
+                        className="h-12 pr-12 rounded-xl border-slate-200"
+                        data-testid="register-password-input"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Confirm Password *</Label>
                     <Input
                       type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      placeholder="Password (min 6 characters)"
-                      className="h-12 pr-12 rounded-xl border-slate-200"
-                      data-testid="register-password-input"
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                      placeholder="Confirm Password"
+                      className="h-12 rounded-xl border-slate-200"
+                      data-testid="register-confirm-password-input"
+                      required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
                   </div>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                    placeholder="Confirm Password"
-                    className="h-12 rounded-xl border-slate-200"
-                    data-testid="register-confirm-password-input"
-                  />
                 </div>
               </div>
 

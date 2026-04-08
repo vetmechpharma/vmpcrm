@@ -76,8 +76,8 @@ DEFAULT_WA_TEMPLATES = {
         'key': 'account_approved',
         'name': 'Account Approved',
         'category': 'whatsapp',
-        'variables': ['customer_name', 'customer_code', 'company_short_name'],
-        'template': 'Great news, {customer_name}!\n\nYour {company_short_name} account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer_code}',
+        'variables': ['customer_name', 'customer_code', 'login_url', 'company_short_name'],
+        'template': 'Great news, {customer_name}!\n\nYour {company_short_name} account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer_code}\n\nLogin here: {login_url}\n\nRegards,\n*{company_short_name}*',
     },
     'account_declined': {
         'key': 'account_declined',

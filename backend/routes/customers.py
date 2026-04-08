@@ -1144,9 +1144,10 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     if config.get('api_url') and config.get('auth_token'):
         try:
             if approval.status == 'approved':
-                message = await render_wa_template('account_approved', customer_name=customer['name'], customer_code=customer['customer_code'])
+                login_url = os.environ.get('APP_BASE_URL', '') + '/customer/login'
+                message = await render_wa_template('account_approved', customer_name=customer['name'], customer_code=customer['customer_code'], login_url=login_url)
                 if not message:
-                    message = f"Great news, {customer['name']}!\n\nYour account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}"
+                    message = f"Great news, {customer['name']}!\n\nYour account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}\n\nLogin here: {login_url}"
             else:
                 reason = approval.rejection_reason or "Please contact support for more details."
                 message = await render_wa_template('account_declined', customer_name=customer['name'], reason=reason)
@@ -1168,11 +1169,13 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     if customer.get('email'):
         try:
             if approval.status == 'approved':
+                login_url = os.environ.get('APP_BASE_URL', '') + '/customer/login'
                 email_body = f"""<p>Dear <strong>{customer['name']}</strong>,</p>
 <div style="background:#ecfdf5;padding:16px;border-radius:6px;border-left:4px solid #10b981;margin:16px 0;">
 <p style="color:#065f46;font-weight:bold;margin:0;">Your account has been APPROVED!</p></div>
 <p>You can now login to view products and place orders.</p>
-<p><strong>Customer Code:</strong> {customer['customer_code']}</p>"""
+<p><strong>Customer Code:</strong> {customer['customer_code']}</p>
+<p><a href="{login_url}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:8px;">Login Now</a></p>"""
                 await send_notification_email(customer['email'], customer['name'], "Account Approved!", email_body, customer_id, 'account_approved')
             else:
                 reason = approval.rejection_reason or "Please contact support for more details."

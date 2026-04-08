@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
-import { Phone, Lock, LogIn, Loader2, Eye, EyeOff, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Phone, Lock, LogIn, Loader2, Eye, EyeOff, MessageSquare, ArrowLeft, Download } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -20,6 +20,8 @@ const CustomerLogin = () => {
   const [formData, setFormData] = useState({ phone: '', password: '', otp: '' });
   const [company, setCompany] = useState(null);
   const otpRefs = useRef([]);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
     // Fetch company settings for branding
@@ -33,6 +35,27 @@ const CustomerLogin = () => {
     const id = setTimeout(() => setOtpTimer(otpTimer - 1), 1000);
     return () => clearTimeout(id);
   }, [otpTimer]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setCanInstall(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      setCanInstall(false);
+      toast.success('App installed successfully!');
+    }
+    setDeferredPrompt(null);
+  };
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
@@ -251,6 +274,19 @@ const CustomerLogin = () => {
             <Link to="/register" className="text-emerald-600 font-semibold hover:underline">Register Now</Link>
           </p>
         </div>
+
+        {canInstall && (
+          <div className="mt-4 max-w-md mx-auto">
+            <button
+              onClick={handleInstallApp}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-blue-800 transition-all"
+              data-testid="install-app-btn"
+            >
+              <Download className="w-5 h-5" />
+              Install App on Your Device
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

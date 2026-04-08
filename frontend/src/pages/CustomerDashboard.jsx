@@ -11,7 +11,8 @@ import {
   ListTodo,
   TrendingUp,
   Loader2,
-  Bell
+  Bell,
+  Download
 } from 'lucide-react';
 import axios from 'axios';
 import { OffersCarousel } from '../components/OffersCarousel';
@@ -24,6 +25,8 @@ const CustomerDashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [canInstall, setCanInstall] = useState(false);
 
   // Auto-subscribe customer to push notifications
   useAutoSubscribe('customer');
@@ -31,6 +34,26 @@ const CustomerDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setCanInstall(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    if (result.outcome === 'accepted') {
+      setCanInstall(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -100,6 +123,23 @@ const CustomerDashboard = () => {
 
       {/* Current Offers */}
       <OffersCarousel role={customer?.role} />
+
+      {/* Install App Card */}
+      {canInstall && (
+        <button
+          onClick={handleInstallApp}
+          className="w-full flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 text-white shadow-lg shadow-blue-600/20 active:scale-[0.98] transition-transform"
+          data-testid="dashboard-install-btn"
+        >
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <Download className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-sm">Install App</p>
+            <p className="text-blue-200 text-xs">Add to home screen for quick access</p>
+          </div>
+        </button>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">

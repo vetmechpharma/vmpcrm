@@ -3,53 +3,39 @@
 ## Architecture
 - **Frontend**: React, Tailwind, Shadcn UI
 - **Backend**: FastAPI (modular routes), MongoDB (Motor), Multi-WhatsApp API
-- **PWA**: Service workers for both Customer (`sw.js`) and MR (`mr-sw.js`) portals
+- **PWA**: Service workers for Customer + MR portals
 
-## Recent Changes (Apr 6, 2026)
+## Security Hardening (Apr 9, 2026)
+- **JWT Secret**: Now required in `.env` — no weak fallback. Server won't start without it
+- **Brute Force Protection**: All login endpoints (Admin, Customer, MR) lock out after 5 failed attempts for 15 minutes. Uses IP:identifier tracking
+- **OTP Protection**: OTP verification locked after 5 wrong attempts. OTP send rate-limited to 5/minute
+- **Rate Limiting**: slowapi with `X-Forwarded-For` real IP detection for proxy environments
+- **Token Expiry**: Customer/MR tokens reduced from 30 days → 7 days. Admin tokens: 24 hours
+- **CORS**: Configurable via `CORS_ORIGINS` env var (default `*`, should be locked on VPS)
 
-### Bug Fixes - Push Notifications, Sessions, PWA
-- **Fixed**: Customer push notifications broken — `usePushNotifications.js` was reading `customer_token` instead of `customerToken` from localStorage
-- **Fixed**: Customer profile never refreshing — `CustomerLayout.jsx` was calling non-existent `/api/portal/profile` instead of `/api/customer/profile`
-- **Fixed**: Customer push subscribe endpoint — missing `jwt`, `JWT_SECRET`, `JWT_ALGORITHM` imports in `push.py`
-- **Verified**: PWA install prompts exist for both Customer and MR portals
-- **Verified**: Login session persistence works for Admin, Customer, and MR (all use localStorage)
+## Recent Changes (Apr 8-9, 2026)
 
-### Customer Portal - Change Password
-- `POST /api/customer/change-password` endpoint — validates old password, enforces min 6-char new password
-- UI in `CustomerProfile.jsx` with password visibility toggles and confirm-match validation
+### Customer Portal Enhancements
+- Change Password feature (POST /api/customer/change-password)
+- Registration form: all fields now compulsory with validation
+- Install App button on login page + dashboard
+- WhatsApp approval message now includes login URL
 
-### Order Update WhatsApp Fix
-- Fixed: qty formats "10+5" (scheme) and "1 case offer" now send WhatsApp correctly
-- All `int(quantity)` replaced with safe `str(quantity)` across all notification functions
-
-### Transport Notifications
-- Ready to Dispatch sends WhatsApp to transporter with delivery station, package details
-
-### Updated WhatsApp Templates
-- **Delivered**: Includes Invoice No, Invoice Date, Invoice Value
-- **Shipped/Dispatched**: Includes Transport, Tracking No, Delivery Station, Package Details
-
-### Transport Edit
-- PUT /api/transports/{id} endpoint + Edit button in UI
-
-### Customer Portal Items
-- Always sorted alphabetically by item name
-
-### Marketing Campaign Delete
-- DELETE /api/marketing/campaigns/{id} — cascades to logs + inline images/PDFs
-
-### VPS Deployment
-- `vmpcrm_code.tar.gz` rebuilt with all latest changes
-- `install.sh` supports --update and --migrate flags
-- Background auto-cleanup of temp ledger PDFs and backup files (24h TTL)
-
-### Database Restore
-- POST /api/database/restore for JSON upload restore with Settings UI
+### Bug Fixes
+- Customer push notifications: fixed localStorage key mismatch
+- Customer profile refresh: fixed wrong API URL (/api/portal/profile → /api/customer/profile)
+- Push subscribe endpoint: added missing JWT imports
 
 ## Test Credentials
 - Admin: info@vetmech.in / Kongu@@44884
 - Customer: 9999777766 / test123
 - MR: 9876543211 / testpass
+
+## VPS Deployment
+- Update command: wget + tar + npm build + backend restart
+- `JWT_SECRET` must be set in backend .env
+- `CORS_ORIGINS` should be set to domain (e.g., https://vetmechpharma.in)
+- `APP_BASE_URL` must point to VPS domain
 
 ## Backlog (P2)
 - AI Insights for Reports

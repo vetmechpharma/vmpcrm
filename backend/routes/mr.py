@@ -21,8 +21,23 @@ router = APIRouter(prefix="/api")
 
 # ============== MR (MEDICAL REPRESENTATIVE) ROUTES ==============
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+def _get_real_ip(request):
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.headers.get("x-real-ip") or get_remote_address(request)
+
+_limiter = Limiter(key_func=_get_real_ip)
+
+# Brute force protection for MR login
+_mr_login_attempts = {}
+
 @router.post("/mr/login")
-async def mr_login(data: dict):
+@_limiter.limit("10/minute")
+async def mr_login(data: dict, request: Request):
     """MR Login with phone + password"""
     phone = data.get('phone', '').strip()
     password = data.get('password', '').strip()
@@ -30,14 +45,33 @@ async def mr_login(data: dict):
         raise HTTPException(status_code=400, detail="Phone and password required")
     
     clean_phone = ''.join(filter(str.isdigit, phone))
+    lockout_key = f"{_get_real_ip(request)}:{clean_phone}"
+    
+    # Check lockout
+    entry = _mr_login_attempts.get(lockout_key)
+    if entry and entry.get('locked_until') and datetime.now(timezone.utc) < entry['locked_until']:
+        remaining = int((entry['locked_until'] - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+        raise HTTPException(status_code=429, detail=f"Too many failed attempts. Try again in {remaining} minutes.")
+    
     mr = await db.mrs.find_one({'phone': {'$regex': clean_phone + '$'}}, {'_id': 0})
     if not mr:
+        entry = _mr_login_attempts.get(lockout_key, {'count': 0})
+        entry['count'] += 1
+        if entry['count'] >= 5:
+            entry['locked_until'] = datetime.now(timezone.utc) + timedelta(minutes=15)
+        _mr_login_attempts[lockout_key] = entry
         raise HTTPException(status_code=401, detail="Invalid phone or password")
     if mr.get('status') != 'active':
         raise HTTPException(status_code=403, detail="Your account is inactive")
     if not verify_password(password, mr['password_hash']):
+        entry = _mr_login_attempts.get(lockout_key, {'count': 0})
+        entry['count'] += 1
+        if entry['count'] >= 5:
+            entry['locked_until'] = datetime.now(timezone.utc) + timedelta(minutes=15)
+        _mr_login_attempts[lockout_key] = entry
         raise HTTPException(status_code=401, detail="Invalid phone or password")
     
+    _mr_login_attempts.pop(lockout_key, None)
     token = create_mr_token(mr['id'], mr['name'])
     return {
         "access_token": token,

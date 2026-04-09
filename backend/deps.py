@@ -19,7 +19,9 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Settings
-JWT_SECRET = os.environ.get('JWT_SECRET', 'vmp-crm-secret-key-2024')
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET must be set in .env")
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
 
@@ -71,7 +73,7 @@ def create_customer_token(customer_id: str, role: str):
         'customer_id': customer_id,
         'role': role,
         'type': 'customer',
-        'exp': datetime.now(timezone.utc) + timedelta(days=30)
+        'exp': datetime.now(timezone.utc) + timedelta(days=7)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
@@ -96,7 +98,7 @@ def create_mr_token(mr_id: str, name: str):
         'mr_id': mr_id,
         'name': name,
         'type': 'mr',
-        'exp': datetime.now(timezone.utc) + timedelta(days=30)
+        'exp': datetime.now(timezone.utc) + timedelta(days=7)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 

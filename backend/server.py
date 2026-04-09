@@ -3,8 +3,12 @@
 This is the slim orchestrator that imports all route modules and
 configures the FastAPI application.
 """
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import asyncio
 from datetime import datetime, timezone
@@ -32,7 +36,24 @@ from background_tasks import (
 )
 
 # Create the main app
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+def _get_real_ip(request: Request) -> str:
+    """Get real client IP from X-Forwarded-For or X-Real-IP headers (behind proxy)"""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=_get_real_ip)
 app = FastAPI(title="VMP CRM API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Health check router (inline - too small to separate)
 health_router = APIRouter(prefix="/api")

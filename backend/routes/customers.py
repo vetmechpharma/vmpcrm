@@ -39,24 +39,92 @@ DEFAULT_SUBCATEGORY_ORDER = [
 # Store OTPs in memory (in production, use Redis)
 customer_otp_store = {}
 
+# Brute force protection: track failed attempts per IP+phone
+_login_attempts = {}  # key: "ip:phone" -> {'count': int, 'locked_until': datetime}
+_otp_attempts = {}    # key: "phone" -> {'count': int, 'locked_until': datetime}
+
+MAX_LOGIN_ATTEMPTS = 5
+MAX_OTP_VERIFY_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+def _check_login_lockout(key: str):
+    """Check if login is locked out for this key"""
+    entry = _login_attempts.get(key)
+    if not entry:
+        return
+    if entry.get('locked_until') and datetime.now(timezone.utc) < entry['locked_until']:
+        remaining = int((entry['locked_until'] - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+        raise HTTPException(status_code=429, detail=f"Too many failed attempts. Try again in {remaining} minutes.")
+    if entry.get('locked_until') and datetime.now(timezone.utc) >= entry['locked_until']:
+        del _login_attempts[key]
+
+def _record_login_failure(key: str):
+    """Record a failed login attempt"""
+    entry = _login_attempts.get(key, {'count': 0})
+    entry['count'] += 1
+    if entry['count'] >= MAX_LOGIN_ATTEMPTS:
+        entry['locked_until'] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        logger.warning(f"Login locked for {key} after {entry['count']} failed attempts")
+    _login_attempts[key] = entry
+
+def _reset_login_attempts(key: str):
+    """Reset login attempts on success"""
+    _login_attempts.pop(key, None)
+
+def _check_otp_lockout(phone: str):
+    """Check if OTP verification is locked"""
+    entry = _otp_attempts.get(phone)
+    if not entry:
+        return
+    if entry.get('locked_until') and datetime.now(timezone.utc) < entry['locked_until']:
+        remaining = int((entry['locked_until'] - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+        raise HTTPException(status_code=429, detail=f"Too many failed OTP attempts. Try again in {remaining} minutes.")
+    if entry.get('locked_until') and datetime.now(timezone.utc) >= entry['locked_until']:
+        del _otp_attempts[phone]
+
+def _record_otp_failure(phone: str):
+    """Record a failed OTP verification"""
+    entry = _otp_attempts.get(phone, {'count': 0})
+    entry['count'] += 1
+    if entry['count'] >= MAX_OTP_VERIFY_ATTEMPTS:
+        entry['locked_until'] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        logger.warning(f"OTP locked for {phone} after {entry['count']} failed attempts")
+    _otp_attempts[phone] = entry
+
+def _reset_otp_attempts(phone: str):
+    """Reset OTP attempts on success"""
+    _otp_attempts.pop(phone, None)
+
 # Use utility functions from shared modules
 from utils.code_gen import generate_portal_customer_code as generate_customer_code, generate_ticket_number
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+def _get_real_ip(request):
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.headers.get("x-real-ip") or get_remote_address(request)
+
+_limiter = Limiter(key_func=_get_real_ip)
+
 @router.post("/customer/send-otp")
-async def customer_send_otp(request: CustomerOTPRequest):
+@_limiter.limit("5/minute")
+async def customer_send_otp(request_data: CustomerOTPRequest, request: Request):
     """Send OTP to customer for registration or password reset"""
-    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    clean_phone = ''.join(filter(str.isdigit, request_data.phone))
     if len(clean_phone) < 10:
         raise HTTPException(status_code=400, detail="Invalid phone number")
     
     # Check if customer exists for password reset
-    if request.purpose == "reset_password":
+    if request_data.purpose == "reset_password":
         customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
         if not customer:
             raise HTTPException(status_code=404, detail="No account found with this phone number")
     
     # Check for duplicate registration - prevent if phone already registered
-    if request.purpose == "register":
+    if request_data.purpose == "register":
         # Check portal_customers first
         existing_portal = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
         if existing_portal:
@@ -89,7 +157,7 @@ async def customer_send_otp(request: CustomerOTPRequest):
     otp = str(random.randint(1000, 9999))
     
     # Store OTP with expiry (5 minutes)
-    customer_otp_store[f"{clean_phone}_{request.purpose}"] = {
+    customer_otp_store[f"{clean_phone}_{request_data.purpose}"] = {
         'otp': otp,
         'expires': datetime.now(timezone.utc) + timedelta(minutes=5)
     }
@@ -98,7 +166,7 @@ async def customer_send_otp(request: CustomerOTPRequest):
     config = await get_whatsapp_config()
     if config.get('api_url') and config.get('auth_token'):
         try:
-            purpose_text = "registration" if request.purpose == "register" else "password reset"
+            purpose_text = "registration" if request_data.purpose == "register" else "password reset"
             message = f"Your VMP CRM verification code for {purpose_text} is: *{otp}*\n\nThis code expires in 5 minutes. Do not share this code with anyone."
             tmpl = await get_wa_template('otp')
             if tmpl:
@@ -125,15 +193,19 @@ async def customer_send_otp(request: CustomerOTPRequest):
     return {"message": "OTP sent successfully", "phone": clean_phone}
 
 @router.post("/customer/verify-otp")
-async def customer_verify_otp(request: CustomerOTPVerify):
+@_limiter.limit("10/minute")
+async def customer_verify_otp(request_data: CustomerOTPVerify, request: Request):
     """Verify OTP for customer"""
-    clean_phone = ''.join(filter(str.isdigit, request.phone))
-    otp_key = f"{clean_phone}_{request.purpose}"
+    clean_phone = ''.join(filter(str.isdigit, request_data.phone))
+    otp_key = f"{clean_phone}_{request_data.purpose}"
+    
+    # Check brute force lockout
+    _check_otp_lockout(clean_phone)
     
     stored = customer_otp_store.get(otp_key)
     
     # First check if it's a fallback OTP (admin-managed)
-    fallback_otp = await db.fallback_otps.find_one({'otp': request.otp, 'is_active': True}, {'_id': 0})
+    fallback_otp = await db.fallback_otps.find_one({'otp': request_data.otp, 'is_active': True}, {'_id': 0})
     if fallback_otp:
         # Increment usage count
         await db.fallback_otps.update_one(
@@ -141,10 +213,11 @@ async def customer_verify_otp(request: CustomerOTPVerify):
             {'$inc': {'used_count': 1}}
         )
         logger.info(f"Fallback OTP used for phone {clean_phone}")
+        _reset_otp_attempts(clean_phone)
         
         # Store as verified for registration flow
         customer_otp_store[otp_key] = {
-            'otp': request.otp,
+            'otp': request_data.otp,
             'expires': datetime.now(timezone.utc) + timedelta(minutes=30),
             'verified': True,
             'is_fallback': True
@@ -153,17 +226,21 @@ async def customer_verify_otp(request: CustomerOTPVerify):
     
     # Check regular OTP
     if not stored:
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new OTP.")
     
     if datetime.now(timezone.utc) > stored['expires']:
         del customer_otp_store[otp_key]
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="OTP expired. Please request a new OTP.")
     
-    if stored['otp'] != request.otp:
+    if stored['otp'] != request_data.otp:
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="Invalid OTP")
     
     # Mark OTP as verified
     customer_otp_store[otp_key]['verified'] = True
+    _reset_otp_attempts(clean_phone)
     
     return {"message": "OTP verified successfully", "verified": True}
 
@@ -272,15 +349,22 @@ async def _notify_admin_new_registration(name, role):
     await send_push_to_admins('New Customer Registration', f'{name} ({role}) registered - pending approval', '/admin/customers', 'new-registration')
 
 @router.post("/customer/login")
-async def customer_login(request: CustomerLogin):
+@_limiter.limit("10/minute")
+async def customer_login(login_data: CustomerLogin, request: Request):
     """Customer login"""
-    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    clean_phone = ''.join(filter(str.isdigit, login_data.phone))
+    lockout_key = f"{_get_real_ip(request)}:{clean_phone}"
+    
+    # Check brute force lockout
+    _check_login_lockout(lockout_key)
     
     customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
     if not customer:
+        _record_login_failure(lockout_key)
         raise HTTPException(status_code=401, detail="Invalid phone or password")
     
-    if not bcrypt.checkpw(request.password.encode(), customer['password_hash'].encode()):
+    if not bcrypt.checkpw(login_data.password.encode(), customer['password_hash'].encode()):
+        _record_login_failure(lockout_key)
         raise HTTPException(status_code=401, detail="Invalid phone or password")
     
     if customer['status'] == 'pending_approval':
@@ -292,6 +376,7 @@ async def customer_login(request: CustomerLogin):
     if customer['status'] == 'suspended':
         raise HTTPException(status_code=403, detail="Your account has been suspended. Please contact support.")
     
+    _reset_login_attempts(lockout_key)
     token = create_customer_token(customer['id'], customer['role'])
     
     return {
@@ -306,9 +391,10 @@ async def customer_login(request: CustomerLogin):
     }
 
 @router.post("/customer/login-otp-send")
-async def customer_login_otp_send(request: CustomerOTPRequest):
+@_limiter.limit("5/minute")
+async def customer_login_otp_send(request_data: CustomerOTPRequest, request: Request):
     """Send OTP for customer login (passwordless)"""
-    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    clean_phone = ''.join(filter(str.isdigit, request_data.phone))
     if len(clean_phone) < 10:
         raise HTTPException(status_code=400, detail="Invalid phone number")
     
@@ -337,31 +423,38 @@ async def customer_login_otp_send(request: CustomerOTPRequest):
     return {"message": "OTP sent to your WhatsApp", "phone": clean_phone}
 
 @router.post("/customer/login-otp-verify")
-async def customer_login_otp_verify(request: CustomerOTPVerify):
+@_limiter.limit("10/minute")
+async def customer_login_otp_verify(request_data: CustomerOTPVerify, request: Request):
     """Verify OTP and login customer (passwordless)"""
-    clean_phone = ''.join(filter(str.isdigit, request.phone))
+    clean_phone = ''.join(filter(str.isdigit, request_data.phone))
     otp_key = f"{clean_phone}_login"
+    
+    _check_otp_lockout(clean_phone)
     
     stored = customer_otp_store.get(otp_key)
     
     # Check fallback OTP
     if not stored:
-        fallback_otp = await db.fallback_otps.find_one({'otp': request.otp, 'is_active': True}, {'_id': 0})
+        fallback_otp = await db.fallback_otps.find_one({'otp': request_data.otp, 'is_active': True}, {'_id': 0})
         if fallback_otp:
-            customer_otp_store[otp_key] = {'otp': request.otp, 'expires': datetime.now(timezone.utc) + timedelta(minutes=5)}
+            customer_otp_store[otp_key] = {'otp': request_data.otp, 'expires': datetime.now(timezone.utc) + timedelta(minutes=5)}
             stored = customer_otp_store[otp_key]
     
     if not stored:
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="OTP not found or expired. Please request a new one.")
     
     if datetime.now(timezone.utc) > stored['expires']:
         del customer_otp_store[otp_key]
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
     
-    if stored['otp'] != request.otp:
+    if stored['otp'] != request_data.otp:
+        _record_otp_failure(clean_phone)
         raise HTTPException(status_code=400, detail="Invalid OTP")
     
     del customer_otp_store[otp_key]
+    _reset_otp_attempts(clean_phone)
     
     customer = await db.portal_customers.find_one({'phone': clean_phone}, {'_id': 0})
     if not customer:

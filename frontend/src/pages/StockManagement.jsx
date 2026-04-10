@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { stockAPI, itemsAPI } from '../lib/api';
 import {
   Package, Plus, Trash2, Edit2, Search, ArrowUpCircle, ArrowDownCircle,
-  FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp
+  FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp, AlertCircle
 } from 'lucide-react';
 
 // ============== SUPPLIER MANAGEMENT ==============

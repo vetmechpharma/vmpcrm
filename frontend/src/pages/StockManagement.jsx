@@ -468,13 +468,12 @@ const SalesReturnTab = () => {
   const [allItems, setAllItems] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [returns, setReturns] = useState([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOrders, setCustomerOrders] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [form, setForm] = useState({
     order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '',
-    items: [{ item_id: '', quantity: '', rate: '' }]
+    items: [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }]
   });
 
   useEffect(() => {
@@ -500,53 +499,75 @@ const SalesReturnTab = () => {
         const first = res.data.orders[0];
         setForm(f => ({...f, customer_name: first.customer_name, customer_phone: first.customer_phone}));
       } else {
-        toast.info('No delivered/shipped orders found for this customer');
+        toast.info('No orders found for this customer');
       }
     } catch { toast.error('Search failed'); }
     finally { setSearchLoading(false); }
   };
 
   const addOrderItemToReturn = (orderItem) => {
-    const existing = form.items.findIndex(i => i.item_id === orderItem.item_id && i.item_id);
-    if (existing >= 0) {
-      toast.info('Item already added');
-      return;
-    }
-    const newItem = { item_id: orderItem.item_id, quantity: '', rate: orderItem.rate || '' };
+    const itemMaster = allItems.find(i => i.id === orderItem.item_id);
+    const gstPct = itemMaster?.gst || 0;
+    const newItem = { 
+      item_id: orderItem.item_id, 
+      quantity: '', 
+      rate: orderItem.rate || '', 
+      gst_percent: gstPct,
+      sold_rate: orderItem.rate || 0, 
+      sold_qty: orderItem.quantity || 0, 
+      order_number: orderItem.order_number || '' 
+    };
     const items = form.items[0]?.item_id ? [...form.items, newItem] : [newItem];
     setForm({...form, items, order_id: orderItem.order_id || form.order_id});
   };
 
-  // Group orders by item for display
+  // Group orders by item for display  
   const itemPurchaseHistory = {};
   customerOrders.forEach(o => {
     if (!itemPurchaseHistory[o.item_id]) itemPurchaseHistory[o.item_id] = { item_name: o.item_name, purchases: [] };
     itemPurchaseHistory[o.item_id].purchases.push(o);
   });
 
+  // Calculate totals
+  const calculateItemTotal = (item) => {
+    const qty = parseFloat(item.quantity) || 0;
+    const rate = parseFloat(item.rate) || 0;
+    const gst = parseFloat(item.gst_percent) || 0;
+    const base = qty * rate;
+    const gstAmt = Math.round(base * gst / 100 * 100) / 100;
+    return { base, gstAmt, total: Math.round((base + gstAmt) * 100) / 100 };
+  };
+
+  const grandTotal = form.items.reduce((sum, item) => sum + calculateItemTotal(item).total, 0);
+
   const handleSave = async () => {
-    const validItems = form.items.filter(i => i.item_id && i.quantity > 0);
-    if (!validItems.length) return toast.error('Add at least one item');
+    const validItems = form.items.filter(i => i.item_id && parseFloat(i.quantity) > 0);
+    if (!validItems.length) return toast.error('Add at least one item with quantity');
     setSaving(true);
     try {
-      await stockAPI.createSalesReturn({...form, items: validItems});
-      toast.success('Sales return recorded');
+      const res = await stockAPI.createSalesReturn({...form, items: validItems});
+      toast.success(res.data.message || 'Sales return recorded');
       setShowForm(false);
       setCustomerOrders([]);
       setCustomerSearch('');
-      setForm({ order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '' }] });
+      setForm({ order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }] });
     } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
     finally { setSaving(false); }
   };
 
-  const addItem = () => setForm({...form, items: [...form.items, { item_id: '', quantity: '', rate: '' }]});
+  const addItem = () => setForm({...form, items: [...form.items, { item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }]});
   const removeItem = (idx) => {
     const newItems = form.items.filter((_, i) => i !== idx);
-    setForm({...form, items: newItems.length ? newItems : [{ item_id: '', quantity: '', rate: '' }]});
+    setForm({...form, items: newItems.length ? newItems : [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }]});
   };
   const updateItem = (idx, field, value) => {
     const newItems = [...form.items];
     newItems[idx] = {...newItems[idx], [field]: value};
+    // Auto-fill GST from item master when item selected
+    if (field === 'item_id') {
+      const itemMaster = allItems.find(i => i.id === value);
+      if (itemMaster) newItems[idx].gst_percent = itemMaster.gst || 0;
+    }
     setForm({...form, items: newItems});
   };
 
@@ -557,8 +578,8 @@ const SalesReturnTab = () => {
       </Button>
 
       <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) { setCustomerOrders([]); setCustomerSearch(''); } }}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Sales Return</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Sales Return — Credit Note</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {/* Customer Search */}
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
@@ -578,29 +599,33 @@ const SalesReturnTab = () => {
               </div>
             </div>
 
-            {/* Customer Order History */}
+            {/* Customer Order History grouped by item */}
             {Object.keys(itemPurchaseHistory).length > 0 && (
-              <div className="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+              <div className="border rounded-lg overflow-hidden max-h-52 overflow-y-auto">
                 <div className="bg-slate-50 px-3 py-2 font-medium text-sm sticky top-0 border-b">
-                  Purchase History — Click to add for return
+                  Purchase History — Click to add for return (shows sold rate & qty)
                 </div>
-                {Object.entries(itemPurchaseHistory).map(([itemId, data]) => (
-                  <div key={itemId} className="border-b last:border-0">
-                    <div className="px-3 py-2 bg-slate-50/50">
-                      <span className="font-medium text-sm">{data.item_name}</span>
-                      <span className="text-xs text-slate-500 ml-2">({data.purchases.length} purchase{data.purchases.length > 1 ? 's' : ''})</span>
-                    </div>
-                    {data.purchases.map((p, i) => (
-                      <div key={i} className="px-3 py-1.5 flex items-center justify-between hover:bg-green-50 cursor-pointer text-sm"
-                        onClick={() => addOrderItemToReturn(p)}>
-                        <span className="text-slate-600">
-                          {p.date} — Order #{p.order_number} — Qty: <strong>{p.quantity}</strong> @ ₹{p.rate}
-                        </span>
-                        <Plus className="w-4 h-4 text-green-600 shrink-0" />
+                {Object.entries(itemPurchaseHistory).map(([itemId, data]) => {
+                  const totalQty = data.purchases.reduce((s, p) => s + (p.quantity || 0), 0);
+                  return (
+                    <div key={itemId} className="border-b last:border-0">
+                      <div className="px-3 py-2 bg-slate-50/50 flex justify-between">
+                        <span className="font-medium text-sm">{data.item_name}</span>
+                        <span className="text-xs text-slate-600">Total bought: <strong>{totalQty}</strong> pcs in {data.purchases.length} order(s)</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {data.purchases.map((p, i) => (
+                        <div key={i} className="px-3 py-1.5 flex items-center justify-between hover:bg-green-50 cursor-pointer text-sm"
+                          onClick={() => addOrderItemToReturn(p)}>
+                          <span className="text-slate-600">
+                            {p.date} — #{p.order_number} — <strong>{p.quantity} pcs</strong> @ <span className="text-blue-700 font-semibold">₹{p.rate}</span>
+                            {p.status && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-slate-200">{p.status}</span>}
+                          </span>
+                          <Plus className="w-4 h-4 text-green-600 shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -613,27 +638,74 @@ const SalesReturnTab = () => {
               <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
             </div>
             <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
+            
+            {/* Items with GST & Amount calculation */}
             <div>
-              <Label className="mb-2 block">Items</Label>
-              {form.items.map((item, idx) => (
-                <div key={idx} className="flex gap-2 mb-2 items-end">
-                  <div className="flex-1">
-                    <Select value={item.item_id} onValueChange={v => updateItem(idx, 'item_id', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
-                      <SelectContent>{allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}</SelectContent>
-                    </Select>
+              <Label className="mb-2 block font-medium">Return Items</Label>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="text-left p-2 font-medium">Item</th>
+                      <th className="text-center p-2 font-medium w-24">Sold Info</th>
+                      <th className="text-center p-2 font-medium w-20">Ret. Qty</th>
+                      <th className="text-center p-2 font-medium w-24">Rate</th>
+                      <th className="text-center p-2 font-medium w-16">GST%</th>
+                      <th className="text-right p-2 font-medium w-24">Amount</th>
+                      <th className="w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.items.map((item, idx) => {
+                      const calc = calculateItemTotal(item);
+                      return (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2">
+                            <Select value={item.item_id} onValueChange={v => updateItem(idx, 'item_id', v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select item" /></SelectTrigger>
+                              <SelectContent>{allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </td>
+                          <td className="p-2 text-center">
+                            {item.sold_rate > 0 ? (
+                              <div className="text-[10px] leading-tight">
+                                <div className="text-blue-700 font-semibold">₹{item.sold_rate} × {item.sold_qty}</div>
+                                {item.order_number && <div className="text-slate-400">#{item.order_number}</div>}
+                              </div>
+                            ) : <span className="text-slate-300 text-xs">—</span>}
+                          </td>
+                          <td className="p-2"><Input type="number" min="0" className="w-20 h-8 text-center text-xs" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} placeholder="Qty" /></td>
+                          <td className="p-2"><Input type="number" className="w-24 h-8 text-center text-xs" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} placeholder="Rate" /></td>
+                          <td className="p-2"><Input type="number" className="w-16 h-8 text-center text-xs" value={item.gst_percent} onChange={e => updateItem(idx, 'gst_percent', e.target.value)} /></td>
+                          <td className="p-2 text-right">
+                            {calc.total > 0 && (
+                              <div className="text-xs">
+                                <div className="font-semibold">₹{calc.total.toFixed(2)}</div>
+                                {calc.gstAmt > 0 && <div className="text-[10px] text-slate-400">GST: ₹{calc.gstAmt.toFixed(2)}</div>}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2"><Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => removeItem(idx)}><X className="w-3 h-3" /></Button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+                {grandTotal > 0 && (
+                  <div className="text-right p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <span className="text-sm text-green-800 font-medium">Credit Note Total: </span>
+                    <span className="text-lg font-bold text-green-700">₹{grandTotal.toFixed(2)}</span>
                   </div>
-                  <Input type="number" placeholder="Qty" className="w-20" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
-                  <Input type="number" placeholder="Rate" className="w-24" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
-                  <Button size="sm" variant="ghost" onClick={() => removeItem(idx)}><X className="w-4 h-4" /></Button>
-                </div>
-              ))}
-              <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Return
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Return {grandTotal > 0 ? `(₹${grandTotal.toFixed(2)})` : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

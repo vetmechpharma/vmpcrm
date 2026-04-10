@@ -268,19 +268,29 @@ async def create_sales_return(data: dict, user=Depends(get_current_user)):
     
     return_id = str(uuid.uuid4())
     transactions = []
+    grand_total = 0
     
     for item in items:
         item_id = item.get('item_id')
         quantity = item.get('quantity', 0)
         rate = item.get('rate', 0)
+        gst_percent = item.get('gst_percent', 0)
+        sold_rate = item.get('sold_rate', rate)
         
         if not item_id:
             continue
         try:
             quantity = float(quantity)
             rate = float(rate)
+            gst_percent = float(gst_percent)
+            sold_rate = float(sold_rate)
         except (ValueError, TypeError):
             continue
+        
+        base_amount = quantity * rate
+        gst_amount = round(base_amount * gst_percent / 100, 2)
+        total_amount = round(base_amount + gst_amount, 2)
+        grand_total += total_amount
         
         txn = {
             'id': str(uuid.uuid4()),
@@ -289,6 +299,11 @@ async def create_sales_return(data: dict, user=Depends(get_current_user)):
             'item_id': item_id,
             'quantity': quantity,
             'rate': rate,
+            'sold_rate': sold_rate,
+            'gst_percent': gst_percent,
+            'gst_amount': gst_amount,
+            'base_amount': base_amount,
+            'total_amount': total_amount,
             'order_id': order_id,
             'customer_name': customer_name,
             'customer_phone': customer_phone,
@@ -304,7 +319,12 @@ async def create_sales_return(data: dict, user=Depends(get_current_user)):
         for t in transactions:
             t.pop('_id', None)
     
-    return {"message": f"Sales return recorded with {len(transactions)} items", "return_id": return_id}
+    return {
+        "message": f"Sales return recorded: {len(transactions)} items, Credit Note: Rs.{grand_total:,.2f}",
+        "return_id": return_id,
+        "grand_total": grand_total,
+        "items_count": len(transactions)
+    }
 
 
 # ============== STOCK STATUS & REPORTS ==============
@@ -419,7 +439,7 @@ async def get_item_ledger(item_id: str, user=Depends(get_current_user)):
     # Get dispatched orders for this item
     orders = await db.orders.find(
         {'status': {'$in': ['shipped', 'delivered']}, 'items.item_id': item_id},
-        {'_id': 0, 'id': 1, 'order_number': 1, 'customer_name': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'updated_at': 1, 'created_at': 1}
+        {'_id': 0, 'id': 1, 'order_number': 1, 'doctor_name': 1, 'customer_name': 1, 'customer_phone': 1, 'doctor_phone': 1, 'items': 1, 'status': 1, 'updated_at': 1, 'created_at': 1, 'created_by': 1}
     ).sort('updated_at', 1).to_list(50000)
     
     # Build ledger entries
@@ -458,10 +478,12 @@ async def get_item_ledger(item_id: str, user=Depends(get_current_user)):
                 'reference': txn.get('supplier_id', '')
             })
         elif txn['type'] == 'sales_return':
+            total_amt = txn.get('total_amount', 0)
+            credit_note_text = f" | Credit Note: Rs.{total_amt:,.2f}" if total_amt else ""
             ledger.append({
                 'date': txn.get('date', ''),
                 'type': 'sales_return',
-                'description': f"Sales Return - {txn.get('customer_name', '')}",
+                'description': f"Sales Return - {txn.get('customer_name', '')}{credit_note_text}",
                 'credit': txn.get('quantity', 0),
                 'debit': 0,
                 'rate': txn.get('rate', 0),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -9,10 +9,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import { stockAPI, itemsAPI } from '../lib/api';
+import { exportToCSV, printTable, getDatePreset } from '../lib/exportUtils';
 import {
   Package, Plus, Trash2, Edit2, Search, ArrowUpCircle, ArrowDownCircle,
-  FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp, AlertCircle
+  FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp, AlertCircle,
+  Download, Printer, Calendar, Filter
 } from 'lucide-react';
+
+// ============== SHARED: Date Range Filter Bar ==============
+const DateFilterBar = ({ fromDate, toDate, onFromChange, onToChange, onPreset, children }) => (
+  <div className="flex flex-wrap gap-2 items-end text-sm">
+    <div>
+      <Label className="text-xs">From</Label>
+      <Input type="date" value={fromDate} onChange={e => onFromChange(e.target.value)} className="w-36 h-8 text-xs" data-testid="filter-from-date" />
+    </div>
+    <div>
+      <Label className="text-xs">To</Label>
+      <Input type="date" value={toDate} onChange={e => onToChange(e.target.value)} className="w-36 h-8 text-xs" data-testid="filter-to-date" />
+    </div>
+    <div className="flex gap-1">
+      {[['week','Week'],['month','Month'],['year','Year']].map(([k,l]) => (
+        <Button key={k} size="sm" variant="outline" className="h-8 text-xs px-2" onClick={() => {
+          const p = getDatePreset(k); onFromChange(p.from); onToChange(p.to);
+          if (onPreset) onPreset(k);
+        }} data-testid={`preset-${k}`}>{l}</Button>
+      ))}
+      <Button size="sm" variant="ghost" className="h-8 text-xs px-2" onClick={() => { onFromChange(''); onToChange(''); if(onPreset) onPreset(''); }} data-testid="preset-clear">Clear</Button>
+    </div>
+    {children}
+  </div>
+);
+
+// ============== SHARED: Export Buttons ==============
+const ExportButtons = ({ onExport, onPrint }) => (
+  <div className="flex gap-1">
+    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={onExport} data-testid="export-csv-btn">
+      <Download className="w-3.5 h-3.5" /> CSV
+    </Button>
+    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={onPrint} data-testid="print-btn">
+      <Printer className="w-3.5 h-3.5" /> Print
+    </Button>
+  </div>
+);
 
 // ============== SUPPLIER MANAGEMENT ==============
 const SuppliersTab = () => {
@@ -257,6 +295,8 @@ const PurchaseTab = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState({ quantity: '', rate: '', date: '', invoice_no: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [form, setForm] = useState({
     supplier_id: '', date: new Date().toISOString().split('T')[0], invoice_no: '', notes: '',
     items: [{ item_id: '', quantity: '', purchase_rate: '' }]
@@ -343,17 +383,39 @@ const PurchaseTab = () => {
   const supplierMap = {};
   suppliers.forEach(s => { supplierMap[s.id] = s.name; });
 
+  const filteredPurchases = useMemo(() => {
+    return purchases.filter(p => {
+      if (fromDate && (p.date || '') < fromDate) return false;
+      if (toDate && (p.date || '') > toDate) return false;
+      return true;
+    });
+  }, [purchases, fromDate, toDate]);
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  const handlePurchaseExport = () => {
+    const headers = ['Date', 'Item', 'Type', 'Qty', 'Rate', 'Invoice', 'Supplier', 'Notes'];
+    const rows = filteredPurchases.map(p => [p.date, p.item_name || '', p.type, p.quantity, p.rate || '', p.invoice_no || '', p.supplier_name || '', p.notes || '']);
+    exportToCSV(headers, rows, `purchases_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePurchasePrint = () => {
+    const headers = ['Date', 'Item', 'Type', 'Qty', 'Rate', 'Invoice', 'Supplier', 'Notes'];
+    const rows = filteredPurchases.map(p => [p.date, p.item_name || '', p.type, p.quantity, p.rate || '', p.invoice_no || '', p.supplier_name || '', p.notes || '']);
+    const sub = fromDate && toDate ? `${fromDate} to ${toDate}` : 'All';
+    printTable('Purchase History', headers, rows, sub);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-end">
         <Button size="sm" onClick={() => setShowForm(true)} data-testid="add-purchase-btn">
           <ArrowDownCircle className="w-4 h-4 mr-1" /> New Purchase
         </Button>
         <Button size="sm" variant="outline" onClick={() => setShowReturnForm(true)} data-testid="purchase-return-btn">
           <ArrowUpCircle className="w-4 h-4 mr-1" /> Purchase Return
         </Button>
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        <ExportButtons onExport={handlePurchaseExport} onPrint={handlePurchasePrint} />
       </div>
 
       {/* Purchase History */}
@@ -372,7 +434,7 @@ const PurchaseTab = () => {
             </tr>
           </thead>
           <tbody>
-            {purchases.map(p => (
+            {filteredPurchases.map(p => (
               <tr key={p.id} className="border-t hover:bg-slate-50">
                 <td className="p-3">{p.date}</td>
                 <td className="p-3">{supplierMap[p.supplier_id] || p.supplier_id}</td>
@@ -401,7 +463,7 @@ const PurchaseTab = () => {
                 </td>
               </tr>
             ))}
-            {purchases.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No purchases yet</td></tr>}
+            {filteredPurchases.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No purchases yet</td></tr>}
           </tbody>
         </table>
       </div>
@@ -538,6 +600,8 @@ const SalesReturnTab = () => {
   const [editingTxn, setEditingTxn] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState({ quantity: '', rate: '', gst_percent: '', date: '', customer_name: '', customer_phone: '', notes: '' });
+  const [srFromDate, setSrFromDate] = useState('');
+  const [srToDate, setSrToDate] = useState('');
   const [form, setForm] = useState({
     order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '',
     items: [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }]
@@ -640,11 +704,35 @@ const SalesReturnTab = () => {
     setForm({...form, items: newItems});
   };
 
+  const filteredReturns = useMemo(() => {
+    return returns.filter(r => {
+      if (srFromDate && (r.date || '') < srFromDate) return false;
+      if (srToDate && (r.date || '') > srToDate) return false;
+      return true;
+    });
+  }, [returns, srFromDate, srToDate]);
+
+  const handleSrExport = () => {
+    const headers = ['Date', 'Customer', 'Phone', 'Item', 'Qty', 'Rate', 'GST%', 'Total', 'Notes'];
+    const rows = filteredReturns.map(r => [r.date, r.customer_name || '', r.customer_phone || '', r.item_name || '', r.quantity, r.rate || '', r.gst_percent || 0, r.total_amount || '', r.notes || '']);
+    exportToCSV(headers, rows, `sales_returns_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handleSrPrint = () => {
+    const headers = ['Date', 'Customer', 'Phone', 'Item', 'Qty', 'Rate', 'GST%', 'Total'];
+    const rows = filteredReturns.map(r => [r.date, r.customer_name || '', r.customer_phone || '', r.item_name || '', r.quantity, r.rate || '', `${r.gst_percent || 0}%`, r.total_amount ? `₹${Number(r.total_amount).toFixed(2)}` : '']);
+    const sub = srFromDate && srToDate ? `${srFromDate} to ${srToDate}` : 'All';
+    printTable('Sales Returns Report', headers, rows, sub);
+  };
+
   return (
     <div className="space-y-4">
-      <Button size="sm" onClick={() => setShowForm(true)} data-testid="sales-return-btn">
-        <ArrowUpCircle className="w-4 h-4 mr-1" /> New Sales Return
-      </Button>
+      <div className="flex flex-wrap gap-2 items-end">
+        <Button size="sm" onClick={() => setShowForm(true)} data-testid="sales-return-btn">
+          <ArrowUpCircle className="w-4 h-4 mr-1" /> New Sales Return
+        </Button>
+        <DateFilterBar fromDate={srFromDate} toDate={srToDate} onFromChange={setSrFromDate} onToChange={setSrToDate} />
+        <ExportButtons onExport={handleSrExport} onPrint={handleSrPrint} />
+      </div>
 
       {/* Sales Return History Table */}
       {loading ? <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
@@ -663,7 +751,7 @@ const SalesReturnTab = () => {
               </tr>
             </thead>
             <tbody>
-              {returns.map(r => (
+              {filteredReturns.map(r => (
                 <tr key={r.id} className="border-t hover:bg-slate-50">
                   <td className="p-3 text-slate-500">{r.date}</td>
                   <td className="p-3">{r.customer_name || '-'}<br/><span className="text-xs text-slate-400">{r.customer_phone || ''}</span></td>
@@ -688,7 +776,7 @@ const SalesReturnTab = () => {
                   </td>
                 </tr>
               ))}
-              {returns.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No sales returns yet</td></tr>}
+              {filteredReturns.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No sales returns yet</td></tr>}
             </tbody>
           </table>
         </div>
@@ -885,6 +973,8 @@ const StockIssueTab = () => {
   const [editingTxn, setEditingTxn] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editForm, setEditForm] = useState({ quantity: '', reason: '', date: '', notes: '' });
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [form, setForm] = useState({
     item_id: '', quantity: '', reason: '', date: new Date().toISOString().split('T')[0], notes: ''
   });
@@ -902,6 +992,14 @@ const StockIssueTab = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const filteredIssues = useMemo(() => {
+    return issues.filter(i => {
+      if (fromDate && (i.date || '') < fromDate) return false;
+      if (toDate && (i.date || '') > toDate) return false;
+      return true;
+    });
+  }, [issues, fromDate, toDate]);
+
   const handleSave = async () => {
     if (!form.item_id) return toast.error('Select an item');
     if (!form.quantity || parseFloat(form.quantity) <= 0) return toast.error('Enter valid quantity');
@@ -917,15 +1015,30 @@ const StockIssueTab = () => {
     finally { setSaving(false); }
   };
 
+  const handleExport = () => {
+    const headers = ['Date', 'Item', 'Qty', 'Reason', 'Notes', 'By'];
+    const rows = filteredIssues.map(i => [i.date, i.item_name || '', i.quantity, i.reason, i.notes || '', i.created_by || '']);
+    exportToCSV(headers, rows, `stock_issues_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Date', 'Item', 'Qty', 'Reason', 'Notes', 'By'];
+    const rows = filteredIssues.map(i => [i.date, i.item_name || '', i.quantity, i.reason, i.notes || '', i.created_by || '']);
+    const sub = fromDate && toDate ? `${fromDate} to ${toDate}` : 'All';
+    printTable('Stock Issues Report', headers, rows, sub);
+  };
+
   const selectedItemName = allItems.find(i => i.id === form.item_id)?.item_name || '';
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">Record stock reductions for damaged, broken, expired, or quality-issue items</p>
-        <Button size="sm" onClick={() => setShowForm(true)} data-testid="stock-issue-btn">
-          <AlertCircle className="w-4 h-4 mr-1" /> New Stock Issue
-        </Button>
+      <div className="flex flex-wrap gap-2 items-end">
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        <ExportButtons onExport={handleExport} onPrint={handlePrint} />
+        <div className="ml-auto">
+          <Button size="sm" onClick={() => setShowForm(true)} data-testid="stock-issue-btn">
+            <AlertCircle className="w-4 h-4 mr-1" /> New Stock Issue
+          </Button>
+        </div>
       </div>
 
       {/* Issues History Table */}
@@ -943,7 +1056,7 @@ const StockIssueTab = () => {
             </tr>
           </thead>
           <tbody>
-            {issues.map((issue, idx) => (
+            {filteredIssues.map((issue, idx) => (
               <tr key={idx} className="border-t hover:bg-slate-50">
                 <td className="p-3 text-slate-500">{issue.date}</td>
                 <td className="p-3 font-medium">{issue.item_name || '-'}</td>
@@ -975,7 +1088,7 @@ const StockIssueTab = () => {
                 </td>
               </tr>
             ))}
-            {issues.length === 0 && (
+            {filteredIssues.length === 0 && (
               <tr><td colSpan={7} className="p-8 text-center text-slate-400">{loading ? 'Loading...' : 'No stock issues recorded yet'}</td></tr>
             )}
           </tbody>
@@ -1069,47 +1182,119 @@ const StockIssueTab = () => {
 // ============== STOCK STATUS REPORT ==============
 const StockStatusTab = () => {
   const [stock, setStock] = useState([]);
+  const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('item_name');
   const [sortDir, setSortDir] = useState(1);
+  const [mainCatFilter, setMainCatFilter] = useState('all');
+  const [subCatFilter, setSubCatFilter] = useState('all');
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await stockAPI.getStockStatus();
+        const [res, itemRes] = await Promise.all([stockAPI.getStockStatus(), itemsAPI.getAll()]);
         setStock(res.data);
+        setAllItems(itemRes.data);
       } catch { toast.error('Failed to load stock'); }
       finally { setLoading(false); }
     };
     load();
   }, []);
 
+  // Extract unique categories from items
+  const mainCategories = useMemo(() => {
+    const cats = new Set();
+    allItems.forEach(i => (i.main_categories || []).forEach(c => cats.add(c)));
+    return [...cats].sort();
+  }, [allItems]);
+  const subCategories = useMemo(() => {
+    const subs = new Set();
+    allItems.forEach(i => (i.subcategories || []).forEach(s => subs.add(s)));
+    return [...subs].sort();
+  }, [allItems]);
+
+  // Build item->category map
+  const itemCatMap = useMemo(() => {
+    const m = {};
+    allItems.forEach(i => { m[i.id] = { main: i.main_categories || [], sub: i.subcategories || [] }; });
+    return m;
+  }, [allItems]);
+
   const toggleSort = (field) => {
     if (sortField === field) setSortDir(-sortDir);
     else { setSortField(field); setSortDir(1); }
   };
-
   const SortIcon = ({ field }) => {
     if (sortField !== field) return null;
     return sortDir === 1 ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />;
   };
 
   const filtered = stock
-    .filter(s => !search || s.item_name.toLowerCase().includes(search.toLowerCase()) || s.item_code.toLowerCase().includes(search.toLowerCase()))
+    .filter(s => {
+      if (search && !s.item_name.toLowerCase().includes(search.toLowerCase()) && !s.item_code.toLowerCase().includes(search.toLowerCase())) return false;
+      if (mainCatFilter !== 'all') {
+        const cats = itemCatMap[s.item_id]?.main || [];
+        if (!cats.includes(mainCatFilter)) return false;
+      }
+      if (subCatFilter !== 'all') {
+        const subs = itemCatMap[s.item_id]?.sub || [];
+        if (!subs.includes(subCatFilter)) return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       const av = a[sortField], bv = b[sortField];
       if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
       return ((av || 0) - (bv || 0)) * sortDir;
     });
 
+  const handleExport = () => {
+    const headers = ['Item', 'Code', 'Opening', 'Purchased', 'Pur.Return', 'Sold', 'Sales Return', 'Issued', 'Closing', 'Purchase Rate'];
+    const rows = filtered.map(s => [s.item_name, s.item_code, s.opening_balance, s.purchased, s.purchase_returned, s.sold, s.sales_returned, s.stock_issued, s.closing_balance, s.last_purchase_rate]);
+    exportToCSV(headers, rows, `stock_status_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Item', 'Code', 'Opening', 'Purchased', 'Pur.Ret', 'Sold', 'Sal.Ret', 'Issued', 'Closing', 'Pur.Rate'];
+    const rows = filtered.map(s => [s.item_name, s.item_code, s.opening_balance, s.purchased, s.purchase_returned, s.sold, s.sales_returned, s.stock_issued, s.closing_balance, s.last_purchase_rate]);
+    const subtitle = [mainCatFilter !== 'all' ? `Category: ${mainCatFilter}` : '', subCatFilter !== 'all' ? `Sub: ${subCatFilter}` : ''].filter(Boolean).join(' | ');
+    printTable('Stock Status Report', headers, rows, subtitle || 'All Items');
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="pl-9" />
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="pl-9 h-8 text-xs" />
+        </div>
+        {mainCategories.length > 0 && (
+          <div>
+            <Label className="text-xs">Main Category</Label>
+            <Select value={mainCatFilter} onValueChange={setMainCatFilter}>
+              <SelectTrigger className="w-40 h-8 text-xs" data-testid="stock-main-cat-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {mainCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        {subCategories.length > 0 && (
+          <div>
+            <Label className="text-xs">Sub Category</Label>
+            <Select value={subCatFilter} onValueChange={setSubCatFilter}>
+              <SelectTrigger className="w-40 h-8 text-xs" data-testid="stock-sub-cat-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {subCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <ExportButtons onExport={handleExport} onPrint={handlePrint} />
       </div>
 
       <div className="border rounded-lg overflow-auto max-h-[65vh]">
@@ -1164,6 +1349,8 @@ const ItemLedgerTab = () => {
   const [selectedItem, setSelectedItem] = useState('');
   const [ledger, setLedger] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     itemsAPI.getAll().then(res => setAllItems(res.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''))));
@@ -1179,16 +1366,42 @@ const ItemLedgerTab = () => {
     finally { setLoading(false); }
   };
 
+  const filteredLedger = useMemo(() => {
+    if (!ledger) return [];
+    return ledger.ledger.filter(e => {
+      if (fromDate && (e.date || '') < fromDate) return false;
+      if (toDate && (e.date || '') > toDate) return false;
+      return true;
+    });
+  }, [ledger, fromDate, toDate]);
+
+  const itemName = allItems.find(i => i.id === selectedItem)?.item_name || '';
+  const handleExport = () => {
+    const headers = ['Date', 'Description', 'Credit', 'Debit', 'Rate', 'Balance'];
+    const rows = filteredLedger.map(e => [e.date, e.description, e.credit || '', e.debit || '', e.rate || '', e.balance]);
+    exportToCSV(headers, rows, `item_ledger_${itemName.replace(/\s/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Date', 'Description', 'Credit', 'Debit', 'Rate', 'Balance'];
+    const rows = filteredLedger.map(e => [e.date, e.description, e.credit || '', e.debit || '', e.rate || '', e.balance]);
+    const sub = [itemName, fromDate && toDate ? `${fromDate} to ${toDate}` : ''].filter(Boolean).join(' | ');
+    printTable(`Item Ledger - ${itemName}`, headers, rows, sub);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="max-w-xs">
-        <Label className="text-xs">Select Item</Label>
-        <Select value={selectedItem} onValueChange={v => { setSelectedItem(v); fetchLedger(v); }}>
-          <SelectTrigger data-testid="item-ledger-select"><SelectValue placeholder="Choose item..." /></SelectTrigger>
-          <SelectContent>
-            {allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="min-w-[200px]">
+          <Label className="text-xs">Select Item</Label>
+          <Select value={selectedItem} onValueChange={v => { setSelectedItem(v); fetchLedger(v); }}>
+            <SelectTrigger data-testid="item-ledger-select"><SelectValue placeholder="Choose item..." /></SelectTrigger>
+            <SelectContent>
+              {allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        {ledger && <ExportButtons onExport={handleExport} onPrint={handlePrint} />}
       </div>
 
       {loading && <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>}
@@ -1219,7 +1432,7 @@ const ItemLedgerTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {ledger.ledger.map((entry, idx) => (
+                {filteredLedger.map((entry, idx) => (
                   <tr key={idx} className="border-t hover:bg-slate-50">
                     <td className="p-3 text-slate-500">{entry.date || '-'}</td>
                     <td className="p-3">{entry.description}</td>
@@ -1229,7 +1442,7 @@ const ItemLedgerTab = () => {
                     <td className="p-3 text-right font-medium">{entry.balance}</td>
                   </tr>
                 ))}
-                {ledger.ledger.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No transactions</td></tr>}
+                {filteredLedger.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No transactions</td></tr>}
               </tbody>
             </table>
           </div>
@@ -1244,6 +1457,8 @@ const UserLedgerTab = () => {
   const [search, setSearch] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const handleSearch = async () => {
     if (!search.trim()) return toast.error('Enter customer name or phone');
@@ -1257,22 +1472,45 @@ const UserLedgerTab = () => {
     finally { setLoading(false); }
   };
 
+  const filteredOrders = useMemo(() => {
+    if (!data?.orders) return [];
+    return data.orders.filter(o => {
+      const d = (o.date || '').split('T')[0];
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
+      return true;
+    });
+  }, [data, fromDate, toDate]);
+
+  const handleExport = () => {
+    const headers = ['Date', 'Order', 'Customer', 'Item', 'Qty', 'Rate'];
+    const rows = filteredOrders.map(o => [(o.date || '').split('T')[0], o.order_number, o.customer_name, o.item_name, o.quantity, o.rate]);
+    exportToCSV(headers, rows, `user_ledger_${search.replace(/\s/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Date', 'Order', 'Customer', 'Item', 'Qty', 'Rate'];
+    const rows = filteredOrders.map(o => [(o.date || '').split('T')[0], o.order_number, o.customer_name, o.item_name, o.quantity, o.rate]);
+    const sub = [search, fromDate && toDate ? `${fromDate} to ${toDate}` : ''].filter(Boolean).join(' | ');
+    printTable(`User Ledger - ${search}`, headers, rows, sub);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 max-w-md">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 items-end">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Customer name or phone..." className="pl-9"
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Customer name or phone..." className="pl-9 h-8 text-xs"
             onKeyDown={e => e.key === 'Enter' && handleSearch()} data-testid="user-ledger-search" />
         </div>
-        <Button onClick={handleSearch} disabled={loading}>
+        <Button size="sm" className="h-8" onClick={handleSearch} disabled={loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
         </Button>
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        {data && <ExportButtons onExport={handleExport} onPrint={handlePrint} />}
       </div>
 
       {data && (
         <>
-          {/* Item-wise summary */}
           {data.item_totals && Object.keys(data.item_totals).length > 0 && (
             <div className="border rounded-lg p-4 bg-blue-50">
               <h3 className="font-medium text-sm text-blue-800 mb-2">Item-wise Total Purchased</h3>
@@ -1302,7 +1540,7 @@ const UserLedgerTab = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.orders.map((o, idx) => (
+                {filteredOrders.map((o, idx) => (
                   <tr key={idx} className="border-t hover:bg-slate-50">
                     <td className="p-3 text-slate-500">{(o.date || '').split('T')[0]}</td>
                     <td className="p-3">{o.order_number || '-'}</td>
@@ -1312,12 +1550,189 @@ const UserLedgerTab = () => {
                     <td className="p-3 text-right">{o.rate || '-'}</td>
                   </tr>
                 ))}
-                {(!data.orders || data.orders.length === 0) && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No dispatched orders found</td></tr>}
+                {filteredOrders.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No orders found</td></tr>}
               </tbody>
             </table>
           </div>
         </>
       )}
+    </div>
+  );
+};
+
+// ============== ITEM MOVEMENT REPORT (Weekly/Monthly/Yearly/Custom) ==============
+const ItemReportTab = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState(getDatePreset('month').from);
+  const [toDate, setToDate] = useState(getDatePreset('month').to);
+
+  const fetchReport = useCallback(async () => {
+    if (!fromDate || !toDate) return;
+    setLoading(true);
+    try {
+      const res = await stockAPI.getPeriodReport({ from_date: fromDate, to_date: toDate });
+      setData(res.data);
+    } catch { toast.error('Failed to load report'); }
+    finally { setLoading(false); }
+  }, [fromDate, toDate]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  const handleExport = () => {
+    const headers = ['Item', 'Code', 'Opening', 'Purchase', 'Pur.Return', 'Sales', 'Sal.Return', 'Issued', 'Closing'];
+    const rows = data.map(d => [d.item_name, d.item_code, d.opening_stock, d.purchase, d.purchase_return, d.sales, d.sales_return, d.stock_issue, d.closing_stock]);
+    exportToCSV(headers, rows, `item_report_${fromDate}_to_${toDate}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Item', 'Code', 'Opening', 'Purchase', 'Pur.Ret', 'Sales', 'Sal.Ret', 'Issued', 'Closing'];
+    const rows = data.map(d => [d.item_name, d.item_code, d.opening_stock, d.purchase, d.purchase_return, d.sales, d.sales_return, d.stock_issue, d.closing_stock]);
+    printTable('Item Movement Report', headers, rows, `${fromDate} to ${toDate}`);
+  };
+
+  const totals = useMemo(() => {
+    return data.reduce((acc, d) => ({
+      opening: acc.opening + (d.opening_stock || 0),
+      purchase: acc.purchase + (d.purchase || 0),
+      purchaseReturn: acc.purchaseReturn + (d.purchase_return || 0),
+      sales: acc.sales + (d.sales || 0),
+      salesReturn: acc.salesReturn + (d.sales_return || 0),
+      stockIssue: acc.stockIssue + (d.stock_issue || 0),
+      closing: acc.closing + (d.closing_stock || 0),
+    }), { opening: 0, purchase: 0, purchaseReturn: 0, sales: 0, salesReturn: 0, stockIssue: 0, closing: 0 });
+  }, [data]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-end">
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        <ExportButtons onExport={handleExport} onPrint={handlePrint} />
+      </div>
+
+      {loading ? <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <div className="border rounded-lg overflow-auto max-h-[65vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="text-left p-3 font-medium">Item</th>
+                <th className="text-left p-3 font-medium">Code</th>
+                <th className="text-right p-3 font-medium">Opening</th>
+                <th className="text-right p-3 font-medium text-green-600">Purchase</th>
+                <th className="text-right p-3 font-medium text-orange-500">Pur.Ret</th>
+                <th className="text-right p-3 font-medium text-red-600">Sales</th>
+                <th className="text-right p-3 font-medium text-blue-500">Sal.Ret</th>
+                <th className="text-right p-3 font-medium text-amber-600">Issued</th>
+                <th className="text-right p-3 font-medium">Closing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map(d => (
+                <tr key={d.item_id} className={`border-t hover:bg-slate-50 ${d.closing_stock <= 0 ? 'bg-red-50' : ''}`}>
+                  <td className="p-3 font-medium">{d.item_name}</td>
+                  <td className="p-3 text-slate-400 text-xs">{d.item_code}</td>
+                  <td className="p-3 text-right">{d.opening_stock}</td>
+                  <td className="p-3 text-right text-green-600">{d.purchase > 0 ? `+${d.purchase}` : '0'}</td>
+                  <td className="p-3 text-right text-orange-500">{d.purchase_return > 0 ? `-${d.purchase_return}` : '0'}</td>
+                  <td className="p-3 text-right text-red-600">{d.sales > 0 ? `-${d.sales}` : '0'}</td>
+                  <td className="p-3 text-right text-blue-500">{d.sales_return > 0 ? `+${d.sales_return}` : '0'}</td>
+                  <td className="p-3 text-right text-amber-600">{d.stock_issue > 0 ? `-${d.stock_issue}` : '0'}</td>
+                  <td className={`p-3 text-right font-bold ${d.closing_stock <= 0 ? 'text-red-600' : 'text-green-700'}`}>{d.closing_stock}</td>
+                </tr>
+              ))}
+              {data.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-slate-400">No data</td></tr>}
+            </tbody>
+            {data.length > 0 && (
+              <tfoot className="bg-slate-100 font-semibold border-t-2">
+                <tr>
+                  <td className="p-3" colSpan={2}>Totals</td>
+                  <td className="p-3 text-right">{totals.opening}</td>
+                  <td className="p-3 text-right text-green-600">+{totals.purchase}</td>
+                  <td className="p-3 text-right text-orange-500">-{totals.purchaseReturn}</td>
+                  <td className="p-3 text-right text-red-600">-{totals.sales}</td>
+                  <td className="p-3 text-right text-blue-500">+{totals.salesReturn}</td>
+                  <td className="p-3 text-right text-amber-600">-{totals.stockIssue}</td>
+                  <td className="p-3 text-right font-bold">{totals.closing}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+      <div className="text-xs text-slate-500">Showing {data.length} items | Period: {fromDate || '...'} to {toDate || '...'}</div>
+    </div>
+  );
+};
+
+// ============== OPENING / CLOSING STOCK REPORT ==============
+const OpeningClosingReportTab = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fromDate, setFromDate] = useState(getDatePreset('month').from);
+  const [toDate, setToDate] = useState(getDatePreset('month').to);
+
+  const fetchReport = useCallback(async () => {
+    if (!fromDate || !toDate) return;
+    setLoading(true);
+    try {
+      const res = await stockAPI.getPeriodReport({ from_date: fromDate, to_date: toDate });
+      setData(res.data);
+    } catch { toast.error('Failed to load report'); }
+    finally { setLoading(false); }
+  }, [fromDate, toDate]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  const handleExport = () => {
+    const headers = ['Item', 'Code', 'Opening Stock', 'Closing Stock', 'Difference'];
+    const rows = data.map(d => [d.item_name, d.item_code, d.opening_stock, d.closing_stock, d.closing_stock - d.opening_stock]);
+    exportToCSV(headers, rows, `opening_closing_${fromDate}_to_${toDate}.csv`);
+  };
+  const handlePrint = () => {
+    const headers = ['Item', 'Code', 'Opening Stock', 'Closing Stock', 'Difference'];
+    const rows = data.map(d => [d.item_name, d.item_code, d.opening_stock, d.closing_stock, d.closing_stock - d.opening_stock]);
+    printTable('Opening & Closing Stock Report', headers, rows, `${fromDate} to ${toDate}`);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 items-end">
+        <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />
+        <ExportButtons onExport={handleExport} onPrint={handlePrint} />
+      </div>
+
+      {loading ? <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <div className="border rounded-lg overflow-auto max-h-[65vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="text-left p-3 font-medium">Item</th>
+                <th className="text-left p-3 font-medium">Code</th>
+                <th className="text-right p-3 font-medium">Opening Stock</th>
+                <th className="text-right p-3 font-medium">Closing Stock</th>
+                <th className="text-right p-3 font-medium">Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map(d => {
+                const diff = d.closing_stock - d.opening_stock;
+                return (
+                  <tr key={d.item_id} className={`border-t hover:bg-slate-50 ${d.closing_stock <= 0 ? 'bg-red-50' : ''}`}>
+                    <td className="p-3 font-medium">{d.item_name}</td>
+                    <td className="p-3 text-slate-400 text-xs">{d.item_code}</td>
+                    <td className="p-3 text-right">{d.opening_stock}</td>
+                    <td className={`p-3 text-right font-bold ${d.closing_stock <= 0 ? 'text-red-600' : 'text-green-700'}`}>{d.closing_stock}</td>
+                    <td className={`p-3 text-right font-medium ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                      {diff > 0 ? `+${diff}` : diff}
+                    </td>
+                  </tr>
+                );
+              })}
+              {data.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400">No data</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="text-xs text-slate-500">Showing {data.length} items | Period: {fromDate || '...'} to {toDate || '...'}</div>
     </div>
   );
 };
@@ -1332,14 +1747,16 @@ const StockManagement = () => {
       </div>
 
       <Tabs defaultValue="status" className="w-full">
-        <TabsList className="grid grid-cols-8 w-full">
+        <TabsList className="flex flex-wrap w-full gap-1">
           <TabsTrigger value="status" data-testid="tab-stock-status"><BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" /> Status</TabsTrigger>
           <TabsTrigger value="opening" data-testid="tab-opening-balance">Opening</TabsTrigger>
           <TabsTrigger value="purchase" data-testid="tab-purchases">Purchase</TabsTrigger>
           <TabsTrigger value="sales-return" data-testid="tab-sales-return">Sales Return</TabsTrigger>
-          <TabsTrigger value="stock-issue" data-testid="tab-stock-issue"><AlertCircle className="w-4 h-4 mr-1 hidden sm:inline" /> Stock Issue</TabsTrigger>
-          <TabsTrigger value="item-ledger" data-testid="tab-item-ledger"><FileText className="w-4 h-4 mr-1 hidden sm:inline" /> Item Ledger</TabsTrigger>
-          <TabsTrigger value="user-ledger" data-testid="tab-user-ledger"><Users className="w-4 h-4 mr-1 hidden sm:inline" /> User Ledger</TabsTrigger>
+          <TabsTrigger value="stock-issue" data-testid="tab-stock-issue">Stock Issue</TabsTrigger>
+          <TabsTrigger value="item-ledger" data-testid="tab-item-ledger">Item Ledger</TabsTrigger>
+          <TabsTrigger value="user-ledger" data-testid="tab-user-ledger">User Ledger</TabsTrigger>
+          <TabsTrigger value="item-report" data-testid="tab-item-report"><Calendar className="w-4 h-4 mr-1 hidden sm:inline" /> Item Report</TabsTrigger>
+          <TabsTrigger value="opening-closing" data-testid="tab-opening-closing">Op/Cl Report</TabsTrigger>
           <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
         </TabsList>
 
@@ -1350,11 +1767,13 @@ const StockManagement = () => {
         <TabsContent value="stock-issue"><Card><CardContent className="p-4"><StockIssueTab /></CardContent></Card></TabsContent>
         <TabsContent value="item-ledger"><Card><CardContent className="p-4"><ItemLedgerTab /></CardContent></Card></TabsContent>
         <TabsContent value="user-ledger"><Card><CardContent className="p-4"><UserLedgerTab /></CardContent></Card></TabsContent>
+        <TabsContent value="item-report"><Card><CardContent className="p-4"><ItemReportTab /></CardContent></Card></TabsContent>
+        <TabsContent value="opening-closing"><Card><CardContent className="p-4"><OpeningClosingReportTab /></CardContent></Card></TabsContent>
         <TabsContent value="suppliers"><Card><CardContent className="p-4"><SuppliersTab /></CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );
 };
 
-export { SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab, StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab };
+export { SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab, StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab, ItemReportTab, OpeningClosingReportTab };
 export default StockManagement;

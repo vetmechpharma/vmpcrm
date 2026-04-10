@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { formatDate } from '../lib/utils';
 import {
   SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab,
-  StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab
+  StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab,
+  ItemReportTab, OpeningClosingReportTab
 } from './StockManagement';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -564,7 +565,7 @@ export const Items = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="flex-shrink-0 w-full grid grid-cols-5 lg:grid-cols-9 mb-4">
+        <TabsList className="flex-shrink-0 w-full flex flex-wrap gap-1 mb-4">
           <TabsTrigger value="products" data-testid="tab-products">
             <Package className="w-4 h-4 mr-1 hidden sm:inline" /> Products
           </TabsTrigger>
@@ -587,6 +588,8 @@ export const Items = () => {
           <TabsTrigger value="user-ledger" data-testid="tab-user-ledger">
             <Users className="w-4 h-4 mr-1 hidden sm:inline" /> User Ledger
           </TabsTrigger>
+          <TabsTrigger value="item-report" data-testid="tab-item-report">Item Report</TabsTrigger>
+          <TabsTrigger value="opening-closing" data-testid="tab-opening-closing">Op/Cl Report</TabsTrigger>
           <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
         </TabsList>
 
@@ -1290,6 +1293,14 @@ export const Items = () => {
 
         <TabsContent value="user-ledger" className="flex-1 overflow-auto mt-0">
           <Card><CardContent className="p-4"><UserLedgerTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="item-report" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><ItemReportTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="opening-closing" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><OpeningClosingReportTab /></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="suppliers" className="flex-1 overflow-auto mt-0">

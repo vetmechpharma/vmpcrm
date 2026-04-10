@@ -854,3 +854,117 @@ async def get_stock_availability(user=Depends(get_current_user)):
             'last_purchase_rate': s['last_purchase_rate']
         }
     return availability
+
+
+
+# ============== PERIOD REPORT (Opening/Closing by Date Range) ==============
+
+@router.get("/stock/period-report")
+async def get_period_report(
+    user=Depends(get_current_user),
+    from_date: str = Query(None),
+    to_date: str = Query(None)
+):
+    """Calculate opening and closing stock for each item within a date range.
+    Opening = OB + txns before from_date - sales before from_date
+    Closing = Opening + movements in period
+    """
+    items = await db.items.find({}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1,
+                                      'main_categories': 1, 'subcategories': 1, 'rate': 1}).to_list(5000)
+    item_map = {i['id']: i for i in items}
+    
+    # Opening balances
+    obs = await db.opening_balances.find({}, {'_id': 0}).to_list(5000)
+    ob_map = {ob['item_id']: ob.get('quantity', 0) for ob in obs}
+    
+    # All stock transactions
+    all_txns = await db.stock_transactions.find({}, {'_id': 0}).to_list(50000)
+    
+    # All dispatched orders
+    orders = await db.orders.find(
+        {'status': {'$in': ['shipped', 'delivered']}},
+        {'_id': 0, 'items': 1, 'updated_at': 1, 'created_at': 1}
+    ).to_list(50000)
+    
+    results = []
+    for iid, item in item_map.items():
+        opening_bal = ob_map.get(iid, 0)
+        
+        # Separate transactions by period
+        pre_purchase = 0
+        pre_purchase_return = 0
+        pre_sales_return = 0
+        pre_stock_issue = 0
+        in_purchase = 0
+        in_purchase_return = 0
+        in_sales_return = 0
+        in_stock_issue = 0
+        
+        for txn in all_txns:
+            if txn['item_id'] != iid:
+                continue
+            txn_date = txn.get('date', '')
+            qty = txn.get('quantity', 0)
+            
+            before_period = from_date and txn_date < from_date
+            in_period = (not from_date or txn_date >= from_date) and (not to_date or txn_date <= to_date)
+            
+            if txn['type'] == 'purchase':
+                if before_period:
+                    pre_purchase += qty
+                elif in_period:
+                    in_purchase += qty
+            elif txn['type'] == 'purchase_return':
+                if before_period:
+                    pre_purchase_return += qty
+                elif in_period:
+                    in_purchase_return += qty
+            elif txn['type'] == 'sales_return':
+                if before_period:
+                    pre_sales_return += qty
+                elif in_period:
+                    in_sales_return += qty
+            elif txn['type'] == 'stock_issue':
+                if before_period:
+                    pre_stock_issue += qty
+                elif in_period:
+                    in_stock_issue += qty
+        
+        # Sales from orders
+        pre_sold = 0
+        in_sold = 0
+        for order in orders:
+            order_date = order.get('updated_at', order.get('created_at', ''))
+            if isinstance(order_date, str) and 'T' in order_date:
+                order_date = order_date.split('T')[0]
+            for oi in order.get('items', []):
+                if oi.get('item_id') != iid:
+                    continue
+                qty = float(oi.get('dispatch_quantity', oi.get('quantity', 0)) or 0)
+                before_period = from_date and order_date < from_date
+                in_period = (not from_date or order_date >= from_date) and (not to_date or order_date <= to_date)
+                if before_period:
+                    pre_sold += qty
+                elif in_period:
+                    in_sold += qty
+        
+        opening_stock = opening_bal + pre_purchase + pre_sales_return - pre_sold - pre_purchase_return - pre_stock_issue
+        closing_stock = opening_stock + in_purchase + in_sales_return - in_sold - in_purchase_return - in_stock_issue
+        
+        results.append({
+            'item_id': iid,
+            'item_name': item.get('item_name', ''),
+            'item_code': item.get('item_code', ''),
+            'main_categories': item.get('main_categories', []),
+            'subcategories': item.get('subcategories', []),
+            'opening_stock': opening_stock,
+            'purchase': in_purchase,
+            'purchase_return': in_purchase_return,
+            'sales': in_sold,
+            'sales_return': in_sales_return,
+            'stock_issue': in_stock_issue,
+            'closing_stock': closing_stock
+        })
+    
+    results.sort(key=lambda x: x.get('item_name', ''))
+    return results

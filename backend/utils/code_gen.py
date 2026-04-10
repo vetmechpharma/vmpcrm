@@ -3,10 +3,14 @@ from deps import db
 
 
 async def generate_customer_code() -> str:
-    last_doctor = await db.doctors.find_one({}, {'customer_code': 1}, sort=[('customer_code', -1)])
+    last_doctor = await db.doctors.find_one(
+        {'customer_code': {'$regex': '^VMP-'}}, {'customer_code': 1}, sort=[('customer_code', -1)])
     if last_doctor and 'customer_code' in last_doctor:
-        last_num = int(last_doctor['customer_code'].replace('VMP-', ''))
-        new_num = last_num + 1
+        try:
+            last_num = int(last_doctor['customer_code'].replace('VMP-', ''))
+            new_num = last_num + 1
+        except ValueError:
+            new_num = 1
     else:
         new_num = 1
     return f"VMP-{str(new_num).zfill(4)}"

@@ -43,7 +43,7 @@ class TokenResponse(BaseModel):
 
 class DoctorCreate(BaseModel):
     name: str
-    reg_no: str
+    reg_no: Optional[str] = ''
     address: Optional[str] = None  # Legacy field for backward compatibility
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None
@@ -52,7 +52,7 @@ class DoctorCreate(BaseModel):
     pincode: Optional[str] = None
     delivery_station: Optional[str] = None
     transport_id: Optional[str] = None  # Preferred transport
-    email: EmailStr
+    email: Optional[str] = ''
     phone: str
     lead_status: str = "Pipeline"
     dob: Optional[str] = None
@@ -82,7 +82,7 @@ class DoctorResponse(BaseModel):
     id: str
     customer_code: str
     name: str
-    reg_no: str
+    reg_no: Optional[str] = ''
     address: Optional[str] = None
     address_line_1: Optional[str] = None
     address_line_2: Optional[str] = None
@@ -92,7 +92,7 @@ class DoctorResponse(BaseModel):
     delivery_station: Optional[str] = None
     transport_id: Optional[str] = None
     transport_name: Optional[str] = None
-    email: str
+    email: Optional[str] = ''
     phone: str
     lead_status: str
     dob: Optional[str] = None

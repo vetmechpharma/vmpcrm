@@ -429,6 +429,7 @@ export const stockAPI = {
   getItemLedger: (itemId) => api.get(`/stock/item-ledger/${itemId}`),
   getUserLedger: (params) => api.get('/stock/user-ledger', { params }),
   getAvailability: () => api.get('/stock/availability'),
+  getPeriodReport: (params) => api.get('/stock/period-report', { params }),
 };
 
 

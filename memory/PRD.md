@@ -11,6 +11,15 @@
 
 ## Recent Changes
 
+### Customer Individual Ledger (Apr 10, 2026)
+- **New "Customer Ledger" tab** in Payments page — search any customer (doctor/medical/agency)
+- Shows all transactions: Opening Balance, Orders/Invoices (debit), Payments (credit), Sales Returns (credit)
+- **Manual Opening Balance**: Edit button to set/update opening balance per customer
+- **Clickable rows**: Click any transaction to view full detail (order items, payment info, return info)
+- Running balance calculation across all entries
+- Date range filters (Week/Month/Year presets + custom) + CSV Export + Print
+- Backend: `PUT /api/customer-opening-balance/{type}/{id}`, updated `GET /api/ledger/{type}/{id}` with sales returns + ref_ids
+
 ### Notification Message Fixes (Apr 10, 2026)
 - **Order confirmation WA message**: Removed item amount (Rs.xxx) — now shows only item name x qty
 - **Account approval WA message**: Login URL now properly included using APP_BASE_URL with request-origin fallback

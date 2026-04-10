@@ -338,9 +338,9 @@ async def migrate():
              'subject': 'Payment Receipt | {company_short_name}',
              'template': '<h2>Hello {customer_name},</h2><p>Payment of <strong>Rs. {amount}</strong> received via {payment_mode}.</p><p>Outstanding balance: Rs. {balance}</p><p>Thank you!</p><p>Regards,<br/><strong>{company_name}</strong></p>'},
             {'key': 'account_approved_email', 'name': 'Account Approved Email', 'category': 'email',
-             'variables': ['customer_name', 'customer_code', 'company_name', 'company_short_name'],
+             'variables': ['customer_name', 'customer_code', 'login_url', 'company_name', 'company_short_name'],
              'subject': 'Account Approved | {company_short_name}',
-             'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p>Regards,<br/><strong>{company_name}</strong></p>'},
+             'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p><a href="{login_url}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:8px;">Login Now</a></p><p>Regards,<br/><strong>{company_name}</strong></p>'},
             {'key': 'account_declined_email', 'name': 'Account Declined Email', 'category': 'email',
              'variables': ['customer_name', 'reason', 'company_name', 'company_short_name'],
              'subject': 'Registration Update | {company_short_name}',
@@ -403,7 +403,18 @@ async def migrate():
             'status_delivered': {
                 'variables': ['customer_name', 'order_number', 'invoice_number', 'invoice_date', 'invoice_value', 'company_short_name', 'company_phone'],
                 'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *DELIVERED*!\n\n*Invoice No:* {invoice_number}\n*Invoice Date:* {invoice_date}\n*Invoice Value:* Rs. {invoice_value}\n\nThank you for your business.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
-            }
+            },
+            'account_approved': {
+                'variables': ['customer_name', 'customer_code', 'login_url', 'company_short_name'],
+                'template': 'Great news, {customer_name}!\n\nYour {company_short_name} account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer_code}\n\nLogin here: {login_url}\n\nRegards,\n*{company_short_name}*',
+            },
+        }
+        # Update email templates too
+        updated_email_templates = {
+            'account_approved_email': {
+                'variables': ['customer_name', 'customer_code', 'login_url', 'company_name', 'company_short_name'],
+                'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p><a href="{login_url}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:8px;">Login Now</a></p><p>Regards,<br/><strong>{company_name}</strong></p>',
+            },
         }
         for key, updates in updated_templates.items():
             result = await db.message_templates.update_one(
@@ -412,6 +423,14 @@ async def migrate():
             )
             if result.modified_count:
                 log_ok(f"  Updated template: {key}")
+                changes += 1
+        for key, updates in updated_email_templates.items():
+            result = await db.message_templates.update_one(
+                {'key': key, 'category': 'email'},
+                {'$set': updates}
+            )
+            if result.modified_count:
+                log_ok(f"  Updated email template: {key}")
                 changes += 1
 
     # ------------------------------------------------------------------

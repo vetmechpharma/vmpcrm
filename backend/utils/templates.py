@@ -51,6 +51,13 @@ DEFAULT_WA_TEMPLATES = {
         'variables': ['customer_name', 'order_number', 'invoice_number', 'invoice_date', 'invoice_value', 'company_short_name', 'company_phone'],
         'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *DELIVERED*!\n\n*Invoice No:* {invoice_number}\n*Invoice Date:* {invoice_date}\n*Invoice Value:* Rs. {invoice_value}\n\nThank you for your business.\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
     },
+    'status_cancelled': {
+        'key': 'status_cancelled',
+        'name': 'Order Cancelled',
+        'category': 'whatsapp',
+        'variables': ['customer_name', 'order_number', 'reason', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *CANCELLED*.\n\nReason: {reason}\n\nRegards,\n*{company_short_name}*\n+{company_phone}',
+    },
     'payment_receipt': {
         'key': 'payment_receipt',
         'name': 'Payment Receipt',
@@ -197,9 +204,9 @@ DEFAULT_EMAIL_TEMPLATES = {
         'key': 'account_approved_email',
         'name': 'Account Approved Email',
         'category': 'email',
-        'variables': ['customer_name', 'customer_code', 'company_name', 'company_short_name'],
+        'variables': ['customer_name', 'customer_code', 'login_url', 'company_name', 'company_short_name'],
         'subject': 'Account Approved | {company_short_name}',
-        'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p>Regards,<br/><strong>{company_name}</strong></p>',
+        'template': '<h2>Welcome, {customer_name}!</h2><p>Your account has been <strong>approved</strong>.</p><p>Customer Code: <strong>{customer_code}</strong></p><p>You can now login to view products and place orders.</p><p><a href="{login_url}" style="display:inline-block;padding:12px 24px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-top:8px;">Login Now</a></p><p>Regards,<br/><strong>{company_name}</strong></p>',
     },
     'account_declined_email': {
         'key': 'account_declined_email',

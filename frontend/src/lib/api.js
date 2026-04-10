@@ -417,6 +417,8 @@ export const stockAPI = {
   getStockIssues: () => api.get('/stock/issues'),
   // Opening balance delete
   deleteOpeningBalance: (itemId) => api.delete(`/stock/opening-balance/${itemId}`),
+  // Last selling rates for a customer
+  getLastRates: (phone) => api.get('/stock/last-rates', { params: { phone } }),
   
   // Stock Status & Reports
   getStockStatus: (params) => api.get('/stock/status', { params }),

@@ -83,6 +83,7 @@ export const Orders = () => {
   const [searchingCustomers, setSearchingCustomers] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerPendingItems, setCustomerPendingItems] = useState([]);
+  const [lastCustomerRates, setLastCustomerRates] = useState({});
   const [companySettings, setCompanySettings] = useState(null);
   
   // Transfer to agency
@@ -482,8 +483,13 @@ export const Orders = () => {
       pendingItemsAPI.getByDoctor(order.doctor_phone)
         .then(res => setPendingItemsForOrder(res.data || []))
         .catch(() => setPendingItemsForOrder([]));
+      // Fetch last selling rates for this customer
+      stockAPI.getLastRates(order.doctor_phone)
+        .then(res => setLastCustomerRates(res.data || {}))
+        .catch(() => setLastCustomerRates({}));
     } else {
       setPendingItemsForOrder([]);
+      setLastCustomerRates({});
     }
     setShowEditModal(true);
   };
@@ -799,12 +805,17 @@ export const Orders = () => {
       pendingItemsAPI.getByDoctor(customer.phone)
         .then(res => setCustomerPendingItems(res.data || []))
         .catch(() => setCustomerPendingItems([]));
+      // Fetch last selling rates for this customer
+      stockAPI.getLastRates(customer.phone)
+        .then(res => setLastCustomerRates(res.data || {}))
+        .catch(() => setLastCustomerRates({}));
     }
   };
 
   const clearSelectedCustomer = () => {
     setSelectedCustomer(null);
     setCustomerPendingItems([]);
+    setLastCustomerRates({});
     setNewOrderForm({
       ...newOrderForm,
       customer_name: '',
@@ -1366,6 +1377,7 @@ export const Orders = () => {
                       const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
                       const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
                       const purRate = stockAvailability[item.id]?.last_purchase_rate || 0;
+                      const lastSale = lastCustomerRates[item.id];
                       return (
                         <div
                           key={item.id}
@@ -1379,6 +1391,7 @@ export const Orders = () => {
                               {item.item_code} | MRP: ₹{item.mrp || 0}
                               {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
                               {purRate > 0 && <span className="text-purple-600 font-medium"> | PR: ₹{purRate}</span>}
+                              {lastSale && <span className="text-orange-600 font-semibold"> | Last: ₹{lastSale.rate}×{lastSale.quantity}</span>}
                             </p>
                             {(offer || special) && (
                               <div className="flex flex-wrap gap-1 mt-1">
@@ -1420,6 +1433,11 @@ export const Orders = () => {
                               {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
                               {stockAvailability[item.item_id]?.last_purchase_rate > 0 && (
                                 <span className="text-purple-600 font-medium">Purchase Rate: ₹{stockAvailability[item.item_id].last_purchase_rate}</span>
+                              )}
+                              {lastCustomerRates[item.item_id] && (
+                                <span className="text-orange-600 font-semibold" title={`Order #${lastCustomerRates[item.item_id].order_number} on ${lastCustomerRates[item.item_id].date}`}>
+                                  Last Sold: ₹{lastCustomerRates[item.item_id].rate} × {lastCustomerRates[item.item_id].quantity} ({lastCustomerRates[item.item_id].date})
+                                </span>
                               )}
                             </div>
                             {(item.offer || item.special_offer) && (
@@ -2080,6 +2098,11 @@ export const Orders = () => {
                         {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                         {item.gst > 0 && <span>GST: {item.gst}%</span>}
                         {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
+                        {lastCustomerRates[item.item_id] && (
+                          <span className="text-orange-600 font-semibold">
+                            Last Sold: ₹{lastCustomerRates[item.item_id].rate} × {lastCustomerRates[item.item_id].quantity} ({lastCustomerRates[item.item_id].date})
+                          </span>
+                        )}
                       </div>
                       {(item.offer || item.special_offer) && (
                         <div className="flex flex-wrap gap-1 mt-1.5">

@@ -189,6 +189,48 @@ async def get_stock_issues(user=Depends(get_current_user)):
     return issues
 
 
+@router.get("/stock/last-rates")
+async def get_last_selling_rates(
+    user=Depends(get_current_user),
+    phone: str = Query(None)
+):
+    """Get last selling rate for each item for a specific customer (by phone).
+    Returns {item_id: {rate, quantity, order_number, date}} for the most recent order per item."""
+    if not phone:
+        return {}
+    
+    phone_clean = phone.strip()
+    query = {
+        'status': {'$nin': ['cancelled']},
+        '$or': [
+            {'doctor_phone': {'$regex': phone_clean}},
+            {'customer_phone': {'$regex': phone_clean}},
+        ]
+    }
+    
+    orders = await db.orders.find(query, {
+        '_id': 0, 'id': 1, 'order_number': 1, 'items': 1, 'created_at': 1, 'updated_at': 1
+    }).sort('created_at', -1).to_list(5000)
+    
+    # For each item, keep only the most recent rate (first match since sorted desc)
+    last_rates = {}
+    for order in orders:
+        order_date = order.get('updated_at', order.get('created_at', ''))
+        if isinstance(order_date, str) and 'T' in order_date:
+            order_date = order_date.split('T')[0]
+        for oi in order.get('items', []):
+            iid = oi.get('item_id', '')
+            if iid and iid not in last_rates:
+                last_rates[iid] = {
+                    'rate': oi.get('rate', 0),
+                    'quantity': oi.get('dispatch_quantity', oi.get('quantity', 0)),
+                    'order_number': order.get('order_number', ''),
+                    'date': order_date
+                }
+    
+    return last_rates
+
+
 # ============== PURCHASE ENTRY ==============
 
 @router.get("/stock/purchases")

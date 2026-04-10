@@ -514,21 +514,26 @@ async def get_user_ledger(
     customer_name: str = Query(None)
 ):
     """Get item-wise ledger for a specific user/customer"""
-    query = {'status': {'$in': ['shipped', 'delivered']}}
+    query = {'status': {'$nin': ['cancelled']}}
     if customer_phone:
+        phone_clean = customer_phone.strip()
         query['$or'] = [
-            {'doctor_phone': {'$regex': customer_phone}},
-            {'customer_phone': {'$regex': customer_phone}}
+            {'doctor_phone': {'$regex': phone_clean}},
+            {'customer_phone': {'$regex': phone_clean}},
         ]
     elif customer_name:
+        name_clean = customer_name.strip()
         query['$or'] = [
-            {'doctor_name': {'$regex': customer_name, '$options': 'i'}},
-            {'customer_name': {'$regex': customer_name, '$options': 'i'}}
+            {'doctor_name': {'$regex': name_clean, '$options': 'i'}},
+            {'customer_name': {'$regex': name_clean, '$options': 'i'}},
+            {'created_by': {'$regex': name_clean, '$options': 'i'}},
         ]
+    else:
+        return {'item_totals': {}, 'orders': []}
     
     orders = await db.orders.find(query, {
         '_id': 0, 'id': 1, 'order_number': 1, 'doctor_name': 1, 'customer_name': 1, 
-        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1, 'updated_at': 1
+        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1, 'updated_at': 1, 'created_by': 1
     }).sort('created_at', -1).to_list(5000)
     
     # Aggregate by item
@@ -536,8 +541,8 @@ async def get_user_ledger(
     order_details = []
     
     for order in orders:
-        cust_name = order.get('doctor_name', '') or order.get('customer_name', '')
-        cust_phone = order.get('doctor_phone', '') or order.get('customer_phone', '')
+        cust_name = order.get('doctor_name') or order.get('customer_name') or order.get('created_by') or ''
+        cust_phone = order.get('doctor_phone') or order.get('customer_phone') or ''
         for oi in order.get('items', []):
             iid = oi.get('item_id', '')
             qty = oi.get('dispatch_quantity', oi.get('quantity', 0))
@@ -557,6 +562,7 @@ async def get_user_ledger(
                 'item_name': oi.get('item_name', ''),
                 'quantity': qty,
                 'rate': oi.get('rate', 0),
+                'status': order.get('status', ''),
                 'date': order.get('updated_at', order.get('created_at', ''))
             })
     
@@ -573,30 +579,33 @@ async def get_customer_orders_for_return(
     name: str = Query(None)
 ):
     """Get customer's previous orders for sales return flow"""
-    query = {'status': {'$in': ['shipped', 'delivered']}}
+    query = {'status': {'$nin': ['cancelled']}}
     if phone:
+        phone_clean = phone.strip()
         query['$or'] = [
-            {'doctor_phone': {'$regex': phone}},
-            {'customer_phone': {'$regex': phone}}
+            {'doctor_phone': {'$regex': phone_clean}},
+            {'customer_phone': {'$regex': phone_clean}},
         ]
     elif name:
+        name_clean = name.strip()
         query['$or'] = [
-            {'doctor_name': {'$regex': name, '$options': 'i'}},
-            {'customer_name': {'$regex': name, '$options': 'i'}}
+            {'doctor_name': {'$regex': name_clean, '$options': 'i'}},
+            {'customer_name': {'$regex': name_clean, '$options': 'i'}},
+            {'created_by': {'$regex': name_clean, '$options': 'i'}},
         ]
     else:
         return {'customers': [], 'orders': []}
     
     orders = await db.orders.find(query, {
         '_id': 0, 'id': 1, 'order_number': 1, 'doctor_name': 1, 'customer_name': 1,
-        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1
+        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1, 'created_by': 1
     }).sort('created_at', -1).to_list(5000)
     
     # Build order list with item details
     result_orders = []
     for order in orders:
-        cust_name = order.get('doctor_name', '') or order.get('customer_name', '')
-        cust_phone = order.get('doctor_phone', '') or order.get('customer_phone', '')
+        cust_name = order.get('doctor_name') or order.get('customer_name') or order.get('created_by') or ''
+        cust_phone = order.get('doctor_phone') or order.get('customer_phone') or ''
         for oi in order.get('items', []):
             qty = oi.get('dispatch_quantity', oi.get('quantity', 0))
             try:
@@ -612,7 +621,8 @@ async def get_customer_orders_for_return(
                 'item_name': oi.get('item_name', ''),
                 'quantity': qty,
                 'rate': oi.get('rate', 0),
-                'date': (order.get('created_at', '') or '').split('T')[0]
+                'status': order.get('status', ''),
+                'date': (order.get('created_at', '') or '').split('T')[0] if isinstance(order.get('created_at', ''), str) else ''
             })
     
     return {'orders': result_orders}

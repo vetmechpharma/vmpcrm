@@ -391,4 +391,33 @@ export const databaseAPI = {
   },
 };
 
+// Stock & Inventory APIs
+export const stockAPI = {
+  // Suppliers
+  getSuppliers: () => api.get('/suppliers'),
+  createSupplier: (data) => api.post('/suppliers', data),
+  updateSupplier: (id, data) => api.put(`/suppliers/${id}`, data),
+  deleteSupplier: (id) => api.delete(`/suppliers/${id}`),
+  
+  // Opening Balance
+  getOpeningBalances: () => api.get('/stock/opening-balances'),
+  setOpeningBalance: (data) => api.post('/stock/opening-balance', data),
+  setOpeningBalanceBulk: (data) => api.post('/stock/opening-balance/bulk', data),
+  
+  // Purchases
+  getPurchases: (params) => api.get('/stock/purchases', { params }),
+  createPurchase: (data) => api.post('/stock/purchase', data),
+  
+  // Returns
+  createPurchaseReturn: (data) => api.post('/stock/purchase-return', data),
+  createSalesReturn: (data) => api.post('/stock/sales-return', data),
+  
+  // Stock Status & Reports
+  getStockStatus: (params) => api.get('/stock/status', { params }),
+  getItemLedger: (itemId) => api.get(`/stock/item-ledger/${itemId}`),
+  getUserLedger: (params) => api.get('/stock/user-ledger', { params }),
+  getAvailability: () => api.get('/stock/availability'),
+};
+
+
 export default api;

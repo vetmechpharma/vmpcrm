@@ -23,7 +23,8 @@ from routes import (
     marketing, orders_admin, pending_items, transport,
     expenses, greeting_templates, followups, reminders,
     whatsapp_config, message_templates, push,
-    admin_profile, database, users, mr, visual_aids
+    admin_profile, database, users, mr, visual_aids,
+    stock
 )
 
 # Import background tasks
@@ -77,6 +78,7 @@ route_modules = [
     expenses, greeting_templates, followups, reminders,
     whatsapp_config, message_templates, push,
     admin_profile, database, users, mr, visual_aids,
+    stock,
 ]
 
 for module in route_modules:

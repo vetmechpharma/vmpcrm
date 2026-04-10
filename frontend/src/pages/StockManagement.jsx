@@ -1,0 +1,815 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
+import { toast } from 'sonner';
+import { stockAPI, itemsAPI } from '../lib/api';
+import {
+  Package, Plus, Trash2, Edit2, Search, ArrowUpCircle, ArrowDownCircle,
+  FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp
+} from 'lucide-react';
+
+// ============== SUPPLIER MANAGEMENT ==============
+const SuppliersTab = () => {
+  const [suppliers, setSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: '', mobile: '', address: '', gst_number: '' });
+
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const res = await stockAPI.getSuppliers();
+      setSuppliers(res.data);
+    } catch { toast.error('Failed to load suppliers'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchSuppliers(); }, [fetchSuppliers]);
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return toast.error('Name is required');
+    try {
+      if (editing) {
+        await stockAPI.updateSupplier(editing.id, form);
+        toast.success('Supplier updated');
+      } else {
+        await stockAPI.createSupplier(form);
+        toast.success('Supplier added');
+      }
+      setShowDialog(false);
+      setEditing(null);
+      setForm({ name: '', mobile: '', address: '', gst_number: '' });
+      fetchSuppliers();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this supplier?')) return;
+    try {
+      await stockAPI.deleteSupplier(id);
+      toast.success('Supplier deleted');
+      fetchSuppliers();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Cannot delete'); }
+  };
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold" data-testid="suppliers-title">Suppliers ({suppliers.length})</h3>
+        <Button size="sm" onClick={() => { setEditing(null); setForm({ name: '', mobile: '', address: '', gst_number: '' }); setShowDialog(true); }} data-testid="add-supplier-btn">
+          <Plus className="w-4 h-4 mr-1" /> Add Supplier
+        </Button>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="text-left p-3 font-medium">Name</th>
+              <th className="text-left p-3 font-medium">Mobile</th>
+              <th className="text-left p-3 font-medium">GST</th>
+              <th className="text-left p-3 font-medium">Status</th>
+              <th className="text-right p-3 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suppliers.map(s => (
+              <tr key={s.id} className="border-t hover:bg-slate-50">
+                <td className="p-3 font-medium">{s.name}</td>
+                <td className="p-3 text-slate-600">{s.mobile || '-'}</td>
+                <td className="p-3 text-slate-600">{s.gst_number || '-'}</td>
+                <td className="p-3"><Badge variant={s.status === 'active' ? 'default' : 'secondary'}>{s.status}</Badge></td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => { setEditing(s); setForm({ name: s.name, mobile: s.mobile || '', address: s.address || '', gst_number: s.gst_number || '' }); setShowDialog(true); }}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDelete(s.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {suppliers.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400">No suppliers added yet</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing ? 'Edit Supplier' : 'Add Supplier'}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} data-testid="supplier-name-input" /></div>
+            <div><Label>Mobile</Label><Input value={form.mobile} onChange={e => setForm({...form, mobile: e.target.value})} data-testid="supplier-mobile-input" /></div>
+            <div><Label>Address</Label><Input value={form.address} onChange={e => setForm({...form, address: e.target.value})} /></div>
+            <div><Label>GST Number</Label><Input value={form.gst_number} onChange={e => setForm({...form, gst_number: e.target.value.toUpperCase()})} /></div>
+          </div>
+          <DialogFooter><Button onClick={handleSave} data-testid="save-supplier-btn">{editing ? 'Update' : 'Add'}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// ============== OPENING BALANCE ==============
+const OpeningBalanceTab = () => {
+  const [items, setItems] = useState([]);
+  const [balances, setBalances] = useState({});
+  const [balanceDate, setBalanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [itemsRes, balRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getOpeningBalances()]);
+        setItems(itemsRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+        const balMap = {};
+        balRes.data.forEach(b => { balMap[b.item_id] = b.quantity; if (b.date) setBalanceDate(b.date); });
+        setBalances(balMap);
+      } catch { toast.error('Failed to load data'); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const itemsToSave = Object.entries(balances)
+        .filter(([_, qty]) => qty > 0)
+        .map(([item_id, quantity]) => ({ item_id, quantity }));
+      await stockAPI.setOpeningBalanceBulk({ items: itemsToSave, date: balanceDate });
+      toast.success(`Opening balance saved for ${itemsToSave.length} items`);
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  const filtered = items.filter(i => 
+    !search || (i.item_name || '').toLowerCase().includes(search.toLowerCase()) || (i.item_code || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3 items-end">
+        <div>
+          <Label className="text-xs">Balance Date</Label>
+          <Input type="date" value={balanceDate} onChange={e => setBalanceDate(e.target.value)} className="w-40" data-testid="balance-date-input" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <Label className="text-xs">Search Items</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="pl-9" />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving} data-testid="save-opening-balance-btn">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save All
+        </Button>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 sticky top-0">
+            <tr>
+              <th className="text-left p-3 font-medium">Item</th>
+              <th className="text-left p-3 font-medium">Code</th>
+              <th className="text-right p-3 font-medium w-32">Opening Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(item => (
+              <tr key={item.id} className="border-t hover:bg-slate-50">
+                <td className="p-3">{item.item_name}</td>
+                <td className="p-3 text-slate-500">{item.item_code}</td>
+                <td className="p-3 text-right">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={balances[item.id] || ''}
+                    onChange={e => setBalances({...balances, [item.id]: parseFloat(e.target.value) || 0})}
+                    className="w-24 text-right ml-auto"
+                    placeholder="0"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ============== PURCHASE ENTRY ==============
+const PurchaseTab = () => {
+  const [suppliers, setSuppliers] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    supplier_id: '', date: new Date().toISOString().split('T')[0], invoice_no: '', notes: '',
+    items: [{ item_id: '', quantity: '', purchase_rate: '' }]
+  });
+  const [returnForm, setReturnForm] = useState({
+    supplier_id: '', date: new Date().toISOString().split('T')[0], notes: '',
+    items: [{ item_id: '', quantity: '', rate: '' }]
+  });
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [supRes, itemRes, purRes] = await Promise.all([
+        stockAPI.getSuppliers(), itemsAPI.getAll(), stockAPI.getPurchases()
+      ]);
+      setSuppliers(supRes.data.filter(s => s.status === 'active'));
+      setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+      setPurchases(purRes.data);
+    } catch { toast.error('Failed to load data'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const addItem = (formType) => {
+    if (formType === 'purchase') {
+      setForm({...form, items: [...form.items, { item_id: '', quantity: '', purchase_rate: '' }]});
+    } else {
+      setReturnForm({...returnForm, items: [...returnForm.items, { item_id: '', quantity: '', rate: '' }]});
+    }
+  };
+
+  const removeItem = (idx, formType) => {
+    if (formType === 'purchase') {
+      const newItems = form.items.filter((_, i) => i !== idx);
+      setForm({...form, items: newItems.length ? newItems : [{ item_id: '', quantity: '', purchase_rate: '' }]});
+    } else {
+      const newItems = returnForm.items.filter((_, i) => i !== idx);
+      setReturnForm({...returnForm, items: newItems.length ? newItems : [{ item_id: '', quantity: '', rate: '' }]});
+    }
+  };
+
+  const updateItem = (idx, field, value, formType) => {
+    if (formType === 'purchase') {
+      const newItems = [...form.items];
+      newItems[idx] = {...newItems[idx], [field]: value};
+      setForm({...form, items: newItems});
+    } else {
+      const newItems = [...returnForm.items];
+      newItems[idx] = {...newItems[idx], [field]: value};
+      setReturnForm({...returnForm, items: newItems});
+    }
+  };
+
+  const handleSavePurchase = async () => {
+    if (!form.supplier_id) return toast.error('Select a supplier');
+    const validItems = form.items.filter(i => i.item_id && i.quantity > 0);
+    if (!validItems.length) return toast.error('Add at least one item');
+    setSaving(true);
+    try {
+      await stockAPI.createPurchase({...form, items: validItems});
+      toast.success('Purchase recorded');
+      setShowForm(false);
+      setForm({ supplier_id: '', date: new Date().toISOString().split('T')[0], invoice_no: '', notes: '', items: [{ item_id: '', quantity: '', purchase_rate: '' }] });
+      fetchData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const handleSaveReturn = async () => {
+    if (!returnForm.supplier_id) return toast.error('Select a supplier');
+    const validItems = returnForm.items.filter(i => i.item_id && i.quantity > 0);
+    if (!validItems.length) return toast.error('Add at least one item');
+    setSaving(true);
+    try {
+      await stockAPI.createPurchaseReturn({...returnForm, items: validItems});
+      toast.success('Purchase return recorded');
+      setShowReturnForm(false);
+      setReturnForm({ supplier_id: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '' }] });
+      fetchData();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const supplierMap = {};
+  suppliers.forEach(s => { supplierMap[s.id] = s.name; });
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button size="sm" onClick={() => setShowForm(true)} data-testid="add-purchase-btn">
+          <ArrowDownCircle className="w-4 h-4 mr-1" /> New Purchase
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setShowReturnForm(true)} data-testid="purchase-return-btn">
+          <ArrowUpCircle className="w-4 h-4 mr-1" /> Purchase Return
+        </Button>
+      </div>
+
+      {/* Purchase History */}
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="text-left p-3 font-medium">Date</th>
+              <th className="text-left p-3 font-medium">Supplier</th>
+              <th className="text-left p-3 font-medium">Invoice</th>
+              <th className="text-left p-3 font-medium">Item</th>
+              <th className="text-right p-3 font-medium">Qty</th>
+              <th className="text-right p-3 font-medium">Rate</th>
+              <th className="text-left p-3 font-medium">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {purchases.map(p => (
+              <tr key={p.id} className="border-t hover:bg-slate-50">
+                <td className="p-3">{p.date}</td>
+                <td className="p-3">{supplierMap[p.supplier_id] || p.supplier_id}</td>
+                <td className="p-3 text-slate-500">{p.invoice_no || '-'}</td>
+                <td className="p-3">{allItems.find(i => i.id === p.item_id)?.item_name || p.item_id}</td>
+                <td className="p-3 text-right font-medium">{p.quantity}</td>
+                <td className="p-3 text-right">{p.rate || '-'}</td>
+                <td className="p-3">
+                  <Badge variant={p.type === 'purchase' ? 'default' : 'destructive'}>
+                    {p.type === 'purchase' ? 'Purchase' : 'Return'}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+            {purchases.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-slate-400">No purchases yet</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Purchase Form Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Purchase Entry</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Supplier *</Label>
+                <Select value={form.supplier_id} onValueChange={v => setForm({...form, supplier_id: v})}>
+                  <SelectTrigger data-testid="purchase-supplier-select"><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Invoice No</Label><Input value={form.invoice_no} onChange={e => setForm({...form, invoice_no: e.target.value})} /></div>
+              <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
+            </div>
+            <div>
+              <Label className="mb-2 block">Items</Label>
+              {form.items.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mb-2 items-end">
+                  <div className="flex-1">
+                    <Select value={item.item_id} onValueChange={v => updateItem(idx, 'item_id', v, 'purchase')}>
+                      <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
+                      <SelectContent>
+                        {allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input type="number" placeholder="Qty" className="w-20" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value, 'purchase')} />
+                  <Input type="number" placeholder="Rate" className="w-24" value={item.purchase_rate} onChange={e => updateItem(idx, 'purchase_rate', e.target.value, 'purchase')} />
+                  <Button size="sm" variant="ghost" onClick={() => removeItem(idx, 'purchase')}><X className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={() => addItem('purchase')}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSavePurchase} disabled={saving} data-testid="save-purchase-btn">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Purchase
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Return Dialog */}
+      <Dialog open={showReturnForm} onOpenChange={setShowReturnForm}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Purchase Return</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Supplier *</Label>
+                <Select value={returnForm.supplier_id} onValueChange={v => setReturnForm({...returnForm, supplier_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                  <SelectContent>{suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Date</Label><Input type="date" value={returnForm.date} onChange={e => setReturnForm({...returnForm, date: e.target.value})} /></div>
+            </div>
+            <div><Label>Notes</Label><Input value={returnForm.notes} onChange={e => setReturnForm({...returnForm, notes: e.target.value})} /></div>
+            <div>
+              <Label className="mb-2 block">Items</Label>
+              {returnForm.items.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mb-2 items-end">
+                  <div className="flex-1">
+                    <Select value={item.item_id} onValueChange={v => updateItem(idx, 'item_id', v, 'return')}>
+                      <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
+                      <SelectContent>{allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <Input type="number" placeholder="Qty" className="w-20" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value, 'return')} />
+                  <Input type="number" placeholder="Rate" className="w-24" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value, 'return')} />
+                  <Button size="sm" variant="ghost" onClick={() => removeItem(idx, 'return')}><X className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={() => addItem('return')}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveReturn} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Return
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// ============== SALES RETURN ==============
+const SalesReturnTab = () => {
+  const [allItems, setAllItems] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [returns, setReturns] = useState([]);
+  const [form, setForm] = useState({
+    order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '',
+    items: [{ item_id: '', quantity: '', rate: '' }]
+  });
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [itemRes, txnRes] = await Promise.all([
+          itemsAPI.getAll(),
+          stockAPI.getPurchases() // Returns all transactions including sales returns
+        ]);
+        setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+        // Filter for sales_return type from all transactions endpoint
+      } catch { /* ignore */ }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    const validItems = form.items.filter(i => i.item_id && i.quantity > 0);
+    if (!validItems.length) return toast.error('Add at least one item');
+    setSaving(true);
+    try {
+      await stockAPI.createSalesReturn({...form, items: validItems});
+      toast.success('Sales return recorded');
+      setShowForm(false);
+      setForm({ order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '' }] });
+    } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const addItem = () => setForm({...form, items: [...form.items, { item_id: '', quantity: '', rate: '' }]});
+  const removeItem = (idx) => {
+    const newItems = form.items.filter((_, i) => i !== idx);
+    setForm({...form, items: newItems.length ? newItems : [{ item_id: '', quantity: '', rate: '' }]});
+  };
+  const updateItem = (idx, field, value) => {
+    const newItems = [...form.items];
+    newItems[idx] = {...newItems[idx], [field]: value};
+    setForm({...form, items: newItems});
+  };
+
+  return (
+    <div className="space-y-4">
+      <Button size="sm" onClick={() => setShowForm(true)} data-testid="sales-return-btn">
+        <ArrowUpCircle className="w-4 h-4 mr-1" /> New Sales Return
+      </Button>
+
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Sales Return</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Customer Name</Label><Input value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} /></div>
+              <div><Label>Customer Phone</Label><Input value={form.customer_phone} onChange={e => setForm({...form, customer_phone: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Order ID</Label><Input value={form.order_id} onChange={e => setForm({...form, order_id: e.target.value})} placeholder="Related order (optional)" /></div>
+              <div><Label>Date</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+            </div>
+            <div><Label>Notes</Label><Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
+            <div>
+              <Label className="mb-2 block">Items</Label>
+              {form.items.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mb-2 items-end">
+                  <div className="flex-1">
+                    <Select value={item.item_id} onValueChange={v => updateItem(idx, 'item_id', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
+                      <SelectContent>{allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <Input type="number" placeholder="Qty" className="w-20" value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
+                  <Input type="number" placeholder="Rate" className="w-24" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} />
+                  <Button size="sm" variant="ghost" onClick={() => removeItem(idx)}><X className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={addItem}><Plus className="w-4 h-4 mr-1" /> Add Item</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Return
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+// ============== STOCK STATUS REPORT ==============
+const StockStatusTab = () => {
+  const [stock, setStock] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sortField, setSortField] = useState('item_name');
+  const [sortDir, setSortDir] = useState(1);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await stockAPI.getStockStatus();
+        setStock(res.data);
+      } catch { toast.error('Failed to load stock'); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  const toggleSort = (field) => {
+    if (sortField === field) setSortDir(-sortDir);
+    else { setSortField(field); setSortDir(1); }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return null;
+    return sortDir === 1 ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />;
+  };
+
+  const filtered = stock
+    .filter(s => !search || s.item_name.toLowerCase().includes(search.toLowerCase()) || s.item_code.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const av = a[sortField], bv = b[sortField];
+      if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+      return ((av || 0) - (bv || 0)) * sortDir;
+    });
+
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="relative max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search items..." className="pl-9" />
+      </div>
+
+      <div className="border rounded-lg overflow-auto max-h-[65vh]">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 sticky top-0">
+            <tr>
+              <th className="text-left p-3 font-medium cursor-pointer" onClick={() => toggleSort('item_name')}>Item <SortIcon field="item_name" /></th>
+              <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('opening_balance')}>Opening <SortIcon field="opening_balance" /></th>
+              <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('purchased')}>Purchased <SortIcon field="purchased" /></th>
+              <th className="text-right p-3 font-medium">Pur.Return</th>
+              <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('sold')}>Sold <SortIcon field="sold" /></th>
+              <th className="text-right p-3 font-medium">Sales Return</th>
+              <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('closing_balance')}>Closing <SortIcon field="closing_balance" /></th>
+              <th className="text-right p-3 font-medium">Purchase Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(s => (
+              <tr key={s.item_id} className={`border-t hover:bg-slate-50 ${s.closing_balance <= 0 ? 'bg-red-50' : ''}`}>
+                <td className="p-3">
+                  <div className="font-medium">{s.item_name}</div>
+                  <div className="text-xs text-slate-400">{s.item_code}</div>
+                </td>
+                <td className="p-3 text-right">{s.opening_balance}</td>
+                <td className="p-3 text-right text-green-600">+{s.purchased}</td>
+                <td className="p-3 text-right text-orange-500">{s.purchase_returned > 0 ? `-${s.purchase_returned}` : '0'}</td>
+                <td className="p-3 text-right text-red-500">{s.sold > 0 ? `-${s.sold}` : '0'}</td>
+                <td className="p-3 text-right text-blue-500">{s.sales_returned > 0 ? `+${s.sales_returned}` : '0'}</td>
+                <td className={`p-3 text-right font-bold ${s.closing_balance <= 0 ? 'text-red-600' : 'text-green-700'}`}>
+                  {s.closing_balance}
+                </td>
+                <td className="p-3 text-right text-slate-600">{s.last_purchase_rate || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex gap-4 text-xs text-slate-500">
+        <span>Total Items: {filtered.length}</span>
+        <span className="text-red-500">Zero Stock: {filtered.filter(s => s.closing_balance <= 0).length}</span>
+      </div>
+    </div>
+  );
+};
+
+// ============== ITEM LEDGER ==============
+const ItemLedgerTab = () => {
+  const [allItems, setAllItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState('');
+  const [ledger, setLedger] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    itemsAPI.getAll().then(res => setAllItems(res.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || ''))));
+  }, []);
+
+  const fetchLedger = async (itemId) => {
+    if (!itemId) return;
+    setLoading(true);
+    try {
+      const res = await stockAPI.getItemLedger(itemId);
+      setLedger(res.data);
+    } catch { toast.error('Failed to load ledger'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="max-w-xs">
+        <Label className="text-xs">Select Item</Label>
+        <Select value={selectedItem} onValueChange={v => { setSelectedItem(v); fetchLedger(v); }}>
+          <SelectTrigger data-testid="item-ledger-select"><SelectValue placeholder="Choose item..." /></SelectTrigger>
+          <SelectContent>
+            {allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading && <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div>}
+
+      {ledger && !loading && (
+        <>
+          <div className="flex gap-4">
+            <Card className="flex-1"><CardContent className="p-4 text-center">
+              <div className="text-xs text-slate-500">Opening</div>
+              <div className="text-xl font-bold">{ledger.opening_balance}</div>
+            </CardContent></Card>
+            <Card className="flex-1"><CardContent className="p-4 text-center">
+              <div className="text-xs text-slate-500">Closing</div>
+              <div className={`text-xl font-bold ${ledger.closing_balance <= 0 ? 'text-red-600' : 'text-green-700'}`}>{ledger.closing_balance}</div>
+            </CardContent></Card>
+          </div>
+
+          <div className="border rounded-lg overflow-auto max-h-[50vh]">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  <th className="text-left p-3 font-medium">Date</th>
+                  <th className="text-left p-3 font-medium">Description</th>
+                  <th className="text-right p-3 font-medium text-green-600">Credit</th>
+                  <th className="text-right p-3 font-medium text-red-600">Debit</th>
+                  <th className="text-right p-3 font-medium">Rate</th>
+                  <th className="text-right p-3 font-medium">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.ledger.map((entry, idx) => (
+                  <tr key={idx} className="border-t hover:bg-slate-50">
+                    <td className="p-3 text-slate-500">{entry.date || '-'}</td>
+                    <td className="p-3">{entry.description}</td>
+                    <td className="p-3 text-right text-green-600">{entry.credit > 0 ? `+${entry.credit}` : ''}</td>
+                    <td className="p-3 text-right text-red-600">{entry.debit > 0 ? `-${entry.debit}` : ''}</td>
+                    <td className="p-3 text-right text-slate-500">{entry.rate || ''}</td>
+                    <td className="p-3 text-right font-medium">{entry.balance}</td>
+                  </tr>
+                ))}
+                {ledger.ledger.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No transactions</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ============== USER LEDGER ==============
+const UserLedgerTab = () => {
+  const [search, setSearch] = useState('');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async () => {
+    if (!search.trim()) return toast.error('Enter customer name or phone');
+    setLoading(true);
+    try {
+      const isPhone = /^\d+$/.test(search.trim());
+      const params = isPhone ? { customer_phone: search.trim() } : { customer_name: search.trim() };
+      const res = await stockAPI.getUserLedger(params);
+      setData(res.data);
+    } catch { toast.error('Failed to load data'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 max-w-md">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Customer name or phone..." className="pl-9"
+            onKeyDown={e => e.key === 'Enter' && handleSearch()} data-testid="user-ledger-search" />
+        </div>
+        <Button onClick={handleSearch} disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+        </Button>
+      </div>
+
+      {data && (
+        <div className="border rounded-lg overflow-auto max-h-[60vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="text-left p-3 font-medium">Date</th>
+                <th className="text-left p-3 font-medium">Order</th>
+                <th className="text-left p-3 font-medium">Customer</th>
+                <th className="text-left p-3 font-medium">Item</th>
+                <th className="text-right p-3 font-medium">Qty</th>
+                <th className="text-right p-3 font-medium">Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.orders.map((o, idx) => (
+                <tr key={idx} className="border-t hover:bg-slate-50">
+                  <td className="p-3 text-slate-500">{(o.date || '').split('T')[0]}</td>
+                  <td className="p-3">{o.order_number || '-'}</td>
+                  <td className="p-3">{o.customer_name}</td>
+                  <td className="p-3">{o.item_name}</td>
+                  <td className="p-3 text-right font-medium">{o.quantity}</td>
+                  <td className="p-3 text-right">{o.rate || '-'}</td>
+                </tr>
+              ))}
+              {(!data.orders || data.orders.length === 0) && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No dispatched orders found</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============== MAIN PAGE ==============
+const StockManagement = () => {
+  return (
+    <div className="space-y-6" data-testid="stock-management-page">
+      <div className="flex items-center gap-3">
+        <Package className="w-6 h-6 text-indigo-600" />
+        <h1 className="text-2xl font-bold text-slate-800">Stock & Inventory</h1>
+      </div>
+
+      <Tabs defaultValue="status" className="w-full">
+        <TabsList className="grid grid-cols-7 w-full">
+          <TabsTrigger value="status" data-testid="tab-stock-status"><BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" /> Status</TabsTrigger>
+          <TabsTrigger value="opening" data-testid="tab-opening-balance">Opening</TabsTrigger>
+          <TabsTrigger value="purchase" data-testid="tab-purchases">Purchase</TabsTrigger>
+          <TabsTrigger value="sales-return" data-testid="tab-sales-return">Sales Return</TabsTrigger>
+          <TabsTrigger value="item-ledger" data-testid="tab-item-ledger"><FileText className="w-4 h-4 mr-1 hidden sm:inline" /> Item Ledger</TabsTrigger>
+          <TabsTrigger value="user-ledger" data-testid="tab-user-ledger"><Users className="w-4 h-4 mr-1 hidden sm:inline" /> User Ledger</TabsTrigger>
+          <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="status"><Card><CardContent className="p-4"><StockStatusTab /></CardContent></Card></TabsContent>
+        <TabsContent value="opening"><Card><CardContent className="p-4"><OpeningBalanceTab /></CardContent></Card></TabsContent>
+        <TabsContent value="purchase"><Card><CardContent className="p-4"><PurchaseTab /></CardContent></Card></TabsContent>
+        <TabsContent value="sales-return"><Card><CardContent className="p-4"><SalesReturnTab /></CardContent></Card></TabsContent>
+        <TabsContent value="item-ledger"><Card><CardContent className="p-4"><ItemLedgerTab /></CardContent></Card></TabsContent>
+        <TabsContent value="user-ledger"><Card><CardContent className="p-4"><UserLedgerTab /></CardContent></Card></TabsContent>
+        <TabsContent value="suppliers"><Card><CardContent className="p-4"><SuppliersTab /></CardContent></Card></TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default StockManagement;

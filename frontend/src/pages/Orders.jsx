@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ordersAPI, transportAPI, pendingItemsAPI, itemsAPI, doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
+import { ordersAPI, transportAPI, pendingItemsAPI, itemsAPI, doctorsAPI, medicalsAPI, agenciesAPI, stockAPI } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -66,6 +66,7 @@ export const Orders = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [stockAvailability, setStockAvailability] = useState({});
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -432,10 +433,15 @@ export const Orders = () => {
   const viewOrderDetails = async (order) => {
     setSelectedOrder(order);
     try {
-      const response = await pendingItemsAPI.getByDoctor(order.doctor_phone);
-      setPendingItemsForOrder(response.data);
+      const [pendingRes, stockRes] = await Promise.all([
+        pendingItemsAPI.getByDoctor(order.doctor_phone).catch(() => ({ data: [] })),
+        stockAPI.getAvailability().catch(() => ({ data: {} }))
+      ]);
+      setPendingItemsForOrder(pendingRes.data);
+      setStockAvailability(stockRes.data);
     } catch (error) {
       setPendingItemsForOrder([]);
+      setStockAvailability({});
     }
     setShowDetailModal(true);
   };
@@ -2276,13 +2282,19 @@ export const Orders = () => {
                     <th className="border border-gray-300 px-2 py-1 text-left text-sm">Item Code</th>
                     <th className="border border-gray-300 px-2 py-1 text-left text-sm">Item Name</th>
                     <th className="border border-gray-300 px-2 py-1 text-center text-sm">Qty</th>
-                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Rate (₹)</th>
-                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">MRP (₹)</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Rate</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">MRP</th>
+                    <th className="border border-gray-300 px-2 py-1 text-center text-sm">Avail Qty</th>
+                    <th className="border border-gray-300 px-2 py-1 text-right text-sm">Pur. Rate</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedOrder?.items?.map((item, index) => {
                     const rate = parseFloat(item.rate) || 0;
+                    const stockInfo = stockAvailability[item.item_id] || {};
+                    const availQty = stockInfo.closing_balance ?? '-';
+                    const purRate = stockInfo.last_purchase_rate || '-';
+                    const isLow = typeof availQty === 'number' && availQty <= 0;
                     
                     return (
                       <tr key={index}>
@@ -2292,6 +2304,8 @@ export const Orders = () => {
                         <td className="border border-gray-300 px-2 py-1 text-sm text-center font-medium">{item.quantity}</td>
                         <td className="border border-gray-300 px-2 py-1 text-sm text-right">{rate.toFixed(2)}</td>
                         <td className="border border-gray-300 px-2 py-1 text-sm text-right">{item.mrp ? parseFloat(item.mrp).toFixed(2) : '-'}</td>
+                        <td className={`border border-gray-300 px-2 py-1 text-sm text-center font-medium ${isLow ? 'text-red-600 bg-red-50' : 'text-green-700'}`}>{availQty}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-sm text-right text-slate-500">{purRate}</td>
                       </tr>
                     );
                   })}
@@ -2306,7 +2320,7 @@ export const Orders = () => {
                         return sum + (qtyParts[0] || 0) + (qtyParts[1] || 0);
                       }, 0)}
                     </td>
-                    <td colSpan={2} className="border border-gray-300 px-2 py-1"></td>
+                    <td colSpan={4} className="border border-gray-300 px-2 py-1"></td>
                   </tr>
                 </tfoot>
               </table>

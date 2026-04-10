@@ -48,6 +48,7 @@ const mainNavItems = [
   { path: '/admin/marketing', icon: Megaphone, label: 'Marketing', perm: 'marketing' },
   { path: '/admin/reports', icon: BarChart3, label: 'Reports & Analytics', perm: null },
   { path: '/admin/expenses', icon: Receipt, label: 'Expenses', perm: 'expenses' },
+  { path: '/admin/stock', icon: Package, label: 'Stock & Inventory', perm: null },
   { path: '/admin/reminders', icon: Bell, label: 'Reminders', perm: 'reminders' },
   { path: '/admin/greeting-templates', icon: Gift, label: 'Greetings', perm: 'reminders' },
   { path: '/admin/pending-items', icon: Clock, label: 'Pending Items', perm: 'pending_items', showBadge: true },

@@ -415,6 +415,9 @@ export const stockAPI = {
   // Stock Issues
   createStockIssue: (data) => api.post('/stock/issue', data),
   getStockIssues: () => api.get('/stock/issues'),
+  // Edit/Delete transactions
+  updateTransaction: (id, data) => api.put(`/stock/transaction/${id}`, data),
+  deleteTransaction: (id) => api.delete(`/stock/transaction/${id}`),
   // Opening balance delete
   deleteOpeningBalance: (itemId) => api.delete(`/stock/opening-balance/${itemId}`),
   // Last selling rates for a customer

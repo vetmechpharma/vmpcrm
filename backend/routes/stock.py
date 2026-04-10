@@ -189,6 +189,51 @@ async def get_stock_issues(user=Depends(get_current_user)):
     return issues
 
 
+@router.put("/stock/transaction/{txn_id}")
+async def update_stock_transaction(txn_id: str, data: dict, user=Depends(get_current_user)):
+    """Edit a stock transaction (purchase, purchase_return, sales_return, stock_issue)"""
+    txn = await db.stock_transactions.find_one({'id': txn_id}, {'_id': 0})
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    update_fields = {}
+    for field in ['quantity', 'rate', 'date', 'notes', 'invoice_no', 'reason', 'supplier_id',
+                  'customer_name', 'customer_phone', 'order_id', 'gst_percent', 'sold_rate']:
+        if field in data:
+            update_fields[field] = data[field]
+    
+    # Recalculate amounts for sales returns
+    if txn['type'] == 'sales_return' and ('quantity' in data or 'rate' in data or 'gst_percent' in data):
+        qty = float(data.get('quantity', txn.get('quantity', 0)))
+        rate = float(data.get('rate', txn.get('rate', 0)))
+        gst_pct = float(data.get('gst_percent', txn.get('gst_percent', 0)))
+        base_amount = qty * rate
+        gst_amount = round(base_amount * gst_pct / 100, 2)
+        update_fields['base_amount'] = base_amount
+        update_fields['gst_amount'] = gst_amount
+        update_fields['total_amount'] = round(base_amount + gst_amount, 2)
+    
+    # For purchases, map purchase_rate to rate
+    if 'purchase_rate' in data:
+        update_fields['rate'] = data['purchase_rate']
+    
+    if update_fields:
+        update_fields['updated_at'] = datetime.now(timezone.utc).isoformat()
+        update_fields['updated_by'] = user.get('email', '')
+        await db.stock_transactions.update_one({'id': txn_id}, {'$set': update_fields})
+    
+    return {"message": "Transaction updated"}
+
+
+@router.delete("/stock/transaction/{txn_id}")
+async def delete_stock_transaction(txn_id: str, user=Depends(get_current_user)):
+    """Delete a stock transaction"""
+    result = await db.stock_transactions.delete_one({'id': txn_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return {"message": "Transaction deleted"}
+
+
 @router.get("/stock/last-rates")
 async def get_last_selling_rates(
     user=Depends(get_current_user),

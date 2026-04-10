@@ -253,6 +253,9 @@ const PurchaseTab = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({ quantity: '', rate: '', date: '', invoice_no: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     supplier_id: '', date: new Date().toISOString().split('T')[0], invoice_no: '', notes: '',
@@ -365,6 +368,7 @@ const PurchaseTab = () => {
               <th className="text-right p-3 font-medium">Qty</th>
               <th className="text-right p-3 font-medium">Rate</th>
               <th className="text-left p-3 font-medium">Type</th>
+              <th className="text-center p-3 font-medium w-20">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -381,9 +385,23 @@ const PurchaseTab = () => {
                     {p.type === 'purchase' ? 'Purchase' : 'Return'}
                   </Badge>
                 </td>
+                <td className="p-3 text-center">
+                  <div className="flex gap-1 justify-center">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => {
+                      setEditingTxn(p);
+                      setEditForm({ quantity: p.quantity, rate: p.rate || '', date: p.date, invoice_no: p.invoice_no || '', notes: p.notes || '' });
+                      setShowEditDialog(true);
+                    }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" onClick={async () => {
+                      if (!confirm(`Delete this ${p.type === 'purchase' ? 'purchase' : 'return'} entry?`)) return;
+                      try { await stockAPI.deleteTransaction(p.id); toast.success('Deleted'); fetchData(); }
+                      catch { toast.error('Delete failed'); }
+                    }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </td>
               </tr>
             ))}
-            {purchases.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-slate-400">No purchases yet</td></tr>}
+            {purchases.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No purchases yet</td></tr>}
           </tbody>
         </table>
       </div>
@@ -475,6 +493,31 @@ const PurchaseTab = () => {
             <Button onClick={handleSaveReturn} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null} Save Return
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Transaction Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit {editingTxn?.type === 'purchase' ? 'Purchase' : 'Purchase Return'}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Quantity</Label><Input type="number" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} /></div>
+              <div><Label>Rate</Label><Input type="number" value={editForm.rate} onChange={e => setEditForm({...editForm, rate: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Date</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+              <div><Label>Invoice No</Label><Input value={editForm.invoice_no} onChange={e => setEditForm({...editForm, invoice_no: e.target.value})} /></div>
+            </div>
+            <div><Label>Notes</Label><Input value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} /></div>
+          </div>
+          <DialogFooter>
+            <Button onClick={async () => {
+              try {
+                await stockAPI.updateTransaction(editingTxn.id, { ...editForm, purchase_rate: editForm.rate });
+                toast.success('Updated'); setShowEditDialog(false); fetchData();
+              } catch { toast.error('Update failed'); }
+            }}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

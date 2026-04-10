@@ -528,25 +528,31 @@ const PurchaseTab = () => {
 // ============== SALES RETURN ==============
 const SalesReturnTab = () => {
   const [allItems, setAllItems] = useState([]);
+  const [returns, setReturns] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerOrders, setCustomerOrders] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({ quantity: '', rate: '', gst_percent: '', date: '', customer_name: '', customer_phone: '', notes: '' });
   const [form, setForm] = useState({
     order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '',
     items: [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }]
   });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [itemRes] = await Promise.all([itemsAPI.getAll()]);
-        setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
-      } catch { /* ignore */ }
-    };
-    load();
+  const fetchData = useCallback(async () => {
+    try {
+      const [itemRes, retRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getSalesReturns()]);
+      setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+      setReturns(Array.isArray(retRes.data) ? retRes.data : []);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const searchCustomer = async () => {
     if (!customerSearch.trim()) return;
@@ -613,6 +619,7 @@ const SalesReturnTab = () => {
       setCustomerOrders([]);
       setCustomerSearch('');
       setForm({ order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '', gst_percent: 0, sold_rate: 0, sold_qty: 0, order_number: '' }] });
+      fetchData();
     } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
     finally { setSaving(false); }
   };
@@ -638,6 +645,98 @@ const SalesReturnTab = () => {
       <Button size="sm" onClick={() => setShowForm(true)} data-testid="sales-return-btn">
         <ArrowUpCircle className="w-4 h-4 mr-1" /> New Sales Return
       </Button>
+
+      {/* Sales Return History Table */}
+      {loading ? <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <div className="border rounded-lg overflow-auto max-h-[50vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="text-left p-3 font-medium">Date</th>
+                <th className="text-left p-3 font-medium">Customer</th>
+                <th className="text-left p-3 font-medium">Item</th>
+                <th className="text-right p-3 font-medium">Qty</th>
+                <th className="text-right p-3 font-medium">Rate</th>
+                <th className="text-center p-3 font-medium">GST%</th>
+                <th className="text-right p-3 font-medium">Total</th>
+                <th className="text-center p-3 font-medium w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {returns.map(r => (
+                <tr key={r.id} className="border-t hover:bg-slate-50">
+                  <td className="p-3 text-slate-500">{r.date}</td>
+                  <td className="p-3">{r.customer_name || '-'}<br/><span className="text-xs text-slate-400">{r.customer_phone || ''}</span></td>
+                  <td className="p-3 font-medium">{r.item_name || allItems.find(i => i.id === r.item_id)?.item_name || r.item_id}</td>
+                  <td className="p-3 text-right">{r.quantity}</td>
+                  <td className="p-3 text-right">{r.rate || '-'}</td>
+                  <td className="p-3 text-center">{r.gst_percent || 0}%</td>
+                  <td className="p-3 text-right font-semibold text-green-700">{r.total_amount ? `₹${Number(r.total_amount).toFixed(2)}` : '-'}</td>
+                  <td className="p-3 text-center">
+                    <div className="flex gap-1 justify-center">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`edit-sales-return-${r.id}`} onClick={() => {
+                        setEditingTxn(r);
+                        setEditForm({ quantity: r.quantity, rate: r.rate || '', gst_percent: r.gst_percent || 0, date: r.date, customer_name: r.customer_name || '', customer_phone: r.customer_phone || '', notes: r.notes || '' });
+                        setShowEditDialog(true);
+                      }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" data-testid={`delete-sales-return-${r.id}`} onClick={async () => {
+                        if (!confirm('Delete this sales return entry?')) return;
+                        try { await stockAPI.deleteTransaction(r.id); toast.success('Deleted'); fetchData(); }
+                        catch { toast.error('Delete failed'); }
+                      }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {returns.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">No sales returns yet</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Edit Sales Return Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Sales Return</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Quantity</Label><Input type="number" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} data-testid="edit-sr-qty" /></div>
+              <div><Label>Rate</Label><Input type="number" value={editForm.rate} onChange={e => setEditForm({...editForm, rate: e.target.value})} data-testid="edit-sr-rate" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>GST %</Label><Input type="number" value={editForm.gst_percent} onChange={e => setEditForm({...editForm, gst_percent: e.target.value})} data-testid="edit-sr-gst" /></div>
+              <div><Label>Date</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Customer Name</Label><Input value={editForm.customer_name} onChange={e => setEditForm({...editForm, customer_name: e.target.value})} /></div>
+              <div><Label>Customer Phone</Label><Input value={editForm.customer_phone} onChange={e => setEditForm({...editForm, customer_phone: e.target.value})} /></div>
+            </div>
+            <div><Label>Notes</Label><Input value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} /></div>
+            {/* Show calculated amount preview */}
+            {editForm.quantity && editForm.rate && (() => {
+              const qty = parseFloat(editForm.quantity) || 0;
+              const rate = parseFloat(editForm.rate) || 0;
+              const gst = parseFloat(editForm.gst_percent) || 0;
+              const base = qty * rate;
+              const gstAmt = Math.round(base * gst / 100 * 100) / 100;
+              const total = Math.round((base + gstAmt) * 100) / 100;
+              return total > 0 ? (
+                <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                  Base: ₹{base.toFixed(2)} + GST: ₹{gstAmt.toFixed(2)} = <strong>₹{total.toFixed(2)}</strong>
+                </div>
+              ) : null;
+            })()}
+          </div>
+          <DialogFooter>
+            <Button data-testid="save-edit-sr-btn" onClick={async () => {
+              try {
+                await stockAPI.updateTransaction(editingTxn.id, editForm);
+                toast.success('Sales return updated'); setShowEditDialog(false); fetchData();
+              } catch { toast.error('Update failed'); }
+            }}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) { setCustomerOrders([]); setCustomerSearch(''); } }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -783,23 +882,25 @@ const StockIssueTab = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingTxn, setEditingTxn] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editForm, setEditForm] = useState({ quantity: '', reason: '', date: '', notes: '' });
   const [form, setForm] = useState({
     item_id: '', quantity: '', reason: '', date: new Date().toISOString().split('T')[0], notes: ''
   });
 
   const REASONS = ['Damage', 'Breakage', 'Quality Issue', 'Expiry', 'Other'];
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [itemRes, issueRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getStockIssues()]);
-        setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
-        setIssues(Array.isArray(issueRes.data) ? issueRes.data : []);
-      } catch { /* ignore */ }
-      finally { setLoading(false); }
-    };
-    load();
+  const fetchData = useCallback(async () => {
+    try {
+      const [itemRes, issueRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getStockIssues()]);
+      setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+      setIssues(Array.isArray(issueRes.data) ? issueRes.data : []);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleSave = async () => {
     if (!form.item_id) return toast.error('Select an item');
@@ -809,11 +910,9 @@ const StockIssueTab = () => {
     try {
       const res = await stockAPI.createStockIssue(form);
       toast.success(res.data.message || 'Stock issue recorded');
-      // Refresh issues list
-      const issueRes = await stockAPI.getStockIssues();
-      setIssues(Array.isArray(issueRes.data) ? issueRes.data : []);
       setShowForm(false);
       setForm({ item_id: '', quantity: '', reason: '', date: new Date().toISOString().split('T')[0], notes: '' });
+      fetchData();
     } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
     finally { setSaving(false); }
   };
@@ -840,6 +939,7 @@ const StockIssueTab = () => {
               <th className="text-left p-3 font-medium">Reason</th>
               <th className="text-left p-3 font-medium">Notes</th>
               <th className="text-left p-3 font-medium">By</th>
+              <th className="text-center p-3 font-medium w-20">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -859,10 +959,24 @@ const StockIssueTab = () => {
                 </td>
                 <td className="p-3 text-slate-500 max-w-[200px] truncate">{issue.notes || '-'}</td>
                 <td className="p-3 text-slate-400 text-xs">{issue.created_by}</td>
+                <td className="p-3 text-center">
+                  <div className="flex gap-1 justify-center">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" data-testid={`edit-stock-issue-${issue.id}`} onClick={() => {
+                      setEditingTxn(issue);
+                      setEditForm({ quantity: issue.quantity, reason: issue.reason || '', date: issue.date, notes: issue.notes || '' });
+                      setShowEditDialog(true);
+                    }}><Edit2 className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" data-testid={`delete-stock-issue-${issue.id}`} onClick={async () => {
+                      if (!confirm('Delete this stock issue entry?')) return;
+                      try { await stockAPI.deleteTransaction(issue.id); toast.success('Deleted'); fetchData(); }
+                      catch { toast.error('Delete failed'); }
+                    }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                </td>
               </tr>
             ))}
             {issues.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-slate-400">{loading ? 'Loading...' : 'No stock issues recorded yet'}</td></tr>
+              <tr><td colSpan={7} className="p-8 text-center text-slate-400">{loading ? 'Loading...' : 'No stock issues recorded yet'}</td></tr>
             )}
           </tbody>
         </table>
@@ -914,6 +1028,37 @@ const StockIssueTab = () => {
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <AlertCircle className="w-4 h-4 mr-1" />}
               Confirm Stock Issue
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Stock Issue Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Stock Issue</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Quantity</Label><Input type="number" min="1" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} data-testid="edit-si-qty" /></div>
+              <div><Label>Date</Label><Input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} /></div>
+            </div>
+            <div>
+              <Label>Reason</Label>
+              <Select value={editForm.reason} onValueChange={v => setEditForm({...editForm, reason: v})}>
+                <SelectTrigger data-testid="edit-si-reason"><SelectValue placeholder="Select reason" /></SelectTrigger>
+                <SelectContent>
+                  {REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Notes</Label><Input value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} data-testid="edit-si-notes" /></div>
+          </div>
+          <DialogFooter>
+            <Button data-testid="save-edit-si-btn" onClick={async () => {
+              try {
+                await stockAPI.updateTransaction(editingTxn.id, editForm);
+                toast.success('Stock issue updated'); setShowEditDialog(false); fetchData();
+              } catch { toast.error('Update failed'); }
+            }}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1187,11 +1332,12 @@ const StockManagement = () => {
       </div>
 
       <Tabs defaultValue="status" className="w-full">
-        <TabsList className="grid grid-cols-7 w-full">
+        <TabsList className="grid grid-cols-8 w-full">
           <TabsTrigger value="status" data-testid="tab-stock-status"><BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" /> Status</TabsTrigger>
           <TabsTrigger value="opening" data-testid="tab-opening-balance">Opening</TabsTrigger>
           <TabsTrigger value="purchase" data-testid="tab-purchases">Purchase</TabsTrigger>
           <TabsTrigger value="sales-return" data-testid="tab-sales-return">Sales Return</TabsTrigger>
+          <TabsTrigger value="stock-issue" data-testid="tab-stock-issue"><AlertCircle className="w-4 h-4 mr-1 hidden sm:inline" /> Stock Issue</TabsTrigger>
           <TabsTrigger value="item-ledger" data-testid="tab-item-ledger"><FileText className="w-4 h-4 mr-1 hidden sm:inline" /> Item Ledger</TabsTrigger>
           <TabsTrigger value="user-ledger" data-testid="tab-user-ledger"><Users className="w-4 h-4 mr-1 hidden sm:inline" /> User Ledger</TabsTrigger>
           <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
@@ -1201,6 +1347,7 @@ const StockManagement = () => {
         <TabsContent value="opening"><Card><CardContent className="p-4"><OpeningBalanceTab /></CardContent></Card></TabsContent>
         <TabsContent value="purchase"><Card><CardContent className="p-4"><PurchaseTab /></CardContent></Card></TabsContent>
         <TabsContent value="sales-return"><Card><CardContent className="p-4"><SalesReturnTab /></CardContent></Card></TabsContent>
+        <TabsContent value="stock-issue"><Card><CardContent className="p-4"><StockIssueTab /></CardContent></Card></TabsContent>
         <TabsContent value="item-ledger"><Card><CardContent className="p-4"><ItemLedgerTab /></CardContent></Card></TabsContent>
         <TabsContent value="user-ledger"><Card><CardContent className="p-4"><UserLedgerTab /></CardContent></Card></TabsContent>
         <TabsContent value="suppliers"><Card><CardContent className="p-4"><SuppliersTab /></CardContent></Card></TabsContent>

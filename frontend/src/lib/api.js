@@ -411,6 +411,7 @@ export const stockAPI = {
   // Returns
   createPurchaseReturn: (data) => api.post('/stock/purchase-return', data),
   createSalesReturn: (data) => api.post('/stock/sales-return', data),
+  getSalesReturns: () => api.get('/stock/sales-returns'),
   getCustomerOrders: (params) => api.get('/stock/customer-orders', { params }),
   // Stock Issues
   createStockIssue: (data) => api.post('/stock/issue', data),

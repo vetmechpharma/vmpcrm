@@ -234,6 +234,26 @@ async def delete_stock_transaction(txn_id: str, user=Depends(get_current_user)):
     return {"message": "Transaction deleted"}
 
 
+@router.get("/stock/sales-returns")
+async def get_sales_returns(user=Depends(get_current_user)):
+    """Get all sales return records"""
+    returns = await db.stock_transactions.find(
+        {'type': 'sales_return'}, {'_id': 0}
+    ).sort('date', -1).to_list(5000)
+    
+    # Enrich with item names
+    item_ids = list(set(r['item_id'] for r in returns))
+    items = await db.items.find({'id': {'$in': item_ids}}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1}).to_list(5000)
+    item_map = {i['id']: i for i in items}
+    
+    for r in returns:
+        item = item_map.get(r['item_id'], {})
+        r['item_name'] = item.get('item_name', '')
+        r['item_code'] = item.get('item_code', '')
+    
+    return returns
+
+
 @router.get("/stock/last-rates")
 async def get_last_selling_rates(
     user=Depends(get_current_user),

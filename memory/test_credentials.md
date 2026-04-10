@@ -4,7 +4,7 @@
 - Email: info@vetmech.in
 - Password: Kongu@@44884
 
-## Customer Portal
+## Customer
 - Phone: 9999777766
 - Password: test123
 

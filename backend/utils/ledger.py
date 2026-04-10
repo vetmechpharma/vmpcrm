@@ -11,7 +11,7 @@ async def get_customer_ledger(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
 ):
-    """Get ledger for a customer - opening balance + invoices + payments"""
+    """Get ledger for a customer - opening balance + invoices + payments + sales returns"""
     collection = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}.get(customer_type)
     if not collection:
         return None
@@ -32,7 +32,7 @@ async def get_customer_ledger(
             date_q['$lte'] = to_date + 'T23:59:59'
         order_query['created_at'] = date_q
 
-    orders = await db.orders.find(order_query, {'_id': 0, 'items': 0}).sort('created_at', 1).to_list(5000)
+    orders = await db.orders.find(order_query, {'_id': 0}).sort('created_at', 1).to_list(5000)
 
     # Get payments for this customer
     pay_query = {'customer_id': customer_id}
@@ -46,6 +46,20 @@ async def get_customer_ledger(
 
     payments = await db.payments.find(pay_query, {'_id': 0}).sort('date', 1).to_list(5000)
 
+    # Get sales returns for this customer (by phone)
+    customer_phone = customer.get('phone', '')
+    sales_returns = []
+    if customer_phone:
+        sr_query = {'type': 'sales_return', 'customer_phone': customer_phone}
+        if from_date or to_date:
+            date_q = {}
+            if from_date:
+                date_q['$gte'] = from_date
+            if to_date:
+                date_q['$lte'] = to_date
+            sr_query['date'] = date_q
+        sales_returns = await db.stock_transactions.find(sr_query, {'_id': 0}).sort('date', 1).to_list(5000)
+
     # Build ledger entries
     entries = []
 
@@ -56,9 +70,10 @@ async def get_customer_ledger(
         'description': 'Opening Balance',
         'debit': opening_balance if opening_balance > 0 else 0,
         'credit': abs(opening_balance) if opening_balance < 0 else 0,
+        'ref_id': None,
     })
 
-    # Invoice entries from dispatched orders
+    # Invoice entries from orders
     for order in orders:
         inv_value = order.get('invoice_value')
         if inv_value and float(inv_value) > 0:
@@ -68,9 +83,23 @@ async def get_customer_ledger(
                 'description': f"Inv# {order.get('invoice_number', 'N/A')} (Order: {order.get('order_number', '')})",
                 'invoice_number': order.get('invoice_number', ''),
                 'order_number': order.get('order_number', ''),
+                'ref_id': order.get('id', ''),
                 'debit': float(inv_value),
                 'credit': 0,
             })
+        elif order.get('total_amount'):
+            # Fallback for orders without invoice but with total
+            total = float(order.get('total_amount', 0))
+            if total > 0:
+                entries.append({
+                    'type': 'order',
+                    'date': (order.get('created_at', '')[:10] if isinstance(order.get('created_at', ''), str) else str(order.get('created_at', ''))[:10]),
+                    'description': f"Order: {order.get('order_number', '')} ({order.get('status', '')})",
+                    'order_number': order.get('order_number', ''),
+                    'ref_id': order.get('id', ''),
+                    'debit': total,
+                    'credit': 0,
+                })
 
     # Payment entries
     for pay in payments:
@@ -79,9 +108,31 @@ async def get_customer_ledger(
             'date': pay.get('date', ''),
             'description': f"Payment ({pay.get('mode', 'Cash')})" + (f" - {pay.get('notes')}" if pay.get('notes') else ''),
             'payment_id': pay.get('id'),
+            'ref_id': pay.get('id'),
             'debit': 0,
             'credit': float(pay.get('amount', 0)),
         })
+
+    # Sales return entries (credit to customer)
+    for sr in sales_returns:
+        total = float(sr.get('total_amount', 0) or 0)
+        if total <= 0:
+            qty = float(sr.get('quantity', 0) or 0)
+            rate = float(sr.get('rate', 0) or 0)
+            total = qty * rate
+        if total > 0:
+            item_name = sr.get('item_name', '')
+            if not item_name:
+                item = await db.items.find_one({'id': sr.get('item_id')}, {'_id': 0, 'item_name': 1})
+                item_name = item.get('item_name', '') if item else ''
+            entries.append({
+                'type': 'sales_return',
+                'date': sr.get('date', ''),
+                'description': f"Sales Return: {item_name} (Qty: {sr.get('quantity', 0)})",
+                'ref_id': sr.get('id', ''),
+                'debit': 0,
+                'credit': total,
+            })
 
     # Sort by date
     entries.sort(key=lambda x: x.get('date', '') or '')
@@ -102,6 +153,7 @@ async def get_customer_ledger(
             'phone': customer.get('phone', ''),
             'email': customer.get('email', ''),
             'type': customer_type,
+            'customer_code': customer.get('customer_code', ''),
             'opening_balance': opening_balance,
         },
         'entries': entries,

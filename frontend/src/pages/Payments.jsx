@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { paymentsAPI, doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { paymentsAPI, doctorsAPI, medicalsAPI, agenciesAPI, ordersAPI } from '../lib/api';
 import api from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,13 +9,375 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Separator } from '../components/ui/separator';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
+import { exportToCSV, printTable, getDatePreset } from '../lib/exportUtils';
 import {
   IndianRupee, Plus, Search, Trash2, Loader2, FileText, Download,
   Users, ArrowUpDown, Filter, Calendar, CreditCard, Wallet, BookOpen,
-  Edit2, MessageCircle, Send, Phone, MapPin
+  Edit2, MessageCircle, Send, Phone, MapPin, Eye, Printer, ArrowLeft
 } from 'lucide-react';
 
 const PAYMENT_MODES = ['Cash', 'UPI', 'GPay', 'Netbanking', 'Cheque', 'Credit'];
+
+// ============== CUSTOMER LEDGER TAB ==============
+const CustomerLedgerTab = () => {
+  const [customers, setCustomers] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedType, setSelectedType] = useState('');
+  const [ledger, setLedger] = useState(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [showObDialog, setShowObDialog] = useState(false);
+  const [obAmount, setObAmount] = useState('');
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const searchCustomers = useCallback(async () => {
+    if (!search.trim()) return;
+    setLoading(true);
+    try {
+      const [docRes, medRes, agRes] = await Promise.all([
+        doctorsAPI.getAll({ search: search.trim() }),
+        medicalsAPI.getAll({ search: search.trim() }),
+        agenciesAPI.getAll({ search: search.trim() })
+      ]);
+      const docs = (docRes.data?.doctors || docRes.data || []).map(d => ({ ...d, _type: 'doctor' }));
+      const meds = (medRes.data?.medicals || medRes.data || []).map(m => ({ ...m, _type: 'medical' }));
+      const ags = (agRes.data?.agencies || agRes.data || []).map(a => ({ ...a, _type: 'agency' }));
+      setCustomers([...docs, ...meds, ...ags]);
+    } catch { toast.error('Search failed'); }
+    finally { setLoading(false); }
+  }, [search]);
+
+  const fetchLedger = useCallback(async (cust, type) => {
+    setLedgerLoading(true);
+    try {
+      const params = {};
+      if (fromDate) params.from_date = fromDate;
+      if (toDate) params.to_date = toDate;
+      const res = await paymentsAPI.getLedger(type, cust.id, params);
+      setLedger(res.data);
+    } catch { toast.error('Failed to load ledger'); }
+    finally { setLedgerLoading(false); }
+  }, [fromDate, toDate]);
+
+  const selectCustomer = (cust) => {
+    setSelectedCustomer(cust);
+    setSelectedType(cust._type);
+    fetchLedger(cust, cust._type);
+  };
+
+  useEffect(() => {
+    if (selectedCustomer && selectedType) fetchLedger(selectedCustomer, selectedType);
+  }, [fromDate, toDate]);
+
+  const handleSaveOb = async () => {
+    try {
+      await paymentsAPI.updateOpeningBalance(selectedType, selectedCustomer.id, { opening_balance: parseFloat(obAmount) || 0 });
+      toast.success('Opening balance updated');
+      setShowObDialog(false);
+      fetchLedger(selectedCustomer, selectedType);
+    } catch { toast.error('Failed to update'); }
+  };
+
+  const viewDetail = async (entry) => {
+    if (entry.type === 'opening_balance') return;
+    setDetailLoading(true);
+    setShowDetailDialog(true);
+    try {
+      if (entry.type === 'invoice' || entry.type === 'order') {
+        const res = await api.get(`/orders?search=${encodeURIComponent(entry.order_number || entry.ref_id)}`);
+        const orders = res.data?.orders || res.data || [];
+        const order = orders.find(o => o.id === entry.ref_id || o.order_number === entry.order_number);
+        setDetailData(order ? { ...order, _view: 'order' } : null);
+      } else if (entry.type === 'payment') {
+        setDetailData({ _view: 'payment', date: entry.date, description: entry.description, amount: entry.credit, ref_id: entry.ref_id });
+      } else if (entry.type === 'sales_return') {
+        setDetailData({ _view: 'sales_return', date: entry.date, description: entry.description, amount: entry.credit, ref_id: entry.ref_id });
+      }
+    } catch { setDetailData(null); }
+    finally { setDetailLoading(false); }
+  };
+
+  const handleExport = () => {
+    if (!ledger) return;
+    const headers = ['Date', 'Description', 'Type', 'Debit', 'Credit', 'Balance'];
+    const rows = ledger.entries.map(e => [e.date, e.description, e.type, e.debit || '', e.credit || '', e.balance]);
+    const name = ledger.customer?.name || 'customer';
+    exportToCSV(headers, rows, `ledger_${name.replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+  const handlePrint = () => {
+    if (!ledger) return;
+    const headers = ['Date', 'Description', 'Type', 'Debit', 'Credit', 'Balance'];
+    const rows = ledger.entries.map(e => [e.date, e.description, e.type, e.debit > 0 ? `₹${e.debit.toFixed(2)}` : '', e.credit > 0 ? `₹${e.credit.toFixed(2)}` : '', `₹${e.balance.toFixed(2)}`]);
+    const sub = [ledger.customer?.name, ledger.customer?.phone, fromDate && toDate ? `${fromDate} to ${toDate}` : ''].filter(Boolean).join(' | ');
+    printTable(`Customer Ledger - ${ledger.customer?.name}`, headers, rows, sub);
+  };
+
+  // If no customer selected, show search
+  if (!selectedCustomer) {
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-2 max-w-lg">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customer name, phone, or code..."
+              className="pl-9" onKeyDown={e => e.key === 'Enter' && searchCustomers()} data-testid="cl-search" />
+          </div>
+          <Button onClick={searchCustomers} disabled={loading} data-testid="cl-search-btn">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
+          </Button>
+        </div>
+
+        {customers.length > 0 && (
+          <div className="border rounded-lg overflow-auto max-h-[60vh]">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  <th className="text-left p-3 font-medium">Name</th>
+                  <th className="text-left p-3 font-medium">Phone</th>
+                  <th className="text-left p-3 font-medium">Code</th>
+                  <th className="text-left p-3 font-medium">Type</th>
+                  <th className="text-center p-3 font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map(c => (
+                  <tr key={`${c._type}-${c.id}`} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectCustomer(c)}>
+                    <td className="p-3 font-medium">{c.name}</td>
+                    <td className="p-3 text-slate-500">{c.phone}</td>
+                    <td className="p-3 text-slate-400 text-xs">{c.customer_code || '-'}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{c._type}</Badge></td>
+                    <td className="p-3 text-center">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`cl-view-${c.id}`}>
+                        <Eye className="w-3.5 h-3.5 mr-1" /> View Ledger
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {customers.length === 0 && search && !loading && (
+          <p className="text-center py-8 text-slate-400">No customers found. Try a different search.</p>
+        )}
+      </div>
+    );
+  }
+
+  // Customer ledger view
+  return (
+    <div className="space-y-4">
+      {/* Header with back button */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedCustomer(null); setLedger(null); }} data-testid="cl-back-btn">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back
+        </Button>
+        <div className="flex-1">
+          <h3 className="font-semibold text-lg">{selectedCustomer.name}</h3>
+          <p className="text-xs text-slate-500">{selectedCustomer.phone} | {selectedCustomer.customer_code || ''} | <span className="capitalize">{selectedType}</span></p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { setObAmount(ledger?.customer?.opening_balance || 0); setShowObDialog(true); }} data-testid="cl-edit-ob-btn">
+          <Edit2 className="w-3.5 h-3.5 mr-1" /> Opening Balance
+        </Button>
+      </div>
+
+      {/* Summary cards */}
+      {ledger && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card><CardContent className="p-3 text-center">
+            <div className="text-xs text-slate-500">Opening Bal</div>
+            <div className="text-lg font-bold">{ledger.customer?.opening_balance > 0 ? `₹${ledger.customer.opening_balance.toFixed(2)}` : '₹0.00'}</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-3 text-center">
+            <div className="text-xs text-slate-500">Total Debit</div>
+            <div className="text-lg font-bold text-red-600">₹{ledger.total_debit?.toFixed(2)}</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-3 text-center">
+            <div className="text-xs text-slate-500">Total Credit</div>
+            <div className="text-lg font-bold text-green-600">₹{ledger.total_credit?.toFixed(2)}</div>
+          </CardContent></Card>
+          <Card><CardContent className="p-3 text-center">
+            <div className="text-xs text-slate-500">Closing Balance</div>
+            <div className={`text-lg font-bold ${ledger.closing_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>₹{ledger.closing_balance?.toFixed(2)}</div>
+          </CardContent></Card>
+        </div>
+      )}
+
+      {/* Filters + Export */}
+      <div className="flex flex-wrap gap-2 items-end">
+        <div>
+          <Label className="text-xs">From</Label>
+          <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-36 h-8 text-xs" />
+        </div>
+        <div>
+          <Label className="text-xs">To</Label>
+          <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-36 h-8 text-xs" />
+        </div>
+        {[['week','Week'],['month','Month'],['year','Year']].map(([k,l]) => (
+          <Button key={k} size="sm" variant="outline" className="h-8 text-xs px-2" onClick={() => {
+            const p = getDatePreset(k); setFromDate(p.from); setToDate(p.to);
+          }}>{l}</Button>
+        ))}
+        <Button size="sm" variant="ghost" className="h-8 text-xs px-2" onClick={() => { setFromDate(''); setToDate(''); }}>Clear</Button>
+        {ledger && (
+          <>
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={handleExport} data-testid="cl-export-csv">
+              <Download className="w-3.5 h-3.5" /> CSV
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={handlePrint} data-testid="cl-print">
+              <Printer className="w-3.5 h-3.5" /> Print
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Ledger Table */}
+      {ledgerLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+      ) : ledger ? (
+        <div className="border rounded-lg overflow-auto max-h-[55vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="text-left p-3 font-medium">Date</th>
+                <th className="text-left p-3 font-medium">Description</th>
+                <th className="text-center p-3 font-medium">Type</th>
+                <th className="text-right p-3 font-medium text-red-600">Debit</th>
+                <th className="text-right p-3 font-medium text-green-600">Credit</th>
+                <th className="text-right p-3 font-medium">Balance</th>
+                <th className="text-center p-3 font-medium w-14">View</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger.entries.map((entry, idx) => (
+                <tr key={idx} className={`border-t hover:bg-blue-50 ${entry.type !== 'opening_balance' ? 'cursor-pointer' : ''}`}
+                  onClick={() => entry.type !== 'opening_balance' && viewDetail(entry)} data-testid={`cl-row-${idx}`}>
+                  <td className="p-3 text-slate-500">{entry.date || '-'}</td>
+                  <td className="p-3">{entry.description}</td>
+                  <td className="p-3 text-center">
+                    <Badge variant="outline" className={`text-[10px] capitalize ${
+                      entry.type === 'invoice' || entry.type === 'order' ? 'border-red-200 text-red-700 bg-red-50' :
+                      entry.type === 'payment' ? 'border-green-200 text-green-700 bg-green-50' :
+                      entry.type === 'sales_return' ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                      'border-slate-200'
+                    }`}>
+                      {entry.type === 'invoice' ? 'Invoice' : entry.type === 'order' ? 'Order' : entry.type === 'payment' ? 'Payment' : entry.type === 'sales_return' ? 'Return' : 'OB'}
+                    </Badge>
+                  </td>
+                  <td className="p-3 text-right text-red-600">{entry.debit > 0 ? `₹${entry.debit.toFixed(2)}` : ''}</td>
+                  <td className="p-3 text-right text-green-600">{entry.credit > 0 ? `₹${entry.credit.toFixed(2)}` : ''}</td>
+                  <td className={`p-3 text-right font-medium ${entry.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>₹{entry.balance.toFixed(2)}</td>
+                  <td className="p-3 text-center">
+                    {entry.type !== 'opening_balance' && <Eye className="w-3.5 h-3.5 text-slate-400 mx-auto" />}
+                  </td>
+                </tr>
+              ))}
+              {ledger.entries.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-slate-400">No transactions</td></tr>}
+            </tbody>
+            {ledger.entries.length > 0 && (
+              <tfoot className="bg-slate-100 font-semibold border-t-2">
+                <tr>
+                  <td className="p-3" colSpan={3}>Totals</td>
+                  <td className="p-3 text-right text-red-600">₹{ledger.total_debit?.toFixed(2)}</td>
+                  <td className="p-3 text-right text-green-600">₹{ledger.total_credit?.toFixed(2)}</td>
+                  <td className={`p-3 text-right font-bold ${ledger.closing_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>₹{ledger.closing_balance?.toFixed(2)}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      ) : null}
+
+      {/* Opening Balance Dialog */}
+      <Dialog open={showObDialog} onOpenChange={setShowObDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Edit Opening Balance</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">Set manual opening balance for <strong>{selectedCustomer?.name}</strong></p>
+            <div>
+              <Label>Amount (positive = customer owes, negative = credit)</Label>
+              <Input type="number" value={obAmount} onChange={e => setObAmount(e.target.value)} data-testid="cl-ob-input" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveOb} data-testid="cl-ob-save">Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
+          <DialogHeader><DialogTitle>Transaction Detail</DialogTitle></DialogHeader>
+          {detailLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>
+          ) : detailData ? (
+            <div className="space-y-3 text-sm">
+              {detailData._view === 'order' ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs text-slate-500">Order Number</Label><p className="font-medium">{detailData.order_number}</p></div>
+                    <div><Label className="text-xs text-slate-500">Status</Label><p><Badge className="capitalize">{detailData.status}</Badge></p></div>
+                    <div><Label className="text-xs text-slate-500">Invoice Number</Label><p>{detailData.invoice_number || '-'}</p></div>
+                    <div><Label className="text-xs text-slate-500">Invoice Date</Label><p>{detailData.invoice_date || '-'}</p></div>
+                    <div><Label className="text-xs text-slate-500">Invoice Value</Label><p className="font-semibold text-red-600">₹{detailData.invoice_value || detailData.total_amount || 0}</p></div>
+                    <div><Label className="text-xs text-slate-500">Created</Label><p>{(detailData.created_at || '').split('T')[0]}</p></div>
+                  </div>
+                  {detailData.items && detailData.items.length > 0 && (
+                    <>
+                      <Separator />
+                      <Label className="text-xs text-slate-500">Items</Label>
+                      <div className="border rounded overflow-auto">
+                        <table className="w-full text-xs">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="text-left p-2">Item</th>
+                              <th className="text-right p-2">Qty</th>
+                              <th className="text-right p-2">Rate</th>
+                              <th className="text-right p-2">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {detailData.items.map((item, i) => (
+                              <tr key={i} className="border-t">
+                                <td className="p-2">{item.item_name || item.item_id}</td>
+                                <td className="p-2 text-right">{item.dispatch_quantity || item.quantity}</td>
+                                <td className="p-2 text-right">₹{item.rate || 0}</td>
+                                <td className="p-2 text-right font-medium">₹{((item.dispatch_quantity || item.quantity || 0) * (item.rate || 0)).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : detailData._view === 'payment' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs text-slate-500">Date</Label><p className="font-medium">{detailData.date}</p></div>
+                  <div><Label className="text-xs text-slate-500">Amount</Label><p className="font-semibold text-green-600">₹{detailData.amount?.toFixed(2)}</p></div>
+                  <div className="col-span-2"><Label className="text-xs text-slate-500">Details</Label><p>{detailData.description}</p></div>
+                </div>
+              ) : detailData._view === 'sales_return' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs text-slate-500">Date</Label><p className="font-medium">{detailData.date}</p></div>
+                  <div><Label className="text-xs text-slate-500">Credit Amount</Label><p className="font-semibold text-blue-600">₹{detailData.amount?.toFixed(2)}</p></div>
+                  <div className="col-span-2"><Label className="text-xs text-slate-500">Description</Label><p>{detailData.description}</p></div>
+                </div>
+              ) : <p className="text-slate-400">No details available</p>}
+            </div>
+          ) : <p className="text-center py-4 text-slate-400">No detail found</p>}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
 
 export const Payments = () => {
   const [activeTab, setActiveTab] = useState('outstanding');
@@ -318,9 +680,10 @@ export const Payments = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit flex-wrap">
         {[{ key: 'outstanding', label: 'Outstanding', icon: IndianRupee },
           { key: 'payments', label: 'Payment History', icon: CreditCard },
+          { key: 'customer-ledger', label: 'Customer Ledger', icon: BookOpen },
           { key: 'approvals', label: 'MR Approvals', icon: Users }].map(tab => (
           <Button key={tab.key} variant={activeTab === tab.key ? 'default' : 'ghost'} size="sm"
             onClick={() => setActiveTab(tab.key)} data-testid={`tab-${tab.key}`}>
@@ -509,6 +872,8 @@ export const Payments = () => {
           </table>
           {payments.length === 0 && <p className="text-center py-8 text-slate-400">No payments recorded</p>}
         </div>
+      ) : activeTab === 'customer-ledger' ? (
+        <CustomerLedgerTab />
       ) : activeTab === 'approvals' ? (
         <div className="space-y-3">
           {loadingRequests ? (

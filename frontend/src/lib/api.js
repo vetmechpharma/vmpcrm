@@ -330,6 +330,7 @@ export const paymentsAPI = {
   sendWhatsApp: (id) => api.post(`/payments/${id}/whatsapp`),
   sendReminder: (data) => api.post('/payments/send-reminder', data),
   getLedger: (customerType, customerId, params) => api.get(`/ledger/${customerType}/${customerId}`, { params }),
+  updateOpeningBalance: (customerType, customerId, data) => api.put(`/customer-opening-balance/${customerType}/${customerId}`, data),
   getOutstanding: (params) => api.get('/outstanding', { params }),
   exportLedgerPDF: (customerType, customerId, params) => api.get(`/ledger/export/pdf/${customerType}/${customerId}`, { params, responseType: 'blob' }),
   sendLedgerWhatsApp: (customerType, customerId, params) => api.post(`/ledger/${customerType}/${customerId}/whatsapp`, null, { params }),

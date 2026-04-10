@@ -1206,7 +1206,7 @@ async def get_all_customers(
     return result
 
 @router.put("/customers/{customer_id}/approve")
-async def approve_customer(customer_id: str, approval: CustomerApproval, current_user: dict = Depends(get_current_user)):
+async def approve_customer(customer_id: str, approval: CustomerApproval, request: Request, current_user: dict = Depends(get_current_user)):
     """Approve or reject customer registration"""
     customer = await db.portal_customers.find_one({'id': customer_id}, {'_id': 0})
     if not customer:
@@ -1236,8 +1236,11 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     config = await get_whatsapp_config()
     if config.get('api_url') and config.get('auth_token'):
         try:
+            base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+            if not base_url:
+                base_url = f"{request.url.scheme}://{request.url.netloc}"
+            login_url = f"{base_url}/customer/login"
             if approval.status == 'approved':
-                login_url = os.environ.get('APP_BASE_URL', '') + '/customer/login'
                 message = await render_wa_template('account_approved', customer_name=customer['name'], customer_code=customer['customer_code'], login_url=login_url)
                 if not message:
                     message = f"Great news, {customer['name']}!\n\nYour account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer['customer_code']}\n\nLogin here: {login_url}"
@@ -1262,7 +1265,6 @@ async def approve_customer(customer_id: str, approval: CustomerApproval, current
     if customer.get('email'):
         try:
             if approval.status == 'approved':
-                login_url = os.environ.get('APP_BASE_URL', '') + '/customer/login'
                 email_body = f"""<p>Dear <strong>{customer['name']}</strong>,</p>
 <div style="background:#ecfdf5;padding:16px;border-radius:6px;border-left:4px solid #10b981;margin:16px 0;">
 <p style="color:#065f46;font-weight:bold;margin:0;">Your account has been APPROVED!</p></div>

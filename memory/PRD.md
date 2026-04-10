@@ -11,6 +11,12 @@
 
 ## Recent Changes
 
+### Notification Message Fixes (Apr 10, 2026)
+- **Order confirmation WA message**: Removed item amount (Rs.xxx) — now shows only item name x qty
+- **Account approval WA message**: Login URL now properly included using APP_BASE_URL with request-origin fallback
+- **Account approval email**: Login URL also uses same base URL logic
+- Updated default template for `account_approved` to include `{login_url}` variable
+
 ### Filters, Print & Export (Apr 10, 2026)
 - **Item Ledger**: Date range filter (Week/Month/Year presets + custom) + CSV Export + Print
 - **User Ledger**: Date range filter + CSV Export + Print

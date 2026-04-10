@@ -29,7 +29,7 @@ async def send_whatsapp_order(customer_phone: str, items: list, order_number: st
                 rate = 0
             amount = (qty if isinstance(qty, int) else 1) * rate
             total += amount
-            items_lines.append(f"• {name} x{qty} = Rs.{amount:.2f}")
+            items_lines.append(f"• {name} x{qty}")
 
         items_text = "\n".join(items_lines)
         item_count = len(items_lines)

@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { formatDate } from '../lib/utils';
 import {
   SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab,
-  StockStatusTab, ItemLedgerTab, UserLedgerTab
+  StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab
 } from './StockManagement';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -564,7 +564,7 @@ export const Items = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-        <TabsList className="flex-shrink-0 w-full grid grid-cols-4 lg:grid-cols-8 mb-4">
+        <TabsList className="flex-shrink-0 w-full grid grid-cols-5 lg:grid-cols-9 mb-4">
           <TabsTrigger value="products" data-testid="tab-products">
             <Package className="w-4 h-4 mr-1 hidden sm:inline" /> Products
           </TabsTrigger>
@@ -577,6 +577,9 @@ export const Items = () => {
           </TabsTrigger>
           <TabsTrigger value="sales-return" data-testid="tab-sales-return">
             <ArrowUpCircle className="w-4 h-4 mr-1 hidden sm:inline" /> Sales Return
+          </TabsTrigger>
+          <TabsTrigger value="stock-issue" data-testid="tab-stock-issue">
+            Stock Issue
           </TabsTrigger>
           <TabsTrigger value="item-ledger" data-testid="tab-item-ledger">
             <BookOpen className="w-4 h-4 mr-1 hidden sm:inline" /> Item Ledger
@@ -1275,6 +1278,10 @@ export const Items = () => {
 
         <TabsContent value="sales-return" className="flex-1 overflow-auto mt-0">
           <Card><CardContent className="p-4"><SalesReturnTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="stock-issue" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><StockIssueTab /></CardContent></Card>
         </TabsContent>
 
         <TabsContent value="item-ledger" className="flex-1 overflow-auto mt-0">

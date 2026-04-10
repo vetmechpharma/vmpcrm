@@ -122,6 +122,73 @@ async def set_opening_balance_bulk(data: dict, user=Depends(get_current_user)):
     return {"message": f"Opening balance set for {updated} items"}
 
 
+@router.delete("/stock/opening-balance/{item_id}")
+async def delete_opening_balance(item_id: str, user=Depends(get_current_user)):
+    """Delete opening balance for an item (admin only)"""
+    result = await db.opening_balances.delete_one({'item_id': item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Opening balance not found")
+    return {"message": "Opening balance deleted"}
+
+
+# ============== STOCK ISSUE (Damage/Breakage/Expiry) ==============
+
+@router.post("/stock/issue")
+async def create_stock_issue(data: dict, user=Depends(get_current_user)):
+    """Record stock reduction for Damage/Breakage/Quality Issue/Expiry"""
+    item_id = data.get('item_id', '').strip()
+    quantity = data.get('quantity', 0)
+    reason = data.get('reason', '').strip()
+    issue_date = data.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
+    notes = data.get('notes', '').strip()
+    
+    if not item_id:
+        raise HTTPException(status_code=400, detail="Item is required")
+    if not reason:
+        raise HTTPException(status_code=400, detail="Reason is required")
+    try:
+        quantity = float(quantity)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid quantity")
+    if quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be positive")
+    
+    txn = {
+        'id': str(uuid.uuid4()),
+        'type': 'stock_issue',
+        'item_id': item_id,
+        'quantity': quantity,
+        'reason': reason,
+        'date': issue_date,
+        'notes': notes,
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'created_by': user.get('email', '')
+    }
+    await db.stock_transactions.insert_one(txn)
+    txn.pop('_id', None)
+    return {"message": f"Stock issue recorded: {quantity} pcs - {reason}", "id": txn['id']}
+
+
+@router.get("/stock/issues")
+async def get_stock_issues(user=Depends(get_current_user)):
+    """Get all stock issue records"""
+    issues = await db.stock_transactions.find(
+        {'type': 'stock_issue'}, {'_id': 0}
+    ).sort('date', -1).to_list(5000)
+    
+    # Enrich with item names
+    item_ids = list(set(i['item_id'] for i in issues))
+    items = await db.items.find({'id': {'$in': item_ids}}, {'_id': 0, 'id': 1, 'item_name': 1, 'item_code': 1}).to_list(5000)
+    item_map = {i['id']: i for i in items}
+    
+    for issue in issues:
+        item = item_map.get(issue['item_id'], {})
+        issue['item_name'] = item.get('item_name', '')
+        issue['item_code'] = item.get('item_code', '')
+    
+    return issues
+
+
 # ============== PURCHASE ENTRY ==============
 
 @router.get("/stock/purchases")
@@ -351,6 +418,7 @@ async def _calculate_stock(item_id: str = None):
     purchase_map = {}
     purchase_return_map = {}
     sales_return_map = {}
+    stock_issue_map = {}
     purchase_rate_map = {}
     
     for txn in transactions:
@@ -366,6 +434,8 @@ async def _calculate_stock(item_id: str = None):
             purchase_return_map[iid] = purchase_return_map.get(iid, 0) + qty
         elif txn['type'] == 'sales_return':
             sales_return_map[iid] = sales_return_map.get(iid, 0) + qty
+        elif txn['type'] == 'stock_issue':
+            stock_issue_map[iid] = stock_issue_map.get(iid, 0) + qty
     
     # Get dispatched order quantities (sales)
     dispatch_pipeline = [
@@ -396,8 +466,9 @@ async def _calculate_stock(item_id: str = None):
         purchase_returned = purchase_return_map.get(iid, 0)
         sales_returned = sales_return_map.get(iid, 0)
         sold = sold_map.get(iid, 0)
+        stock_issued = stock_issue_map.get(iid, 0)
         
-        closing = opening + purchased + sales_returned - sold - purchase_returned
+        closing = opening + purchased + sales_returned - sold - purchase_returned - stock_issued
         
         results.append({
             'item_id': iid,
@@ -410,6 +481,7 @@ async def _calculate_stock(item_id: str = None):
             'purchase_returned': purchase_returned,
             'sold': sold,
             'sales_returned': sales_returned,
+            'stock_issued': stock_issued,
             'closing_balance': closing,
             'last_purchase_rate': purchase_rate_map.get(iid, 0)
         })
@@ -488,6 +560,16 @@ async def get_item_ledger(item_id: str, user=Depends(get_current_user)):
                 'debit': 0,
                 'rate': txn.get('rate', 0),
                 'reference': txn.get('order_id', '')
+            })
+        elif txn['type'] == 'stock_issue':
+            ledger.append({
+                'date': txn.get('date', ''),
+                'type': 'stock_issue',
+                'description': f"Stock Issue - {txn.get('reason', 'N/A')} | {txn.get('notes', '')}".rstrip(' | '),
+                'credit': 0,
+                'debit': txn.get('quantity', 0),
+                'rate': 0,
+                'reference': txn.get('id', '')
             })
     
     for order in orders:

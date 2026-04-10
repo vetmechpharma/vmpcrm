@@ -192,11 +192,12 @@ const OpeningBalanceTab = () => {
               <th className="text-left p-3 font-medium">Code</th>
               <th className="text-center p-3 font-medium w-40">Date</th>
               <th className="text-right p-3 font-medium w-32">Opening Qty</th>
+              <th className="text-center p-3 font-medium w-16">Action</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(item => (
-              <tr key={item.id} className="border-t hover:bg-slate-50">
+              <tr key={item.id} className={`border-t hover:bg-slate-50 ${balances[item.id] > 0 ? 'bg-green-50/30' : ''}`}>
                 <td className="p-3">{item.item_name}</td>
                 <td className="p-3 text-slate-500">{item.item_code}</td>
                 <td className="p-3 text-center">
@@ -216,6 +217,24 @@ const OpeningBalanceTab = () => {
                     className="w-24 text-right ml-auto"
                     placeholder="0"
                   />
+                </td>
+                <td className="p-3 text-center">
+                  {balances[item.id] > 0 && (
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                      onClick={async () => {
+                        if (!confirm(`Delete opening balance for ${item.item_name}?`)) return;
+                        try {
+                          await stockAPI.deleteOpeningBalance(item.id);
+                          const newBal = {...balances}; delete newBal[item.id];
+                          const newDates = {...itemDates}; delete newDates[item.id];
+                          setBalances(newBal); setItemDates(newDates);
+                          toast.success('Opening balance deleted');
+                        } catch { toast.error('Delete failed'); }
+                      }}
+                      data-testid={`delete-ob-${item.id}`}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -714,6 +733,151 @@ const SalesReturnTab = () => {
   );
 };
 
+// ============== STOCK ISSUE (Damage/Breakage/Expiry) ==============
+const StockIssueTab = () => {
+  const [allItems, setAllItems] = useState([]);
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    item_id: '', quantity: '', reason: '', date: new Date().toISOString().split('T')[0], notes: ''
+  });
+
+  const REASONS = ['Damage', 'Breakage', 'Quality Issue', 'Expiry', 'Other'];
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [itemRes, issueRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getStockIssues()]);
+        setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
+        setIssues(Array.isArray(issueRes.data) ? issueRes.data : []);
+      } catch { /* ignore */ }
+      finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    if (!form.item_id) return toast.error('Select an item');
+    if (!form.quantity || parseFloat(form.quantity) <= 0) return toast.error('Enter valid quantity');
+    if (!form.reason) return toast.error('Select a reason');
+    setSaving(true);
+    try {
+      const res = await stockAPI.createStockIssue(form);
+      toast.success(res.data.message || 'Stock issue recorded');
+      // Refresh issues list
+      const issueRes = await stockAPI.getStockIssues();
+      setIssues(Array.isArray(issueRes.data) ? issueRes.data : []);
+      setShowForm(false);
+      setForm({ item_id: '', quantity: '', reason: '', date: new Date().toISOString().split('T')[0], notes: '' });
+    } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
+    finally { setSaving(false); }
+  };
+
+  const selectedItemName = allItems.find(i => i.id === form.item_id)?.item_name || '';
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">Record stock reductions for damaged, broken, expired, or quality-issue items</p>
+        <Button size="sm" onClick={() => setShowForm(true)} data-testid="stock-issue-btn">
+          <AlertCircle className="w-4 h-4 mr-1" /> New Stock Issue
+        </Button>
+      </div>
+
+      {/* Issues History Table */}
+      <div className="border rounded-lg overflow-auto max-h-[50vh]">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 sticky top-0">
+            <tr>
+              <th className="text-left p-3 font-medium">Date</th>
+              <th className="text-left p-3 font-medium">Item</th>
+              <th className="text-center p-3 font-medium">Qty</th>
+              <th className="text-left p-3 font-medium">Reason</th>
+              <th className="text-left p-3 font-medium">Notes</th>
+              <th className="text-left p-3 font-medium">By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {issues.map((issue, idx) => (
+              <tr key={idx} className="border-t hover:bg-slate-50">
+                <td className="p-3 text-slate-500">{issue.date}</td>
+                <td className="p-3 font-medium">{issue.item_name || '-'}</td>
+                <td className="p-3 text-center font-semibold text-red-600">-{issue.quantity}</td>
+                <td className="p-3">
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                    issue.reason === 'Damage' ? 'bg-red-100 text-red-700' :
+                    issue.reason === 'Breakage' ? 'bg-orange-100 text-orange-700' :
+                    issue.reason === 'Quality Issue' ? 'bg-yellow-100 text-yellow-700' :
+                    issue.reason === 'Expiry' ? 'bg-purple-100 text-purple-700' :
+                    'bg-slate-100 text-slate-700'
+                  }`}>{issue.reason}</span>
+                </td>
+                <td className="p-3 text-slate-500 max-w-[200px] truncate">{issue.notes || '-'}</td>
+                <td className="p-3 text-slate-400 text-xs">{issue.created_by}</td>
+              </tr>
+            ))}
+            {issues.length === 0 && (
+              <tr><td colSpan={6} className="p-8 text-center text-slate-400">{loading ? 'Loading...' : 'No stock issues recorded yet'}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* New Stock Issue Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Record Stock Issue</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Item *</Label>
+              <Select value={form.item_id} onValueChange={v => setForm({...form, item_id: v})}>
+                <SelectTrigger data-testid="stock-issue-item"><SelectValue placeholder="Select item" /></SelectTrigger>
+                <SelectContent>{allItems.map(i => <SelectItem key={i.id} value={i.id}>{i.item_name} ({i.item_code})</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Reason *</Label>
+              <Select value={form.reason} onValueChange={v => setForm({...form, reason: v})}>
+                <SelectTrigger data-testid="stock-issue-reason"><SelectValue placeholder="Select reason" /></SelectTrigger>
+                <SelectContent>
+                  {REASONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Quantity *</Label>
+                <Input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} placeholder="e.g. 5" data-testid="stock-issue-qty" />
+              </div>
+              <div>
+                <Label>Date</Label>
+                <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+              </div>
+            </div>
+            <div>
+              <Label>Notes (why / details)</Label>
+              <Input value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="e.g. 5 bottles damaged during transport" data-testid="stock-issue-notes" />
+            </div>
+            {form.item_id && form.quantity && form.reason && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                <strong>{selectedItemName}</strong> — <strong>{form.quantity}</strong> pcs will be deducted from stock as <strong>{form.reason}</strong>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSave} disabled={saving} variant="destructive">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <AlertCircle className="w-4 h-4 mr-1" />}
+              Confirm Stock Issue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
 // ============== STOCK STATUS REPORT ==============
 const StockStatusTab = () => {
   const [stock, setStock] = useState([]);
@@ -770,6 +934,7 @@ const StockStatusTab = () => {
               <th className="text-right p-3 font-medium">Pur.Return</th>
               <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('sold')}>Sold <SortIcon field="sold" /></th>
               <th className="text-right p-3 font-medium">Sales Return</th>
+              <th className="text-right p-3 font-medium">Issued</th>
               <th className="text-right p-3 font-medium cursor-pointer" onClick={() => toggleSort('closing_balance')}>Closing <SortIcon field="closing_balance" /></th>
               <th className="text-right p-3 font-medium">Purchase Rate</th>
             </tr>
@@ -786,6 +951,7 @@ const StockStatusTab = () => {
                 <td className="p-3 text-right text-orange-500">{s.purchase_returned > 0 ? `-${s.purchase_returned}` : '0'}</td>
                 <td className="p-3 text-right text-red-500">{s.sold > 0 ? `-${s.sold}` : '0'}</td>
                 <td className="p-3 text-right text-blue-500">{s.sales_returned > 0 ? `+${s.sales_returned}` : '0'}</td>
+                <td className="p-3 text-right text-amber-600">{s.stock_issued > 0 ? `-${s.stock_issued}` : '0'}</td>
                 <td className={`p-3 text-right font-bold ${s.closing_balance <= 0 ? 'text-red-600' : 'text-green-700'}`}>
                   {s.closing_balance}
                 </td>
@@ -1000,5 +1166,5 @@ const StockManagement = () => {
   );
 };
 
-export { SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab, StockStatusTab, ItemLedgerTab, UserLedgerTab };
+export { SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab, StockStatusTab, ItemLedgerTab, UserLedgerTab, StockIssueTab };
 export default StockManagement;

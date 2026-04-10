@@ -412,6 +412,11 @@ export const stockAPI = {
   createPurchaseReturn: (data) => api.post('/stock/purchase-return', data),
   createSalesReturn: (data) => api.post('/stock/sales-return', data),
   getCustomerOrders: (params) => api.get('/stock/customer-orders', { params }),
+  // Stock Issues
+  createStockIssue: (data) => api.post('/stock/issue', data),
+  getStockIssues: () => api.get('/stock/issues'),
+  // Opening balance delete
+  deleteOpeningBalance: (itemId) => api.delete(`/stock/opening-balance/${itemId}`),
   
   // Stock Status & Reports
   getStockStatus: (params) => api.get('/stock/status', { params }),

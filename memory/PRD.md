@@ -11,6 +11,22 @@
 
 ## Recent Changes
 
+### Filters, Print & Export (Apr 10, 2026)
+- **Item Ledger**: Date range filter (Week/Month/Year presets + custom) + CSV Export + Print
+- **User Ledger**: Date range filter + CSV Export + Print
+- **Stock Issue**: Date range filter + CSV Export + Print
+- **Purchase**: Date range filter + CSV Export + Print
+- **Sales Return**: Date range filter + CSV Export + Print
+- **Stock Status**: Main Category / Sub Category dropdown filters + CSV Export + Print
+- **Item Report (NEW TAB)**: Weekly/Monthly/Yearly/Custom item movement report (Opening, Purchase, Pur.Return, Sales, Sal.Return, Issues, Closing) with totals row + CSV + Print
+- **Opening/Closing Report (NEW TAB)**: Opening stock, Closing stock, Difference per item for any date range + CSV + Print
+- All exports are client-side only (no server storage) - blob download in browser
+- Backend: `GET /api/stock/period-report?from_date=&to_date=` for date-range stock calculations
+
+### Bug Fix: Doctor Add (Apr 10, 2026)
+- Fixed: `reg_no` and `email` changed from required to optional in DoctorCreate schema
+- Fixed: `generate_customer_code()` crash on legacy `DOC-` prefixed codes
+
 ### Edit/Delete for Stock Transactions (Apr 10, 2026)
 - **Purchase Tab**: Edit/Delete buttons with edit dialog (already done prior)
 - **Sales Return Tab**: Added history table showing past sales returns, Edit/Delete buttons with edit dialog (qty, rate, GST%, date, customer info, notes, amount preview)

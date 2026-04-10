@@ -95,11 +95,12 @@ async def set_opening_balance(data: dict, user=Depends(get_current_user)):
 @router.post("/stock/opening-balance/bulk")
 async def set_opening_balance_bulk(data: dict, user=Depends(get_current_user)):
     items = data.get('items', [])
-    balance_date = data.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
+    fallback_date = data.get('date', datetime.now(timezone.utc).strftime('%Y-%m-%d'))
     updated = 0
     for item in items:
         item_id = item.get('item_id')
         quantity = item.get('quantity', 0)
+        item_date = item.get('date', fallback_date)
         if not item_id:
             continue
         try:
@@ -111,7 +112,7 @@ async def set_opening_balance_bulk(data: dict, user=Depends(get_current_user)):
             {'$set': {
                 'item_id': item_id,
                 'quantity': quantity,
-                'date': balance_date,
+                'date': item_date,
                 'updated_at': datetime.now(timezone.utc).isoformat(),
                 'updated_by': user.get('email', '')
             }},
@@ -450,7 +451,7 @@ async def get_item_ledger(item_id: str, user=Depends(get_current_user)):
             ledger.append({
                 'date': txn.get('date', ''),
                 'type': 'purchase_return',
-                'description': f"Purchase Return",
+                'description': "Purchase Return",
                 'credit': 0,
                 'debit': txn.get('quantity', 0),
                 'rate': txn.get('rate', 0),
@@ -478,10 +479,12 @@ async def get_item_ledger(item_id: str, user=Depends(get_current_user)):
                 order_date = order.get('updated_at', order.get('created_at', ''))
                 if isinstance(order_date, str) and 'T' in order_date:
                     order_date = order_date.split('T')[0]
+                cust_name = order.get('doctor_name', '') or order.get('customer_name', '')
+                order_num = order.get('order_number', '')
                 ledger.append({
                     'date': order_date,
                     'type': 'sale',
-                    'description': f"Sale - {order.get('customer_name', '')} ({order.get('order_number', '')})",
+                    'description': f"Sale - {cust_name} ({order_num})",
                     'credit': 0,
                     'debit': qty,
                     'rate': oi.get('rate', 0),
@@ -513,13 +516,19 @@ async def get_user_ledger(
     """Get item-wise ledger for a specific user/customer"""
     query = {'status': {'$in': ['shipped', 'delivered']}}
     if customer_phone:
-        query['customer_phone'] = {'$regex': customer_phone}
-    if customer_name:
-        query['customer_name'] = {'$regex': customer_name, '$options': 'i'}
+        query['$or'] = [
+            {'doctor_phone': {'$regex': customer_phone}},
+            {'customer_phone': {'$regex': customer_phone}}
+        ]
+    elif customer_name:
+        query['$or'] = [
+            {'doctor_name': {'$regex': customer_name, '$options': 'i'}},
+            {'customer_name': {'$regex': customer_name, '$options': 'i'}}
+        ]
     
     orders = await db.orders.find(query, {
-        '_id': 0, 'id': 1, 'order_number': 1, 'customer_name': 1, 
-        'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1, 'updated_at': 1
+        '_id': 0, 'id': 1, 'order_number': 1, 'doctor_name': 1, 'customer_name': 1, 
+        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1, 'updated_at': 1
     }).sort('created_at', -1).to_list(5000)
     
     # Aggregate by item
@@ -527,6 +536,8 @@ async def get_user_ledger(
     order_details = []
     
     for order in orders:
+        cust_name = order.get('doctor_name', '') or order.get('customer_name', '')
+        cust_phone = order.get('doctor_phone', '') or order.get('customer_phone', '')
         for oi in order.get('items', []):
             iid = oi.get('item_id', '')
             qty = oi.get('dispatch_quantity', oi.get('quantity', 0))
@@ -540,8 +551,8 @@ async def get_user_ledger(
             order_details.append({
                 'order_id': order.get('id'),
                 'order_number': order.get('order_number'),
-                'customer_name': order.get('customer_name'),
-                'customer_phone': order.get('customer_phone'),
+                'customer_name': cust_name,
+                'customer_phone': cust_phone,
                 'item_id': iid,
                 'item_name': oi.get('item_name', ''),
                 'quantity': qty,
@@ -553,6 +564,58 @@ async def get_user_ledger(
         'item_totals': item_totals,
         'orders': order_details
     }
+
+
+@router.get("/stock/customer-orders")
+async def get_customer_orders_for_return(
+    user=Depends(get_current_user),
+    phone: str = Query(None),
+    name: str = Query(None)
+):
+    """Get customer's previous orders for sales return flow"""
+    query = {'status': {'$in': ['shipped', 'delivered']}}
+    if phone:
+        query['$or'] = [
+            {'doctor_phone': {'$regex': phone}},
+            {'customer_phone': {'$regex': phone}}
+        ]
+    elif name:
+        query['$or'] = [
+            {'doctor_name': {'$regex': name, '$options': 'i'}},
+            {'customer_name': {'$regex': name, '$options': 'i'}}
+        ]
+    else:
+        return {'customers': [], 'orders': []}
+    
+    orders = await db.orders.find(query, {
+        '_id': 0, 'id': 1, 'order_number': 1, 'doctor_name': 1, 'customer_name': 1,
+        'doctor_phone': 1, 'customer_phone': 1, 'items': 1, 'status': 1, 'created_at': 1
+    }).sort('created_at', -1).to_list(5000)
+    
+    # Build order list with item details
+    result_orders = []
+    for order in orders:
+        cust_name = order.get('doctor_name', '') or order.get('customer_name', '')
+        cust_phone = order.get('doctor_phone', '') or order.get('customer_phone', '')
+        for oi in order.get('items', []):
+            qty = oi.get('dispatch_quantity', oi.get('quantity', 0))
+            try:
+                qty = float(qty)
+            except (ValueError, TypeError):
+                qty = 0
+            result_orders.append({
+                'order_id': order.get('id'),
+                'order_number': order.get('order_number'),
+                'customer_name': cust_name,
+                'customer_phone': cust_phone,
+                'item_id': oi.get('item_id', ''),
+                'item_name': oi.get('item_name', ''),
+                'quantity': qty,
+                'rate': oi.get('rate', 0),
+                'date': (order.get('created_at', '') or '').split('T')[0]
+            })
+    
+    return {'orders': result_orders}
 
 
 # ============== STOCK AVAILABILITY FOR ORDER PROCESSING ==============

@@ -154,6 +154,8 @@ export const Orders = () => {
     fetchItems();
     fetchCompanySettings();
     fetchAgencies();
+    // Fetch stock availability for showing purchase rate in Add Order
+    stockAPI.getAvailability().then(res => setStockAvailability(res.data || {})).catch(() => {});
   }, [statusFilter]);
 
   const fetchOrders = async () => {
@@ -1363,6 +1365,7 @@ export const Orders = () => {
                       const roleRate = getRoleRate(item);
                       const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
                       const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
+                      const purRate = stockAvailability[item.id]?.last_purchase_rate || 0;
                       return (
                         <div
                           key={item.id}
@@ -1375,6 +1378,7 @@ export const Orders = () => {
                             <p className="text-xs text-slate-500">
                               {item.item_code} | MRP: ₹{item.mrp || 0}
                               {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
+                              {purRate > 0 && <span className="text-purple-600 font-medium"> | PR: ₹{purRate}</span>}
                             </p>
                             {(offer || special) && (
                               <div className="flex flex-wrap gap-1 mt-1">
@@ -1410,10 +1414,13 @@ export const Orders = () => {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-slate-800">{item.item_name}</p>
                             <p className="text-sm text-slate-500">{item.item_code}</p>
-                            <div className="flex gap-3 mt-1 text-xs text-slate-600">
+                            <div className="flex gap-3 mt-1 text-xs text-slate-600 flex-wrap">
                               {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
                               {item.defaultRate > 0 && <span className="text-blue-600 font-medium">Default Rate: ₹{item.defaultRate}</span>}
+                              {stockAvailability[item.item_id]?.last_purchase_rate > 0 && (
+                                <span className="text-purple-600 font-medium">Purchase Rate: ₹{stockAvailability[item.item_id].last_purchase_rate}</span>
+                              )}
                             </div>
                             {(item.offer || item.special_offer) && (
                               <div className="flex flex-wrap gap-1 mt-1.5">

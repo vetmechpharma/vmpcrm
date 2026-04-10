@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 60 testing completed. All 15 features tested. Backend: 15/15 tests passed. Frontend: All features verified. Fixed bug where Purchase Rate was not showing in Add Order modal.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_60_features.py",
+    "/app/test_reports/pytest/pytest_iteration_60.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed: Orders.jsx now fetches stockAvailability on page load to show Purchase Rate in Add Order modal",
+    "Products tab correctly shows 'Stk: N' and 'PR: ₹N' badges for each item",
+    "Item Code input has w-full class for full width",
+    "Main Categories section is below image/code row with checkboxes for Large Animals, Poultry, Pets",
+    "Opening Balance tab has per-item Date column with individual date inputs",
+    "Sales Return dialog has customer search input with search button",
+    "User Ledger tab has search input for customer name/phone",
+    "Item Ledger shows sale entries with 'Sale - CustomerName (OrderNumber)' format",
+    "Backend API /api/stock/customer-orders returns proper structure with orders array",
+    "Backend API /api/stock/user-ledger returns item_totals dict and orders array",
+    "Backend API /api/stock/item-ledger/{item_id} returns ledger with customer name in sale descriptions"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_60_features.py",
+    "/app/frontend/src/pages/Orders.jsx"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% (all 15 features verified)"
+  },
+  "test_credentials": {
+    "admin": {"email": "info@vetmech.in", "password": "Kongu@@44884"}
+  },
+  "seed_data_creation": "Test items created and cleaned up during testing (prefixed with TEST_ITER60_)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 60 features all working. Items & Inventory page has 8 tabs with all stock management features. Orders page Add Order modal now shows Purchase Rate (PR) for items. Backend APIs for customer-orders, user-ledger, and item-ledger all return proper data structures.",
+  "features_tested": {
+    "1. Products tab - stock qty badge (Stk: N)": "PASS - Items list shows 'Stk: 32' badge",
+    "2. Products tab - purchase rate (PR: ₹N)": "PASS - Items list shows 'PR: ₹150' badge",
+    "3. Products tab - Item Code input full width": "PASS - Input has w-full class",
+    "4. Products tab - Main Categories below image/code row": "PASS - Checkboxes for Large Animals, Poultry, Pets shown below image",
+    "5. Products tab - Main Categories checkboxes reflect saved values": "PASS - Checkboxes show current item's main_categories on edit",
+    "6. Opening Balance tab - per-item date column": "PASS - Each item has its own date input (showing 01/15/2025)",
+    "7. Sales Return tab - customer search input": "PASS - Dialog has 'Search Customer (by name or phone)' input with search button",
+    "8. Sales Return tab - purchase history from searched customer": "PASS - API endpoint exists and returns order history",
+    "9. User Ledger tab - search by name or phone": "PASS - Has search input that accepts name or phone",
+    "10. User Ledger tab - item-wise total summary": "PASS - API returns item_totals dict",
+    "11. Item Ledger tab - sale entries show customer name + order number": "PASS - Shows 'Sales Return - Test Customer' format",
+    "12. Orders page - item search shows PR": "PASS - Shows 'PR: ₹150' in search results (after fix)",
+    "13. Orders page - selected items show Purchase Rate": "PASS - Shows 'Purchase Rate: ₹150' for selected items (after fix)",
+    "14. Backend API - GET /api/stock/customer-orders": "PASS - Returns {orders: [...]} with proper structure",
+    "15. Backend API - GET /api/stock/user-ledger": "PASS - Returns {item_totals: {...}, orders: [...]}"
+  },
+  "bug_fixed": {
+    "description": "Purchase Rate was not showing in Add Order modal because stockAvailability was not fetched on page load",
+    "file": "/app/frontend/src/pages/Orders.jsx",
+    "fix": "Added stockAPI.getAvailability() call in useEffect on page load"
+  }
+}

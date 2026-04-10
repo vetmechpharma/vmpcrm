@@ -123,6 +123,7 @@ const OpeningBalanceTab = () => {
   const [items, setItems] = useState([]);
   const [balances, setBalances] = useState({});
   const [balanceDate, setBalanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [itemDates, setItemDates] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -133,8 +134,13 @@ const OpeningBalanceTab = () => {
         const [itemsRes, balRes] = await Promise.all([itemsAPI.getAll(), stockAPI.getOpeningBalances()]);
         setItems(itemsRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
         const balMap = {};
-        balRes.data.forEach(b => { balMap[b.item_id] = b.quantity; if (b.date) setBalanceDate(b.date); });
+        const dateMap = {};
+        balRes.data.forEach(b => { 
+          balMap[b.item_id] = b.quantity; 
+          dateMap[b.item_id] = b.date || new Date().toISOString().split('T')[0];
+        });
         setBalances(balMap);
+        setItemDates(dateMap);
       } catch { toast.error('Failed to load data'); }
       finally { setLoading(false); }
     };
@@ -146,7 +152,7 @@ const OpeningBalanceTab = () => {
     try {
       const itemsToSave = Object.entries(balances)
         .filter(([_, qty]) => qty > 0)
-        .map(([item_id, quantity]) => ({ item_id, quantity }));
+        .map(([item_id, quantity]) => ({ item_id, quantity, date: itemDates[item_id] || balanceDate }));
       await stockAPI.setOpeningBalanceBulk({ items: itemsToSave, date: balanceDate });
       toast.success(`Opening balance saved for ${itemsToSave.length} items`);
     } catch { toast.error('Failed to save'); }
@@ -184,6 +190,7 @@ const OpeningBalanceTab = () => {
             <tr>
               <th className="text-left p-3 font-medium">Item</th>
               <th className="text-left p-3 font-medium">Code</th>
+              <th className="text-center p-3 font-medium w-40">Date</th>
               <th className="text-right p-3 font-medium w-32">Opening Qty</th>
             </tr>
           </thead>
@@ -192,6 +199,14 @@ const OpeningBalanceTab = () => {
               <tr key={item.id} className="border-t hover:bg-slate-50">
                 <td className="p-3">{item.item_name}</td>
                 <td className="p-3 text-slate-500">{item.item_code}</td>
+                <td className="p-3 text-center">
+                  <Input
+                    type="date"
+                    value={itemDates[item.id] || balanceDate}
+                    onChange={e => setItemDates({...itemDates, [item.id]: e.target.value})}
+                    className="w-36 text-center mx-auto"
+                  />
+                </td>
                 <td className="p-3 text-right">
                   <Input
                     type="number"
@@ -454,6 +469,9 @@ const SalesReturnTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [returns, setReturns] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerOrders, setCustomerOrders] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [form, setForm] = useState({
     order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '',
     items: [{ item_id: '', quantity: '', rate: '' }]
@@ -462,16 +480,49 @@ const SalesReturnTab = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [itemRes, txnRes] = await Promise.all([
-          itemsAPI.getAll(),
-          stockAPI.getPurchases() // Returns all transactions including sales returns
-        ]);
+        const [itemRes] = await Promise.all([itemsAPI.getAll()]);
         setAllItems(itemRes.data.sort((a, b) => (a.item_name || '').localeCompare(b.item_name || '')));
-        // Filter for sales_return type from all transactions endpoint
       } catch { /* ignore */ }
     };
     load();
   }, []);
+
+  const searchCustomer = async () => {
+    if (!customerSearch.trim()) return;
+    setSearchLoading(true);
+    try {
+      const params = /^\d+$/.test(customerSearch.trim()) 
+        ? { phone: customerSearch.trim() } 
+        : { name: customerSearch.trim() };
+      const res = await stockAPI.getCustomerOrders(params);
+      setCustomerOrders(res.data.orders || []);
+      if (res.data.orders?.length > 0) {
+        const first = res.data.orders[0];
+        setForm(f => ({...f, customer_name: first.customer_name, customer_phone: first.customer_phone}));
+      } else {
+        toast.info('No delivered/shipped orders found for this customer');
+      }
+    } catch { toast.error('Search failed'); }
+    finally { setSearchLoading(false); }
+  };
+
+  const addOrderItemToReturn = (orderItem) => {
+    const existing = form.items.findIndex(i => i.item_id === orderItem.item_id && i.item_id);
+    if (existing >= 0) {
+      toast.info('Item already added');
+      return;
+    }
+    const newItem = { item_id: orderItem.item_id, quantity: '', rate: orderItem.rate || '' };
+    const items = form.items[0]?.item_id ? [...form.items, newItem] : [newItem];
+    setForm({...form, items, order_id: orderItem.order_id || form.order_id});
+  };
+
+  // Group orders by item for display
+  const itemPurchaseHistory = {};
+  customerOrders.forEach(o => {
+    if (!itemPurchaseHistory[o.item_id]) itemPurchaseHistory[o.item_id] = { item_name: o.item_name, purchases: [] };
+    itemPurchaseHistory[o.item_id].purchases.push(o);
+  });
 
   const handleSave = async () => {
     const validItems = form.items.filter(i => i.item_id && i.quantity > 0);
@@ -481,6 +532,8 @@ const SalesReturnTab = () => {
       await stockAPI.createSalesReturn({...form, items: validItems});
       toast.success('Sales return recorded');
       setShowForm(false);
+      setCustomerOrders([]);
+      setCustomerSearch('');
       setForm({ order_id: '', customer_name: '', customer_phone: '', date: new Date().toISOString().split('T')[0], notes: '', items: [{ item_id: '', quantity: '', rate: '' }] });
     } catch (e) { toast.error(e.response?.data?.detail || 'Error'); }
     finally { setSaving(false); }
@@ -503,10 +556,54 @@ const SalesReturnTab = () => {
         <ArrowUpCircle className="w-4 h-4 mr-1" /> New Sales Return
       </Button>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <Dialog open={showForm} onOpenChange={v => { setShowForm(v); if (!v) { setCustomerOrders([]); setCustomerSearch(''); } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Sales Return</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {/* Customer Search */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+              <Label className="text-blue-800 font-medium">Search Customer (by name or phone)</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={customerSearch} 
+                  onChange={e => setCustomerSearch(e.target.value)} 
+                  placeholder="Enter customer name or phone..."
+                  onKeyDown={e => e.key === 'Enter' && searchCustomer()}
+                  className="flex-1"
+                  data-testid="sales-return-customer-search"
+                />
+                <Button size="sm" onClick={searchCustomer} disabled={searchLoading}>
+                  {searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+            </div>
+
+            {/* Customer Order History */}
+            {Object.keys(itemPurchaseHistory).length > 0 && (
+              <div className="border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                <div className="bg-slate-50 px-3 py-2 font-medium text-sm sticky top-0 border-b">
+                  Purchase History — Click to add for return
+                </div>
+                {Object.entries(itemPurchaseHistory).map(([itemId, data]) => (
+                  <div key={itemId} className="border-b last:border-0">
+                    <div className="px-3 py-2 bg-slate-50/50">
+                      <span className="font-medium text-sm">{data.item_name}</span>
+                      <span className="text-xs text-slate-500 ml-2">({data.purchases.length} purchase{data.purchases.length > 1 ? 's' : ''})</span>
+                    </div>
+                    {data.purchases.map((p, i) => (
+                      <div key={i} className="px-3 py-1.5 flex items-center justify-between hover:bg-green-50 cursor-pointer text-sm"
+                        onClick={() => addOrderItemToReturn(p)}>
+                        <span className="text-slate-600">
+                          {p.date} — Order #{p.order_number} — Qty: <strong>{p.quantity}</strong> @ ₹{p.rate}
+                        </span>
+                        <Plus className="w-4 h-4 text-green-600 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Customer Name</Label><Input value={form.customer_name} onChange={e => setForm({...form, customer_name: e.target.value})} /></div>
               <div><Label>Customer Phone</Label><Input value={form.customer_phone} onChange={e => setForm({...form, customer_phone: e.target.value})} /></div>
@@ -748,33 +845,52 @@ const UserLedgerTab = () => {
       </div>
 
       {data && (
-        <div className="border rounded-lg overflow-auto max-h-[60vh]">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 sticky top-0">
-              <tr>
-                <th className="text-left p-3 font-medium">Date</th>
-                <th className="text-left p-3 font-medium">Order</th>
-                <th className="text-left p-3 font-medium">Customer</th>
-                <th className="text-left p-3 font-medium">Item</th>
-                <th className="text-right p-3 font-medium">Qty</th>
-                <th className="text-right p-3 font-medium">Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.orders.map((o, idx) => (
-                <tr key={idx} className="border-t hover:bg-slate-50">
-                  <td className="p-3 text-slate-500">{(o.date || '').split('T')[0]}</td>
-                  <td className="p-3">{o.order_number || '-'}</td>
-                  <td className="p-3">{o.customer_name}</td>
-                  <td className="p-3">{o.item_name}</td>
-                  <td className="p-3 text-right font-medium">{o.quantity}</td>
-                  <td className="p-3 text-right">{o.rate || '-'}</td>
+        <>
+          {/* Item-wise summary */}
+          {data.item_totals && Object.keys(data.item_totals).length > 0 && (
+            <div className="border rounded-lg p-4 bg-blue-50">
+              <h3 className="font-medium text-sm text-blue-800 mb-2">Item-wise Total Purchased</h3>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(data.item_totals).map(([itemId, qty]) => {
+                  const itemName = data.orders.find(o => o.item_id === itemId)?.item_name || itemId;
+                  return (
+                    <span key={itemId} className="px-2 py-1 bg-white border rounded text-sm">
+                      {itemName}: <strong>{qty}</strong>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="border rounded-lg overflow-auto max-h-[60vh]">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  <th className="text-left p-3 font-medium">Date</th>
+                  <th className="text-left p-3 font-medium">Order</th>
+                  <th className="text-left p-3 font-medium">Customer</th>
+                  <th className="text-left p-3 font-medium">Item</th>
+                  <th className="text-right p-3 font-medium">Qty</th>
+                  <th className="text-right p-3 font-medium">Rate</th>
                 </tr>
-              ))}
-              {(!data.orders || data.orders.length === 0) && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No dispatched orders found</td></tr>}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.orders.map((o, idx) => (
+                  <tr key={idx} className="border-t hover:bg-slate-50">
+                    <td className="p-3 text-slate-500">{(o.date || '').split('T')[0]}</td>
+                    <td className="p-3">{o.order_number || '-'}</td>
+                    <td className="p-3">{o.customer_name}</td>
+                    <td className="p-3">{o.item_name}</td>
+                    <td className="p-3 text-right font-medium">{o.quantity}</td>
+                    <td className="p-3 text-right">{o.rate || '-'}</td>
+                  </tr>
+                ))}
+                {(!data.orders || data.orders.length === 0) && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No dispatched orders found</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

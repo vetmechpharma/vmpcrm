@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="15" time="5.766" timestamp="2026-04-10T10:41:06.433005+00:00" hostname="agent-env-59cb9634-ba81-4692-84ca-d8b91f996093"><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_01_stock_availability_returns_purchase_rate" time="0.664" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_02_customer_orders_endpoint_exists" time="0.499" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_03_customer_orders_with_name_param" time="0.460" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_04_customer_orders_empty_params" time="0.431" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_05_user_ledger_endpoint_with_phone" time="0.482" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_06_user_ledger_with_name" time="0.447" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_07_item_ledger_endpoint" time="0.531" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_08_opening_balance_bulk_accepts_per_item_date" time="0.664" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_09_stock_status_returns_purchase_rate" time="0.443" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_10_items_api_returns_main_categories" time="0.439" /><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_11_create_item_with_main_categories" time="0.127"><failure message="AssertionError: Login failed: {&quot;error&quot;:&quot;Rate limit exceeded: 10 per 1 minute&quot;}&#10;assert 429 == 200&#10; +  where 429 = &lt;Response [429]&gt;.status_code">backend/tests/test_iteration_60_features.py:280: in test_11_create_item_with_main_categories
+    headers=self.get_headers()
+            ^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:49: in get_headers
+    return {"Authorization": f"Bearer {self.get_auth_token()}"}
+                                       ^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:42: in get_auth_token
+    assert response.status_code == 200, f"Login failed: {response.text}"
+E   AssertionError: Login failed: {"error":"Rate limit exceeded: 10 per 1 minute"}
+E   assert 429 == 200
+E    +  where 429 = &lt;Response [429]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_12_update_item_preserves_main_categories" time="0.108"><failure message="AssertionError: Login failed: {&quot;error&quot;:&quot;Rate limit exceeded: 10 per 1 minute&quot;}&#10;assert 429 == 200&#10; +  where 429 = &lt;Response [429]&gt;.status_code">backend/tests/test_iteration_60_features.py:308: in test_12_update_item_preserves_main_categories
+    headers=self.get_headers()
+            ^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:49: in get_headers
+    return {"Authorization": f"Bearer {self.get_auth_token()}"}
+                                       ^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:42: in get_auth_token
+    assert response.status_code == 200, f"Login failed: {response.text}"
+E   AssertionError: Login failed: {"error":"Rate limit exceeded: 10 per 1 minute"}
+E   assert 429 == 200
+E    +  where 429 = &lt;Response [429]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_13_user_ledger_searches_both_doctor_and_customer_fields" time="0.122"><failure message="AssertionError: Login failed: {&quot;error&quot;:&quot;Rate limit exceeded: 10 per 1 minute&quot;}&#10;assert 429 == 200&#10; +  where 429 = &lt;Response [429]&gt;.status_code">backend/tests/test_iteration_60_features.py:342: in test_13_user_ledger_searches_both_doctor_and_customer_fields
+    headers=self.get_headers()
+            ^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:49: in get_headers
+    return {"Authorization": f"Bearer {self.get_auth_token()}"}
+                                       ^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:42: in get_auth_token
+    assert response.status_code == 200, f"Login failed: {response.text}"
+E   AssertionError: Login failed: {"error":"Rate limit exceeded: 10 per 1 minute"}
+E   assert 429 == 200
+E    +  where 429 = &lt;Response [429]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration_60_features.TestIteration60Features" name="test_14_customer_orders_searches_both_fields" time="0.111"><failure message="AssertionError: Login failed: {&quot;error&quot;:&quot;Rate limit exceeded: 10 per 1 minute&quot;}&#10;assert 429 == 200&#10; +  where 429 = &lt;Response [429]&gt;.status_code">backend/tests/test_iteration_60_features.py:355: in test_14_customer_orders_searches_both_fields
+    headers=self.get_headers()
+            ^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:49: in get_headers
+    return {"Authorization": f"Bearer {self.get_auth_token()}"}
+                                       ^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:42: in get_auth_token
+    assert response.status_code == 200, f"Login failed: {response.text}"
+E   AssertionError: Login failed: {"error":"Rate limit exceeded: 10 per 1 minute"}
+E   assert 429 == 200
+E    +  where 429 = &lt;Response [429]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_iteration_60_features.TestSalesReturnCustomerSearch" name="test_sales_return_endpoint_exists" time="0.100"><failure message="assert 429 == 200&#10; +  where 429 = &lt;Response [429]&gt;.status_code">backend/tests/test_iteration_60_features.py:397: in test_sales_return_endpoint_exists
+    headers=self.get_headers()
+            ^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:385: in get_headers
+    return {"Authorization": f"Bearer {self.get_auth_token()}"}
+                                       ^^^^^^^^^^^^^^^^^^^^^
+backend/tests/test_iteration_60_features.py:379: in get_auth_token
+    assert response.status_code == 200
+E   assert 429 == 200
+E    +  where 429 = &lt;Response [429]&gt;.status_code</failure></testcase></testsuite></testsuites>

@@ -668,16 +668,23 @@ export const Items = () => {
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right space-y-1">
                         <p className="font-semibold text-slate-900">MRP: ₹{item.mrp}</p>
                         {stockAvailability[item.id] !== undefined && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            stockAvailability[item.id]?.closing_balance > 0 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-amber-100 text-amber-700'
-                          }`} data-testid={`stock-qty-${item.id}`}>
-                            Stk: {stockAvailability[item.id]?.closing_balance ?? 0}
-                          </span>
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                              stockAvailability[item.id]?.closing_balance > 0 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-amber-100 text-amber-700'
+                            }`} data-testid={`stock-qty-${item.id}`}>
+                              Stk: {stockAvailability[item.id]?.closing_balance ?? 0}
+                            </span>
+                            {stockAvailability[item.id]?.last_purchase_rate > 0 && (
+                              <span className="text-[10px] text-slate-500">
+                                PR: ₹{stockAvailability[item.id].last_purchase_rate}
+                              </span>
+                            )}
+                          </div>
                         )}
                         {item.out_of_stock && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">Out of Stock</span>}
                         {item.is_hidden && <span className="text-xs px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded font-medium">Hidden</span>}
@@ -798,12 +805,14 @@ export const Items = () => {
                         placeholder="Auto-generated if empty (e.g., ITM-0001)"
                         disabled={!isFormMode}
                         data-testid="item-code-input"
+                        className="w-full"
                       />
                     </div>
                   </div>
+                </div>
                   
-                  {/* Main Categories & Subcategories for Showcase */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {/* Main Categories & Subcategories for Showcase */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Main Categories</Label>
                       {isFormMode ? (
@@ -900,7 +909,6 @@ export const Items = () => {
                       )}
                     </div>
                   </div>
-                </div>
 
                 <Separator />
 

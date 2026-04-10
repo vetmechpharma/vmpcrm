@@ -11,6 +11,13 @@
 
 ## Recent Changes
 
+### Edit/Delete for Stock Transactions (Apr 10, 2026)
+- **Purchase Tab**: Edit/Delete buttons with edit dialog (already done prior)
+- **Sales Return Tab**: Added history table showing past sales returns, Edit/Delete buttons with edit dialog (qty, rate, GST%, date, customer info, notes, amount preview)
+- **Stock Issue Tab**: Added Edit/Delete buttons to existing history table, edit dialog (qty, reason, date, notes)
+- **Stock Issue Tab**: Now visible in main tab layout (was exported but not displayed)
+- Backend: `GET /api/stock/sales-returns`, `PUT /api/stock/transaction/{id}`, `DELETE /api/stock/transaction/{id}`
+
 ### Stock Module Enhancements (Apr 10, 2026)
 - **Item Ledger**: Now shows customer name + order ID in sale descriptions (was only order ID)
 - **Products List**: Shows stock qty (Stk: N) AND purchase rate (PR: ₹N) per item
@@ -49,6 +56,9 @@
 - VPS install: `npm install --legacy-peer-deps && npm run build`
 
 ## Key API Endpoints
+- `GET /api/stock/sales-returns` - List all sales return records
+- `PUT /api/stock/transaction/{id}` - Edit any stock transaction (purchase, sales return, stock issue)
+- `DELETE /api/stock/transaction/{id}` - Delete any stock transaction
 - `GET /api/stock/customer-orders?phone=xxx` - Customer order history for sales return
 - `GET /api/stock/user-ledger?customer_phone=xxx` - User ledger with item totals
 - `GET /api/stock/item-ledger/{item_id}` - Item ledger with customer names

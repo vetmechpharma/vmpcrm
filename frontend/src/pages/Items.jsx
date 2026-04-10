@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { itemsAPI } from '../lib/api';
+import { itemsAPI, stockAPI } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -7,34 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Checkbox } from '../components/ui/checkbox';
 import { Separator } from '../components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { toast } from 'sonner';
 import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Loader2,
-  Package,
-  X,
-  Save,
-  PlusCircle,
-  Upload,
-  Image as ImageIcon,
-  Download,
-  FileSpreadsheet,
-  AlertCircle,
-  CheckCircle,
-  FileText,
-  GripVertical,
-  ArrowUp,
-  ArrowDown,
-  Settings2,
-  EyeOff,
-  Eye,
-  Archive
+  Plus, Search, Edit2, Trash2, Loader2, Package, X, Save, PlusCircle,
+  Upload, Image as ImageIcon, Download, FileSpreadsheet, AlertCircle,
+  CheckCircle, FileText, GripVertical, ArrowUp, ArrowDown, Settings2,
+  EyeOff, Eye, Archive, BarChart3, Users, ArrowUpCircle, BookOpen, Truck
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { formatDate } from '../lib/utils';
+import {
+  SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab,
+  StockStatusTab, ItemLedgerTab, UserLedgerTab
+} from './StockManagement';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -49,6 +35,11 @@ export const Items = () => {
   const fileInputRef = useRef(null);
   const importFileRef = useRef(null);
   
+  // Active tab state
+  const [activeTab, setActiveTab] = useState('products');
+  // Stock availability for showing qty per item
+  const [stockAvailability, setStockAvailability] = useState({});
+
   // Import modal state
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -112,6 +103,11 @@ export const Items = () => {
   useEffect(() => {
     fetchItems();
   }, [search]);
+
+  // Fetch stock availability for item list display
+  useEffect(() => {
+    stockAPI.getAvailability().then(res => setStockAvailability(res.data || {})).catch(() => {});
+  }, []);
 
   const fetchItems = async () => {
     try {
@@ -538,13 +534,14 @@ export const Items = () => {
   const isFormMode = isEditing || isCreating;
 
   return (
-    <div className="h-[calc(100vh-8rem)] animate-fade-in" data-testid="items-page">
+    <div className="flex flex-col h-[calc(100vh-8rem)] animate-fade-in" data-testid="items-page">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Items / Products</h1>
-          <p className="text-slate-500 mt-1">Manage your product inventory</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Items & Inventory</h1>
+          <p className="text-slate-500 mt-1">Manage products, stock, purchases & suppliers</p>
         </div>
+        {activeTab === 'products' && (
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={handleDownloadImages} data-testid="download-images-btn">
             <Archive className="w-4 h-4 mr-2" />
@@ -563,9 +560,35 @@ export const Items = () => {
             Import Excel
           </Button>
         </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <TabsList className="flex-shrink-0 w-full grid grid-cols-4 lg:grid-cols-8 mb-4">
+          <TabsTrigger value="products" data-testid="tab-products">
+            <Package className="w-4 h-4 mr-1 hidden sm:inline" /> Products
+          </TabsTrigger>
+          <TabsTrigger value="stock-status" data-testid="tab-stock-status">
+            <BarChart3 className="w-4 h-4 mr-1 hidden sm:inline" /> Stock Status
+          </TabsTrigger>
+          <TabsTrigger value="opening" data-testid="tab-opening-balance">Opening Bal.</TabsTrigger>
+          <TabsTrigger value="purchase" data-testid="tab-purchases">
+            <Truck className="w-4 h-4 mr-1 hidden sm:inline" /> Purchases
+          </TabsTrigger>
+          <TabsTrigger value="sales-return" data-testid="tab-sales-return">
+            <ArrowUpCircle className="w-4 h-4 mr-1 hidden sm:inline" /> Sales Return
+          </TabsTrigger>
+          <TabsTrigger value="item-ledger" data-testid="tab-item-ledger">
+            <BookOpen className="w-4 h-4 mr-1 hidden sm:inline" /> Item Ledger
+          </TabsTrigger>
+          <TabsTrigger value="user-ledger" data-testid="tab-user-ledger">
+            <Users className="w-4 h-4 mr-1 hidden sm:inline" /> User Ledger
+          </TabsTrigger>
+          <TabsTrigger value="suppliers" data-testid="tab-suppliers">Suppliers</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="flex-1 min-h-0 mt-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         {/* Left Panel - Items List */}
         <Card className="lg:col-span-1 flex flex-col h-full">
           <CardHeader className="pb-3">
@@ -647,6 +670,15 @@ export const Items = () => {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-slate-900">MRP: ₹{item.mrp}</p>
+                        {stockAvailability[item.id] !== undefined && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                            stockAvailability[item.id]?.closing_balance > 0 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-amber-100 text-amber-700'
+                          }`} data-testid={`stock-qty-${item.id}`}>
+                            Stk: {stockAvailability[item.id]?.closing_balance ?? 0}
+                          </span>
+                        )}
                         {item.out_of_stock && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">Out of Stock</span>}
                         {item.is_hidden && <span className="text-xs px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded font-medium">Hidden</span>}
                       </div>
@@ -1219,6 +1251,36 @@ export const Items = () => {
           </CardContent>
         </Card>
       </div>
+        </TabsContent>
+
+        <TabsContent value="stock-status" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><StockStatusTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="opening" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><OpeningBalanceTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="purchase" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><PurchaseTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="sales-return" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><SalesReturnTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="item-ledger" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><ItemLedgerTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="user-ledger" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><UserLedgerTab /></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="suppliers" className="flex-1 overflow-auto mt-0">
+          <Card><CardContent className="p-4"><SuppliersTab /></CardContent></Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Import Modal */}
       <Dialog open={showImportModal} onOpenChange={closeImportModal}>

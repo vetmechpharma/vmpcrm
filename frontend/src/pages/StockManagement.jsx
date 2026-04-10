@@ -812,4 +812,5 @@ const StockManagement = () => {
   );
 };
 
+export { SuppliersTab, OpeningBalanceTab, PurchaseTab, SalesReturnTab, StockStatusTab, ItemLedgerTab, UserLedgerTab };
 export default StockManagement;

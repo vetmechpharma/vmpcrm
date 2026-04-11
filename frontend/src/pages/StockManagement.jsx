@@ -8,13 +8,55 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
-import { stockAPI, itemsAPI } from '../lib/api';
+import { stockAPI, itemsAPI, ordersAPI } from '../lib/api';
 import { exportToCSV, printTable, getDatePreset } from '../lib/exportUtils';
 import {
   Package, Plus, Trash2, Edit2, Search, ArrowUpCircle, ArrowDownCircle,
   FileText, Users, BarChart3, Loader2, X, ChevronDown, ChevronUp, AlertCircle,
   Download, Printer, Calendar, Filter
 } from 'lucide-react';
+
+// ============== SHARED: Customer Autocomplete ==============
+const CustomerAutocomplete = ({ value, onChange, onSelect, placeholder = 'Type customer name or phone...' }) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [timer, setTimer] = useState(null);
+
+  const handleChange = (val) => {
+    onChange(val);
+    if (timer) clearTimeout(timer);
+    if (val.length < 2) { setSuggestions([]); setShowDropdown(false); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await ordersAPI.searchCustomers(val);
+        setSuggestions(res.data || []);
+        setShowDropdown(true);
+      } catch { setSuggestions([]); }
+    }, 300);
+    setTimer(t);
+  };
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
+      <Input value={value} onChange={e => handleChange(e.target.value)} placeholder={placeholder}
+        className="pl-9 h-8 text-xs" onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+        data-testid="customer-autocomplete" />
+      {showDropdown && suggestions.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-auto">
+          {suggestions.map(s => (
+            <div key={`${s.type}-${s.id}`} className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm flex justify-between"
+              onMouseDown={() => { onSelect(s); setShowDropdown(false); onChange(s.name); }}>
+              <span className="font-medium">{s.name}</span>
+              <span className="text-xs text-slate-400">{s.phone} | {s.type_label || s.type}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ============== SHARED: Date Range Filter Bar ==============
 const DateFilterBar = ({ fromDate, toDate, onFromChange, onToChange, onPreset, children }) => (
@@ -834,14 +876,24 @@ const SalesReturnTab = () => {
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
               <Label className="text-blue-800 font-medium">Search Customer (by name or phone)</Label>
               <div className="flex gap-2">
-                <Input 
-                  value={customerSearch} 
-                  onChange={e => setCustomerSearch(e.target.value)} 
-                  placeholder="Enter customer name or phone..."
-                  onKeyDown={e => e.key === 'Enter' && searchCustomer()}
-                  className="flex-1"
-                  data-testid="sales-return-customer-search"
-                />
+                <div className="flex-1">
+                  <CustomerAutocomplete value={customerSearch} onChange={setCustomerSearch}
+                    onSelect={(cust) => {
+                      setCustomerSearch(cust.name);
+                      setForm(f => ({...f, customer_name: cust.name, customer_phone: cust.phone}));
+                      // Auto-fetch orders for this customer
+                      (async () => {
+                        setSearchLoading(true);
+                        try {
+                          const res = await stockAPI.getCustomerOrders({ phone: cust.phone });
+                          setCustomerOrders(res.data.orders || []);
+                          if (!res.data.orders?.length) toast.info('No orders found for this customer');
+                        } catch { toast.error('Search failed'); }
+                        finally { setSearchLoading(false); }
+                      })();
+                    }}
+                    placeholder="Enter customer name or phone..." />
+                </div>
                 <Button size="sm" onClick={searchCustomer} disabled={searchLoading}>
                   {searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </Button>
@@ -1460,16 +1512,22 @@ const UserLedgerTab = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const handleSearch = async () => {
-    if (!search.trim()) return toast.error('Enter customer name or phone');
+  const handleSearch = async (nameOrPhone) => {
+    const q = nameOrPhone || search;
+    if (!q.trim()) return toast.error('Enter customer name or phone');
     setLoading(true);
     try {
-      const isPhone = /^\d+$/.test(search.trim());
-      const params = isPhone ? { customer_phone: search.trim() } : { customer_name: search.trim() };
+      const isPhone = /^\d+$/.test(q.trim());
+      const params = isPhone ? { customer_phone: q.trim() } : { customer_name: q.trim() };
       const res = await stockAPI.getUserLedger(params);
       setData(res.data);
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
+  };
+
+  const handleSelectCustomer = (cust) => {
+    setSearch(cust.name);
+    handleSearch(cust.phone || cust.name);
   };
 
   const filteredOrders = useMemo(() => {
@@ -1497,12 +1555,10 @@ const UserLedgerTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 items-end">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Customer name or phone..." className="pl-9 h-8 text-xs"
-            onKeyDown={e => e.key === 'Enter' && handleSearch()} data-testid="user-ledger-search" />
+        <div className="flex-1 min-w-[200px] max-w-xs">
+          <CustomerAutocomplete value={search} onChange={setSearch} onSelect={handleSelectCustomer} placeholder="Customer name or phone..." />
         </div>
-        <Button size="sm" className="h-8" onClick={handleSearch} disabled={loading}>
+        <Button size="sm" className="h-8" onClick={() => handleSearch()} disabled={loading}>
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
         </Button>
         <DateFilterBar fromDate={fromDate} toDate={toDate} onFromChange={setFromDate} onToChange={setToDate} />

@@ -36,7 +36,8 @@ import {
   Minus,
   Search,
   Printer,
-  ArrowRightLeft
+  ArrowRightLeft,
+  MessageCircle
 } from 'lucide-react';
 import { formatDateTime } from '../lib/utils';
 
@@ -146,7 +147,9 @@ export const Orders = () => {
     invoice_number: '',
     invoice_date: '',
     invoice_value: '',
-    cancellation_reason: ''
+    cancellation_reason: '',
+    send_whatsapp: false,
+    send_email: false
   });
 
   useEffect(() => {
@@ -1906,6 +1909,22 @@ export const Orders = () => {
                 </div>
               </div>
             )}
+          </div>
+          {/* Notification Toggles */}
+          <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border">
+            <span className="text-sm font-medium text-slate-600">Notify Customer:</span>
+            <Button size="sm" variant={updateForm.send_whatsapp ? 'default' : 'outline'}
+              className={`h-8 text-xs gap-1 ${updateForm.send_whatsapp ? 'bg-green-600 hover:bg-green-700' : ''}`}
+              onClick={() => setUpdateForm(f => ({...f, send_whatsapp: !f.send_whatsapp}))}
+              data-testid="toggle-send-whatsapp">
+              <MessageCircle className="w-3.5 h-3.5" /> WhatsApp {updateForm.send_whatsapp ? 'ON' : 'OFF'}
+            </Button>
+            <Button size="sm" variant={updateForm.send_email ? 'default' : 'outline'}
+              className={`h-8 text-xs gap-1 ${updateForm.send_email ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+              onClick={() => setUpdateForm(f => ({...f, send_email: !f.send_email}))}
+              data-testid="toggle-send-email">
+              <Mail className="w-3.5 h-3.5" /> Email {updateForm.send_email ? 'ON' : 'OFF'}
+            </Button>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUpdateModal(false)}>Cancel</Button>

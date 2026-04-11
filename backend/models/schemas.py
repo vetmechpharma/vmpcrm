@@ -936,6 +936,9 @@ class OrderStatusUpdate(BaseModel):
     invoice_value: Optional[float] = None
     # Cancellation reason (only for cancelled status)
     cancellation_reason: Optional[str] = None
+    # Notification flags (manual control)
+    send_whatsapp: Optional[bool] = False
+    send_email: Optional[bool] = False
 
 # ============== PENDING ITEMS MODELS ==============
 

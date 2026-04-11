@@ -11,6 +11,13 @@
 
 ## Recent Changes
 
+### WhatsApp Phone Number Normalization Fix (Apr 11, 2026)
+- **Fixed**: WhatsApp API 400 error when sending payment receipts to certain customer codes (e.g., VMP-0001)
+- **Root cause**: Phone numbers with non-digit characters (+, spaces, dashes) were sliced before stripping, producing invalid numbers
+- **Fix**: All phone normalization now strips non-digits FIRST, then extracts last 10 digits + 91 prefix
+- **Files fixed**: `utils/whatsapp.py` (universal `send_wa_msg`), `routes/payments.py` (receipt, reminder, ledger WA sends)
+- Tarball rebuilt for VPS deployment
+
 ### Customer Individual Ledger (Apr 10, 2026)
 - **New "Customer Ledger" tab** in Payments page — search any customer (doctor/medical/agency)
 - Shows all transactions: Opening Balance, Orders/Invoices (debit), Payments (credit), Sales Returns (credit)

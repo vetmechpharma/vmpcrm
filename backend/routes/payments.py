@@ -170,7 +170,9 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
     if not cust_phone:
         raise HTTPException(status_code=400, detail="Customer phone not available")
     
-    wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
+    # Clean phone: strip non-digits first, then normalize
+    clean_phone = ''.join(filter(str.isdigit, cust_phone))
+    wa_mobile = f"91{clean_phone[-10:]}" if len(clean_phone) >= 10 else cust_phone
     
     try:
         response = await send_wa_msg(wa_mobile, message, config=config)
@@ -192,7 +194,8 @@ async def send_payment_receipt_whatsapp(payment_id: str, current_user: dict = De
                 await send_notification_email(cust_email, payment.get('customer_name', ''), f"Payment Receipt - Rs.{payment['amount']:,.2f}", email_body, cust_id, 'payment_receipt')
             return {"message": "Receipt sent via WhatsApp", "balance": balance}
         else:
-            logger.error(f"WhatsApp receipt failed: {response.status_code if response else 'no_response'}")
+            resp_body = response.text[:300] if response else ''
+            logger.error(f"WhatsApp receipt failed: status={response.status_code if response else 'no_response'}, body={resp_body}")
             raise HTTPException(status_code=500, detail=f"WhatsApp API error: {response.status_code if response else 'no_response'}")
     except HTTPException:
         raise
@@ -229,7 +232,8 @@ async def send_payment_reminder(data: dict, current_user: dict = Depends(get_cur
         if phone:
             message += f"\n+{phone}"
 
-    wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
+    wa_phone = ''.join(filter(str.isdigit, customer_phone))
+    wa_phone = f"91{wa_phone[-10:]}" if len(wa_phone) >= 10 else customer_phone
     try:
         response = await send_wa_msg(wa_phone, message, config=config)
         if response and response.status_code == 200:
@@ -383,7 +387,9 @@ async def send_ledger_whatsapp(
     if not (config.get('api_url') and config.get('auth_token')):
         raise HTTPException(status_code=400, detail="WhatsApp not configured")
     
-    wa_mobile = cust_phone if cust_phone.startswith('91') else f"91{cust_phone[-10:]}"
+    # Clean phone: strip non-digits first, then normalize
+    clean_phone = ''.join(filter(str.isdigit, cust_phone))
+    wa_mobile = f"91{clean_phone[-10:]}" if len(clean_phone) >= 10 else cust_phone
     
     try:
         if pdf_url:

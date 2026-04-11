@@ -199,7 +199,8 @@ async def send_wa_msg(receiver: str, message: str, file_url: str = None, file_ca
     if not config or not config.get('api_url'):
         return None
     clean_receiver = ''.join(filter(str.isdigit, str(receiver)))
-    if not clean_receiver.startswith('91'):
+    # Always normalize: strip to digits, take last 10 (actual number), prepend 91
+    if len(clean_receiver) >= 10:
         clean_receiver = f"91{clean_receiver[-10:]}"
 
     api_type = config.get('api_type', 'query_param')
@@ -280,7 +281,7 @@ async def send_whatsapp_otp(mobile: str, otp: str):
         return True
     
     clean_mobile = ''.join(filter(str.isdigit, mobile))
-    if not clean_mobile.startswith('91'):
+    if len(clean_mobile) >= 10:
         clean_mobile = f"91{clean_mobile[-10:]}"
     
     message = f"Your VMP CRM verification code is: {otp}. Valid for 5 minutes."

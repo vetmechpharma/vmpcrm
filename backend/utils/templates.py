@@ -97,8 +97,8 @@ DEFAULT_WA_TEMPLATES = {
         'key': 'password_reset',
         'name': 'Password Reset',
         'category': 'whatsapp',
-        'variables': ['customer_name', 'new_password', 'company_short_name'],
-        'template': 'Hello {customer_name},\n\nYour {company_short_name} portal login credentials:\n\nPassword: {new_password}\n\nPlease change your password after logging in.',
+        'variables': ['customer_name', 'login_phone', 'new_password', 'login_url', 'company_short_name'],
+        'template': 'Hello {customer_name},\n\nYour *{company_short_name}* portal login credentials:\n\n*Login:* {login_phone}\n*Password:* {new_password}\n\nLogin here: {login_url}\n\nPlease change your password after logging in.',
     },
     'test_message': {
         'key': 'test_message',

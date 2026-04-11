@@ -286,8 +286,8 @@ async def migrate():
              'variables': ['customer_name', 'reason', 'company_short_name'],
              'template': 'Hello {customer_name},\n\nUnfortunately, your {company_short_name} registration has been declined.\n\nReason: {reason}\n\nPlease contact support for assistance.'},
             {'key': 'password_reset', 'name': 'Password Reset', 'category': 'whatsapp',
-             'variables': ['customer_name', 'new_password', 'company_short_name'],
-             'template': 'Hello {customer_name},\n\nYour {company_short_name} portal login credentials:\n\nPassword: {new_password}\n\nPlease change your password after logging in.'},
+             'variables': ['customer_name', 'login_phone', 'new_password', 'login_url', 'company_short_name'],
+             'template': 'Hello {customer_name},\n\nYour *{company_short_name}* portal login credentials:\n\n*Login:* {login_phone}\n*Password:* {new_password}\n\nLogin here: {login_url}\n\nPlease change your password after logging in.'},
             {'key': 'test_message', 'name': 'Test Message', 'category': 'whatsapp',
              'variables': ['company_short_name'],
              'template': 'Test message from {company_short_name}. WhatsApp integration is working!'},
@@ -407,6 +407,10 @@ async def migrate():
             'account_approved': {
                 'variables': ['customer_name', 'customer_code', 'login_url', 'company_short_name'],
                 'template': 'Great news, {customer_name}!\n\nYour {company_short_name} account has been *APPROVED*!\n\nYou can now login to view products and place orders.\n\nCustomer Code: {customer_code}\n\nLogin here: {login_url}\n\nRegards,\n*{company_short_name}*',
+            },
+            'password_reset': {
+                'variables': ['customer_name', 'login_phone', 'new_password', 'login_url', 'company_short_name'],
+                'template': 'Hello {customer_name},\n\nYour *{company_short_name}* portal login credentials:\n\n*Login:* {login_phone}\n*Password:* {new_password}\n\nLogin here: {login_url}\n\nPlease change your password after logging in.',
             },
         }
         # Update email templates too

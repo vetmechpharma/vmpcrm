@@ -1425,20 +1425,28 @@ async def send_new_password_to_customer(customer_id: str, current_user: dict = D
     
     # Send new password via WhatsApp
     config = await get_whatsapp_config()
+    app_base_url = os.environ.get('APP_BASE_URL', '').rstrip('/')
+    login_url = f"{app_base_url}/customer/login" if app_base_url else 'your customer portal'
+    
     if config.get('api_url') and config.get('auth_token'):
         try:
-            rendered = await render_wa_template('password_reset', customer_name=customer.get('name', 'Customer'), new_password=new_password)
+            rendered = await render_wa_template('password_reset',
+                customer_name=customer.get('name', 'Customer'),
+                login_phone=clean_phone,
+                new_password=new_password,
+                login_url=login_url
+            )
             if rendered:
                 message = rendered
             else:
                 message = f"Hello {customer.get('name', 'Customer')}!\n\n" \
-                          f"Your portal login credentials:\n\n" \
-                          f"*Phone:* {clean_phone}\n" \
+                          f"Your *portal login credentials*:\n\n" \
+                          f"*Login:* {clean_phone}\n" \
                           f"*Password:* {new_password}\n\n" \
-                          f"Login at the customer portal to view products and place orders.\n\n" \
+                          f"Login here: {login_url}\n\n" \
                           f"Please change your password after first login for security."
             
-            wa_mobile = clean_phone if clean_phone.startswith('91') else f"91{clean_phone[-10:]}"
+            wa_mobile = f"91{clean_phone[-10:]}" if len(clean_phone) >= 10 else clean_phone
             
             response = await send_wa_msg(wa_mobile, message, config=config)
             if response and response.status_code == 200:

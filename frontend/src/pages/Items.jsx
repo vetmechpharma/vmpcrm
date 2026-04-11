@@ -211,17 +211,7 @@ export const Items = () => {
     } else {
       setIsEditing(false);
       if (selectedItem) {
-        setFormData({
-          item_name: selectedItem.item_name,
-          item_code: selectedItem.item_code || '',
-          category: selectedItem.category || '',
-          composition: selectedItem.composition || '',
-          mrp: selectedItem.mrp.toString(),
-          gst: selectedItem.gst.toString(),
-          custom_fields: selectedItem.custom_fields || [],
-          image_base64: null,
-        });
-        setImagePreview(selectedItem.image_url ? `${API_URL}${selectedItem.image_url}` : null);
+        handleSelectItem(selectedItem);
       }
     }
   };

@@ -11,6 +11,11 @@
 
 ## Recent Changes
 
+### Item Main Categories Bug Fix (Apr 11, 2026)
+- **Fixed**: Main Categories showing as "-" when viewing/editing items after creation
+- **Root cause**: Python operator precedence bug in `routes/items.py` line 214 — `A or B if C else D` parsed as `(A or B) if C else D`, causing the entire expression to ignore `main_categories` when legacy `main_category` field was absent
+- **Also fixed**: `handleCancel` in frontend `Items.jsx` was missing `main_categories`/`subcategories` fields when restoring form data
+
 ### WhatsApp Phone Number Normalization Fix (Apr 11, 2026)
 - **Fixed**: WhatsApp API 400 error when sending payment receipts to certain customer codes (e.g., VMP-0001)
 - **Root cause**: Phone numbers with non-digit characters (+, spaces, dashes) were sliced before stripping, producing invalid numbers

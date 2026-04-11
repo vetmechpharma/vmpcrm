@@ -211,7 +211,7 @@ async def get_items(
             id=item['id'],
             item_code=item['item_code'],
             item_name=item['item_name'],
-            main_categories=item.get('main_categories', []) or item.get('main_category', []) if isinstance(item.get('main_category'), list) else ([item.get('main_category')] if item.get('main_category') else []),
+            main_categories=item.get('main_categories') or (item.get('main_category') if isinstance(item.get('main_category'), list) else ([item.get('main_category')] if item.get('main_category') else [])),
             subcategories=item.get('subcategories', []),
             composition=item.get('composition'),
             mrp=item.get('mrp', 0),

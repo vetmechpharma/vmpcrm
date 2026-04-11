@@ -399,6 +399,8 @@ export const Payments = () => {
   const [paySearch, setPaySearch] = useState('');
   const [sendingWA, setSendingWA] = useState(null);
   const [sendingReminder, setSendingReminder] = useState(null);
+  const [selectedOutstanding, setSelectedOutstanding] = useState([]);
+  const [bulkSending, setBulkSending] = useState(false);
 
   // MR Payment Requests
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -567,11 +569,45 @@ export const Payments = () => {
         customer_email: customer.customer_email || '',
         outstanding: customer.outstanding
       });
-      toast.success(`Payment reminder sent to ${customer.customer_name}`);
+      toast.success(`Outstanding sent to ${customer.customer_name}`);
     } catch (e) {
       const msg = e.response?.data?.detail || 'Failed to send reminder';
       toast.error(msg);
     } finally { setSendingReminder(null); }
+  };
+
+  const bulkSendOutstanding = async () => {
+    const selected = filteredOutstanding.filter(o => selectedOutstanding.includes(o.customer_id) && o.customer_phone);
+    if (selected.length === 0) { toast.error('No customers with phone selected'); return; }
+    setBulkSending(true);
+    let sent = 0, failed = 0;
+    for (const o of selected) {
+      try {
+        await paymentsAPI.sendReminder({
+          customer_phone: o.customer_phone,
+          customer_name: o.customer_name,
+          customer_email: o.customer_email || '',
+          outstanding: o.outstanding
+        });
+        sent++;
+      } catch { failed++; }
+    }
+    setBulkSending(false);
+    setSelectedOutstanding([]);
+    if (sent > 0) toast.success(`Outstanding sent to ${sent} customer(s)`);
+    if (failed > 0) toast.error(`Failed for ${failed} customer(s)`);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOutstanding.length === filteredOutstanding.length) {
+      setSelectedOutstanding([]);
+    } else {
+      setSelectedOutstanding(filteredOutstanding.map(o => o.customer_id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedOutstanding(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const sendLedgerReminder = async () => {
@@ -756,22 +792,42 @@ export const Payments = () => {
             })}
           </div>
 
+          {/* Bulk action bar */}
+          {selectedOutstanding.length > 0 && (
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <span className="text-sm font-medium text-emerald-800">{selectedOutstanding.length} selected</span>
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={bulkSendOutstanding} disabled={bulkSending} data-testid="bulk-send-wa-btn">
+                {bulkSending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <MessageCircle className="w-3.5 h-3.5 mr-1" />}
+                Send Outstanding via WhatsApp
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setSelectedOutstanding([])} data-testid="clear-selection-btn">Clear</Button>
+            </div>
+          )}
+
           {/* Outstanding list */}
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b">
+                  <th className="p-3 w-10">
+                    <input type="checkbox" checked={filteredOutstanding.length > 0 && selectedOutstanding.length === filteredOutstanding.length}
+                      onChange={toggleSelectAll} className="rounded border-slate-300 w-4 h-4" data-testid="select-all-outstanding" />
+                  </th>
                   <th className="text-left p-3 font-medium">Customer</th>
                   <th className="text-center p-3 font-medium">Type</th>
                   <th className="text-right p-3 font-medium">Invoiced</th>
                   <th className="text-right p-3 font-medium">Paid</th>
                   <th className="text-right p-3 font-medium">Outstanding</th>
-                  <th className="text-center p-3 font-medium">Contact & Actions</th>
+                  <th className="text-center p-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOutstanding.map(o => (
-                  <tr key={o.customer_id} className="border-b hover:bg-slate-50" data-testid={`outstanding-${o.customer_id}`}>
+                  <tr key={o.customer_id} className={`border-b hover:bg-slate-50 ${selectedOutstanding.includes(o.customer_id) ? 'bg-emerald-50/50' : ''}`} data-testid={`outstanding-${o.customer_id}`}>
+                    <td className="p-3">
+                      <input type="checkbox" checked={selectedOutstanding.includes(o.customer_id)}
+                        onChange={() => toggleSelect(o.customer_id)} className="rounded border-slate-300 w-4 h-4" data-testid={`check-${o.customer_id}`} />
+                    </td>
                     <td className="p-3">
                       <p className="font-medium">{o.customer_name}</p>
                       <p className="text-xs text-slate-400">{o.customer_code}</p>
@@ -790,14 +846,14 @@ export const Payments = () => {
                       <div className="flex gap-1 justify-center flex-wrap">
                         {o.customer_phone && (
                           <>
-                            <a href={`tel:${o.customer_phone}`} title="Call customer">
+                            <a href={`tel:${o.customer_phone}`} title="Call">
                               <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50 h-8" data-testid={`call-${o.customer_id}`}>
                                 <Phone className="w-3.5 h-3.5" />
                               </Button>
                             </a>
                             <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50 h-8"
                               onClick={() => sendPaymentReminder(o)} disabled={sendingReminder === o.customer_id}
-                              title="Send WhatsApp Reminder" data-testid={`wa-${o.customer_id}`}>
+                              title="Send Outstanding via WhatsApp" data-testid={`wa-${o.customer_id}`}>
                               {sendingReminder === o.customer_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5" />}
                             </Button>
                           </>

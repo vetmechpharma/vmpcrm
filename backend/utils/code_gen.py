@@ -3,6 +3,7 @@ from deps import db
 
 
 async def generate_customer_code() -> str:
+    # Find highest VMP- code across all doctors
     last_doctor = await db.doctors.find_one(
         {'customer_code': {'$regex': '^VMP-'}}, {'customer_code': 1}, sort=[('customer_code', -1)])
     if last_doctor and 'customer_code' in last_doctor:
@@ -12,8 +13,15 @@ async def generate_customer_code() -> str:
         except ValueError:
             new_num = 1
     else:
-        new_num = 1
-    return f"VMP-{str(new_num).zfill(4)}"
+        # Also check legacy DOC- codes to get total doctor count as fallback
+        total = await db.doctors.count_documents({})
+        new_num = total + 1
+    # Ensure no duplicate by checking existence
+    code = f"VMP-{str(new_num).zfill(4)}"
+    while await db.doctors.find_one({'customer_code': code}, {'_id': 1}):
+        new_num += 1
+        code = f"VMP-{str(new_num).zfill(4)}"
+    return code
 
 
 async def generate_medical_code() -> str:
@@ -26,8 +34,13 @@ async def generate_medical_code() -> str:
         except ValueError:
             new_num = 1
     else:
-        new_num = 1
-    return f"MED-{str(new_num).zfill(4)}"
+        total = await db.medicals.count_documents({})
+        new_num = total + 1
+    code = f"MED-{str(new_num).zfill(4)}"
+    while await db.medicals.find_one({'customer_code': code}, {'_id': 1}):
+        new_num += 1
+        code = f"MED-{str(new_num).zfill(4)}"
+    return code
 
 
 async def generate_agency_code() -> str:
@@ -40,8 +53,13 @@ async def generate_agency_code() -> str:
         except ValueError:
             new_num = 1
     else:
-        new_num = 1
-    return f"AGY-{str(new_num).zfill(4)}"
+        total = await db.agencies.count_documents({})
+        new_num = total + 1
+    code = f"AGY-{str(new_num).zfill(4)}"
+    while await db.agencies.find_one({'customer_code': code}, {'_id': 1}):
+        new_num += 1
+        code = f"AGY-{str(new_num).zfill(4)}"
+    return code
 
 
 async def generate_item_code() -> str:

@@ -140,7 +140,7 @@ export const Doctors = () => {
       await doctorsAPI.create(formData);
       toast.success('Doctor added successfully');
       setShowAddModal(false); resetForm(); fetchDoctors();
-    } catch (error) { toast.error('Failed to add doctor'); }
+    } catch (error) { toast.error(error.response?.data?.detail || 'Failed to add doctor'); }
     finally { setFormLoading(false); }
   };
 
@@ -150,7 +150,7 @@ export const Doctors = () => {
       await doctorsAPI.update(selectedDoctor.id, formData);
       toast.success('Doctor updated successfully');
       setShowEditModal(false); resetForm(); fetchDoctors();
-    } catch (error) { toast.error('Failed to update doctor'); }
+    } catch (error) { toast.error(error.response?.data?.detail || 'Failed to update doctor'); }
     finally { setFormLoading(false); }
   };
 

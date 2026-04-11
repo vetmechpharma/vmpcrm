@@ -305,7 +305,7 @@ async def get_purchases(
     to_date: str = Query(None),
     supplier_id: str = Query(None)
 ):
-    query = {'type': 'purchase'}
+    query = {'type': {'$in': ['purchase', 'purchase_return']}}
     if supplier_id:
         query['supplier_id'] = supplier_id
     if from_date or to_date:

@@ -324,6 +324,108 @@ async def get_outstanding(
     results.sort(key=lambda x: x['outstanding'], reverse=True)
     return results
 
+
+@router.get("/all-customer-ledgers")
+async def get_all_customer_ledgers(
+    customer_type: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get ALL customers with balance, order stats, and ticket count"""
+    types_to_check = [customer_type] if customer_type else ['doctor', 'medical', 'agency']
+    collection_map = {'doctor': 'doctors', 'medical': 'medicals', 'agency': 'agencies'}
+
+    results = []
+    for ctype in types_to_check:
+        collection = collection_map[ctype]
+        query = {}
+        if search:
+            query['$or'] = [
+                {'name': {'$regex': search, '$options': 'i'}},
+                {'phone': {'$regex': search, '$options': 'i'}},
+                {'customer_code': {'$regex': search, '$options': 'i'}},
+            ]
+        customers = await db[collection].find(query, {'_id': 0, 'id': 1, 'name': 1, 'phone': 1, 'email': 1, 'opening_balance': 1, 'customer_code': 1, 'city': 1, 'district': 1}).to_list(5000)
+
+        cust_ids = [c['id'] for c in customers]
+        if not cust_ids:
+            continue
+
+        # Batch: total invoiced per customer
+        inv_pipeline = [
+            {'$match': {'doctor_id': {'$in': cust_ids}, 'invoice_value': {'$ne': None}}},
+            {'$group': {'_id': '$doctor_id', 'total': {'$sum': {'$toDouble': '$invoice_value'}}, 'count': {'$sum': 1}}}
+        ]
+        inv_map = {}
+        async for doc in db.orders.aggregate(inv_pipeline):
+            inv_map[doc['_id']] = {'total': doc['total'], 'count': doc['count']}
+
+        # Batch: order status counts per customer
+        order_status_pipeline = [
+            {'$match': {'doctor_id': {'$in': cust_ids}}},
+            {'$group': {'_id': {'cid': '$doctor_id', 'status': '$status'}, 'count': {'$sum': 1}}}
+        ]
+        order_status_map = {}
+        async for doc in db.orders.aggregate(order_status_pipeline):
+            cid = doc['_id']['cid']
+            status = doc['_id']['status']
+            if cid not in order_status_map:
+                order_status_map[cid] = {}
+            order_status_map[cid][status] = doc['count']
+
+        # Batch: total paid per customer
+        pay_pipeline = [
+            {'$match': {'customer_id': {'$in': cust_ids}}},
+            {'$group': {'_id': '$customer_id', 'total': {'$sum': '$amount'}}}
+        ]
+        pay_map = {}
+        async for doc in db.payments.aggregate(pay_pipeline):
+            pay_map[doc['_id']] = doc['total']
+
+        # Batch: support tickets per customer
+        ticket_pipeline = [
+            {'$match': {'customer_id': {'$in': cust_ids}}},
+            {'$group': {'_id': {'cid': '$customer_id', 'status': '$status'}, 'count': {'$sum': 1}}}
+        ]
+        ticket_map = {}
+        async for doc in db.support_tickets.aggregate(ticket_pipeline):
+            cid = doc['_id']['cid']
+            status = doc['_id']['status']
+            if cid not in ticket_map:
+                ticket_map[cid] = {}
+            ticket_map[cid][status] = doc['count']
+
+        for cust in customers:
+            cid = cust['id']
+            opening_bal = cust.get('opening_balance', 0) or 0
+            inv = inv_map.get(cid, {'total': 0, 'count': 0})
+            total_paid = pay_map.get(cid, 0)
+            outstanding = opening_bal + inv['total'] - total_paid
+            orders_info = order_status_map.get(cid, {})
+            tickets_info = ticket_map.get(cid, {})
+
+            results.append({
+                'customer_id': cid,
+                'customer_code': cust.get('customer_code', ''),
+                'customer_name': cust['name'],
+                'customer_phone': cust.get('phone', ''),
+                'customer_email': cust.get('email', ''),
+                'city': cust.get('city') or cust.get('district', ''),
+                'customer_type': ctype,
+                'opening_balance': opening_bal,
+                'total_invoiced': inv['total'],
+                'total_paid': total_paid,
+                'outstanding': outstanding,
+                'order_count': inv['count'],
+                'orders': orders_info,
+                'tickets': tickets_info,
+            })
+
+    results.sort(key=lambda x: x['customer_name'].lower())
+    return results
+
+
+
 @router.post("/ledger/{customer_type}/{customer_id}/whatsapp")
 async def send_ledger_whatsapp(
     customer_type: str,

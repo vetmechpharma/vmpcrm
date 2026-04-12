@@ -20,9 +20,10 @@ const PAYMENT_MODES = ['Cash', 'UPI', 'GPay', 'Netbanking', 'Cheque', 'Credit'];
 
 // ============== CUSTOMER LEDGER TAB ==============
 const CustomerLedgerTab = () => {
-  const [customers, setCustomers] = useState([]);
+  const [allCustomers, setAllCustomers] = useState([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('');
+  const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedType, setSelectedType] = useState('');
   const [ledger, setLedger] = useState(null);
@@ -35,21 +36,24 @@ const CustomerLedgerTab = () => {
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const searchCustomers = useCallback(async () => {
-    if (!search.trim()) return;
+  const fetchAllCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const [docRes, medRes, agRes] = await Promise.all([
-        doctorsAPI.getAll({ search: search.trim() }),
-        medicalsAPI.getAll({ search: search.trim() }),
-        agenciesAPI.getAll({ search: search.trim() })
-      ]);
-      const docs = (docRes.data?.doctors || docRes.data || []).map(d => ({ ...d, _type: 'doctor' }));
-      const meds = (medRes.data?.medicals || medRes.data || []).map(m => ({ ...m, _type: 'medical' }));
-      const ags = (agRes.data?.agencies || agRes.data || []).map(a => ({ ...a, _type: 'agency' }));
-      setCustomers([...docs, ...meds, ...ags]);
-    } catch { toast.error('Search failed'); }
+      const params = {};
+      if (typeFilter) params.customer_type = typeFilter;
+      if (search.trim()) params.search = search.trim();
+      const res = await paymentsAPI.getAllCustomerLedgers(params);
+      setAllCustomers(res.data);
+    } catch { toast.error('Failed to load customers'); }
     finally { setLoading(false); }
+  }, [typeFilter, search]);
+
+  useEffect(() => { fetchAllCustomers(); }, [typeFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    const t = setTimeout(() => { fetchAllCustomers(); }, 400);
+    return () => clearTimeout(t);
   }, [search]);
 
   const fetchLedger = useCallback(async (cust, type) => {
@@ -58,7 +62,7 @@ const CustomerLedgerTab = () => {
       const params = {};
       if (fromDate) params.from_date = fromDate;
       if (toDate) params.to_date = toDate;
-      const res = await paymentsAPI.getLedger(type, cust.id, params);
+      const res = await paymentsAPI.getLedger(type, cust.customer_id, params);
       setLedger(res.data);
     } catch { toast.error('Failed to load ledger'); }
     finally { setLedgerLoading(false); }
@@ -66,8 +70,8 @@ const CustomerLedgerTab = () => {
 
   const selectCustomer = (cust) => {
     setSelectedCustomer(cust);
-    setSelectedType(cust._type);
-    fetchLedger(cust, cust._type);
+    setSelectedType(cust.customer_type);
+    fetchLedger(cust, cust.customer_type);
   };
 
   useEffect(() => {
@@ -76,7 +80,7 @@ const CustomerLedgerTab = () => {
 
   const handleSaveOb = async () => {
     try {
-      await paymentsAPI.updateOpeningBalance(selectedType, selectedCustomer.id, { opening_balance: parseFloat(obAmount) || 0 });
+      await paymentsAPI.updateOpeningBalance(selectedType, selectedCustomer.customer_id, { opening_balance: parseFloat(obAmount) || 0 });
       toast.success('Opening balance updated');
       setShowObDialog(false);
       fetchLedger(selectedCustomer, selectedType);
@@ -117,54 +121,117 @@ const CustomerLedgerTab = () => {
     printTable(`Customer Ledger - ${ledger.customer?.name}`, headers, rows, sub);
   };
 
-  // If no customer selected, show search
+  const typeLabel = (t) => ({ doctor: 'Doctor', medical: 'Medical', agency: 'Agency' }[t] || t);
+  const typeBg = (t) => ({ doctor: 'bg-blue-100 text-blue-700', medical: 'bg-emerald-100 text-emerald-700', agency: 'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100');
+
+  const orderStatusColor = (s) => ({
+    placed: 'bg-amber-100 text-amber-700', confirmed: 'bg-blue-100 text-blue-700',
+    processing: 'bg-indigo-100 text-indigo-700', ready: 'bg-cyan-100 text-cyan-700',
+    dispatched: 'bg-teal-100 text-teal-700', delivered: 'bg-emerald-100 text-emerald-700',
+    cancelled: 'bg-red-100 text-red-700',
+  }[s] || 'bg-slate-100 text-slate-600');
+
+  // If no customer selected, show all customers list
   if (!selectedCustomer) {
     return (
       <div className="space-y-4">
-        <div className="flex gap-2 max-w-lg">
-          <div className="relative flex-1">
+        {/* Search + type filter */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customer name, phone, or code..."
-              className="pl-9" onKeyDown={e => e.key === 'Enter' && searchCustomers()} data-testid="cl-search" />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, or code..."
+              className="pl-9" data-testid="cl-search" />
           </div>
-          <Button onClick={searchCustomers} disabled={loading} data-testid="cl-search-btn">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
-          </Button>
+          <div className="flex gap-1 bg-slate-50 p-1 rounded-lg border">
+            {[['', 'All'], ['doctor', 'Doctor'], ['medical', 'Medical'], ['agency', 'Agency']].map(([v, l]) => (
+              <Button key={v} variant={typeFilter === v ? 'default' : 'ghost'} size="sm" className="text-xs"
+                onClick={() => setTypeFilter(v)}>{l}</Button>
+            ))}
+          </div>
         </div>
 
-        {customers.length > 0 && (
-          <div className="border rounded-lg overflow-auto max-h-[60vh]">
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+        ) : (
+          <div className="border rounded-lg overflow-auto max-h-[65vh]">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 sticky top-0">
+              <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
-                  <th className="text-left p-3 font-medium">Name</th>
-                  <th className="text-left p-3 font-medium">Phone</th>
-                  <th className="text-left p-3 font-medium">Code</th>
-                  <th className="text-left p-3 font-medium">Type</th>
+                  <th className="text-left p-3 font-medium">Customer</th>
+                  <th className="text-center p-3 font-medium">Type</th>
+                  <th className="text-right p-3 font-medium">Outstanding</th>
+                  <th className="text-center p-3 font-medium">Orders</th>
+                  <th className="text-center p-3 font-medium">Tickets</th>
                   <th className="text-center p-3 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {customers.map(c => (
-                  <tr key={`${c._type}-${c.id}`} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectCustomer(c)}>
-                    <td className="p-3 font-medium">{c.name}</td>
-                    <td className="p-3 text-slate-500">{c.phone}</td>
-                    <td className="p-3 text-slate-400 text-xs">{c.customer_code || '-'}</td>
-                    <td className="p-3"><Badge variant="outline" className="text-xs capitalize">{c._type}</Badge></td>
-                    <td className="p-3 text-center">
-                      <Button size="sm" variant="outline" className="h-7 text-xs" data-testid={`cl-view-${c.id}`}>
-                        <Eye className="w-3.5 h-3.5 mr-1" /> View Ledger
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {allCustomers.map(c => {
+                  const totalOrders = Object.values(c.orders || {}).reduce((s, v) => s + v, 0);
+                  const totalTickets = Object.values(c.tickets || {}).reduce((s, v) => s + v, 0);
+                  const openTickets = (c.tickets?.open || 0) + (c.tickets?.pending || 0);
+                  return (
+                    <tr key={`${c.customer_type}-${c.customer_id}`} className="border-t hover:bg-blue-50/50 cursor-pointer"
+                      onClick={() => selectCustomer(c)} data-testid={`cl-row-${c.customer_id}`}>
+                      <td className="p-3">
+                        <p className="font-medium text-slate-800">{c.customer_name}</p>
+                        <div className="flex gap-2 text-xs text-slate-400 mt-0.5">
+                          <span>{c.customer_code}</span>
+                          {c.customer_phone && <span>{c.customer_phone}</span>}
+                          {c.city && <span className="flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{c.city}</span>}
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`text-xs px-2 py-0.5 rounded ${typeBg(c.customer_type)}`}>{typeLabel(c.customer_type)}</span>
+                      </td>
+                      <td className="p-3 text-right">
+                        {c.outstanding !== 0 ? (
+                          <span className={`font-bold ${c.outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                            ₹{Math.abs(c.outstanding).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                            {c.outstanding < 0 && ' CR'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">₹0</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {totalOrders > 0 ? (
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {Object.entries(c.orders || {}).map(([status, count]) => (
+                              <span key={status} className={`text-[10px] px-1.5 py-0.5 rounded ${orderStatusColor(status)}`}>
+                                {status}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        ) : <span className="text-xs text-slate-400">-</span>}
+                      </td>
+                      <td className="p-3 text-center">
+                        {totalTickets > 0 ? (
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            {Object.entries(c.tickets || {}).map(([status, count]) => (
+                              <span key={status} className={`text-[10px] px-1.5 py-0.5 rounded ${status === 'open' || status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                {status}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        ) : <span className="text-xs text-slate-400">-</span>}
+                      </td>
+                      <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => selectCustomer(c)} data-testid={`cl-view-${c.customer_id}`}>
+                          <Eye className="w-3.5 h-3.5 mr-1" /> Ledger
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {allCustomers.length === 0 && !loading && (
+                  <tr><td colSpan={6} className="p-8 text-center text-slate-400">No customers found</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         )}
-        {customers.length === 0 && search && !loading && (
-          <p className="text-center py-8 text-slate-400">No customers found. Try a different search.</p>
-        )}
+        <p className="text-xs text-slate-400 text-right">{allCustomers.length} customer(s)</p>
       </div>
     );
   }
@@ -178,8 +245,8 @@ const CustomerLedgerTab = () => {
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         <div className="flex-1">
-          <h3 className="font-semibold text-lg">{selectedCustomer.name}</h3>
-          <p className="text-xs text-slate-500">{selectedCustomer.phone} | {selectedCustomer.customer_code || ''} | <span className="capitalize">{selectedType}</span></p>
+          <h3 className="font-semibold text-lg">{selectedCustomer.customer_name}</h3>
+          <p className="text-xs text-slate-500">{selectedCustomer.customer_phone} | {selectedCustomer.customer_code || ''} | <span className="capitalize">{selectedType}</span></p>
         </div>
         <Button size="sm" variant="outline" onClick={() => { setObAmount(ledger?.customer?.opening_balance || 0); setShowObDialog(true); }} data-testid="cl-edit-ob-btn">
           <Edit2 className="w-3.5 h-3.5 mr-1" /> Opening Balance
@@ -299,7 +366,7 @@ const CustomerLedgerTab = () => {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Edit Opening Balance</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">Set manual opening balance for <strong>{selectedCustomer?.name}</strong></p>
+            <p className="text-sm text-slate-500">Set manual opening balance for <strong>{selectedCustomer?.customer_name}</strong></p>
             <div>
               <Label>Amount (positive = customer owes, negative = credit)</Label>
               <Input type="number" value={obAmount} onChange={e => setObAmount(e.target.value)} data-testid="cl-ob-input" />

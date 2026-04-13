@@ -1187,6 +1187,9 @@ export const Orders = () => {
                             <Button variant="ghost" size="sm" onClick={() => openEditModal(order)} title="Edit Items">
                               <Edit className="w-4 h-4" />
                             </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openCustomerModal(order)} title="Change Customer" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+                              <User className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => openPrintModal(order)} title="Print Order" className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                               <Printer className="w-4 h-4" />
                             </Button>

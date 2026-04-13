@@ -297,19 +297,38 @@ async def send_whatsapp_ready_to_despatch(order_doc: dict, update_data: dict = N
         if cans: pkg_lines.append(f"Cans: {cans}")
         if bags: pkg_lines.append(f"Bags: {bags}")
 
+        # Invoice & payment details
+        invoice_number = ud.get('invoice_number') or order_doc.get('invoice_number', '')
+        invoice_date = ud.get('invoice_date') or order_doc.get('invoice_date', '')
+        invoice_value = ud.get('invoice_value') or order_doc.get('invoice_value', '')
+        payment_mode = ud.get('payment_mode') or order_doc.get('payment_mode', '')
+        payment_amount = ud.get('payment_amount') or order_doc.get('payment_amount', 0)
+
         message = f"Hello {transport_name},\n\nOrder *{order_number}* for *{customer_name}*"
         if customer_city:
             message += f" ({customer_city})"
         message += f" is ready for pickup/dispatch."
         if delivery_station:
             message += f"\n\n*Delivery Station:* {delivery_station}"
+        if invoice_number:
+            message += f"\n\n*Invoice No:* {invoice_number}"
+            if invoice_date:
+                message += f"\n*Invoice Date:* {invoice_date}"
+            if invoice_value:
+                message += f"\n*Invoice Value:* Rs. {invoice_value}"
+        if payment_mode:
+            mode_label = 'Paid' if payment_mode == 'paid' else 'To Pay'
+            message += f"\n*Payment:* {mode_label}"
+            if payment_mode == 'to_pay' and payment_amount:
+                message += f" - Rs. {payment_amount}"
         if pkg_lines:
             message += f"\n\n*Package:*\n" + "\n".join(pkg_lines)
         message += f"\n\nRegards,\n*{short_name}*"
         if phone:
             message += f"\n+{phone}"
 
-        wa_phone = transport_phone if transport_phone.startswith('91') else f"91{transport_phone[-10:]}"
+        clean_tp = ''.join(filter(str.isdigit, transport_phone))
+        wa_phone = f"91{clean_tp[-10:]}" if len(clean_tp) >= 10 else transport_phone
         resp = await send_wa_msg(wa_phone, message, config=config)
         status = 'success' if resp and resp.status_code == 200 else 'failed'
         await log_whatsapp_message(wa_phone, 'transport_ready', message, status, recipient_name=transport_name)

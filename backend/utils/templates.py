@@ -41,8 +41,8 @@ DEFAULT_WA_TEMPLATES = {
         'key': 'status_dispatched',
         'name': 'Order Dispatched/Shipped',
         'category': 'whatsapp',
-        'variables': ['customer_name', 'order_number', 'transport_name', 'tracking_number', 'delivery_station', 'package_details', 'payment_info', 'company_short_name', 'company_phone'],
-        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *SHIPPED*!\n\n*Transport:* {transport_name}\n*Tracking No:* {tracking_number}\n*Delivery Station:* {delivery_station}\n\n*Package Details:*\n{package_details}\n{payment_info}\nRegards,\n*{company_short_name}*\n+{company_phone}',
+        'variables': ['customer_name', 'order_number', 'transport_name', 'tracking_number', 'delivery_station', 'package_details', 'payment_info', 'invoice_number', 'invoice_date', 'invoice_value', 'company_short_name', 'company_phone'],
+        'template': 'Hello {customer_name},\n\nYour order *{order_number}* has been *SHIPPED*!\n\n*Transport:* {transport_name}\n*Tracking No:* {tracking_number}\n*Delivery Station:* {delivery_station}\n\n*Invoice No:* {invoice_number}\n*Invoice Date:* {invoice_date}\n*Invoice Value:* Rs. {invoice_value}\n\n*Package Details:*\n{package_details}\n{payment_info}\nRegards,\n*{company_short_name}*\n+{company_phone}',
     },
     'status_delivered': {
         'key': 'status_delivered',

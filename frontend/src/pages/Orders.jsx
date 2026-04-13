@@ -10,6 +10,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
+import { Separator } from '../components/ui/separator';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
 import { 
@@ -78,6 +79,8 @@ export const Orders = () => {
   const [pendingItemsForOrder, setPendingItemsForOrder] = useState([]);
   const [existingDoctor, setExistingDoctor] = useState(null);
   const [lookingUpDoctor, setLookingUpDoctor] = useState(false);
+  const [custSearchQuery, setCustSearchQuery] = useState('');
+  const [custSearchResults, setCustSearchResults] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
@@ -514,6 +517,10 @@ export const Orders = () => {
 
   const handleMarkOutOfStock = (index) => {
     const newItems = [...editItems];
+    // Store the current qty before zeroing (for pending items)
+    if (!newItems[index]._preOutOfStockQty) {
+      newItems[index]._preOutOfStockQty = newItems[index].editQty || newItems[index].quantity || '1';
+    }
     newItems[index].remove = true;
     newItems[index].quantity = '0';
     newItems[index].editQty = '0';
@@ -529,8 +536,9 @@ export const Orders = () => {
   const handleRestoreItem = (index) => {
     const newItems = [...editItems];
     newItems[index].remove = false;
-    newItems[index].quantity = newItems[index].originalQty;
-    newItems[index].editQty = newItems[index].originalQty;
+    newItems[index].quantity = newItems[index]._preOutOfStockQty || newItems[index].originalQty;
+    newItems[index].editQty = newItems[index].quantity;
+    delete newItems[index]._preOutOfStockQty;
     setEditItems(newItems);
     
     setItemsToMarkPending(prev => ({
@@ -583,7 +591,7 @@ export const Orders = () => {
       offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
       special_offer = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
 
-      setEditItems([...editItems, {
+      setEditItems([{
         item_id: item.id,
         item_code: item.item_code,
         item_name: item.item_name,
@@ -599,7 +607,7 @@ export const Orders = () => {
         defaultRate,
         offer,
         special_offer
-      }]);
+      }, ...editItems]);
       toast.success(`Added ${item.item_name}`);
     }
     setEditItemSearch('');
@@ -669,7 +677,7 @@ export const Orders = () => {
           item_id: item.item_id,
           item_code: item.item_code,
           item_name: item.item_name,
-          quantity: item.originalQty || item.quantity
+          quantity: item._preOutOfStockQty || item.originalQty || item.quantity || '1'
         }));
       
       await ordersAPI.updateItems(selectedOrder.id, {
@@ -714,9 +722,12 @@ export const Orders = () => {
       doctor_email: order.doctor_email || '',
       doctor_address: order.doctor_address || '',
       doctor_phone: order.doctor_phone || '',
+      doctor_id: order.doctor_id || '',
       link_to_doctor: false
     });
     setExistingDoctor(null);
+    setCustSearchQuery('');
+    setCustSearchResults([]);
     setShowCustomerModal(true);
     
     setLookingUpDoctor(true);
@@ -751,6 +762,33 @@ export const Orders = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const searchExistingCustomers = async (q) => {
+    setCustSearchQuery(q);
+    if (q.length < 2) { setCustSearchResults([]); return; }
+    try {
+      const [docs, meds, ags] = await Promise.all([
+        doctorsAPI.getAll({ search: q }).then(r => (r.data || []).map(d => ({ ...d, type: 'doctor' }))),
+        medicalsAPI.getAll({ search: q }).then(r => (r.data || []).map(m => ({ ...m, type: 'medical' }))),
+        agenciesAPI.getAll({ search: q }).then(r => (r.data || []).map(a => ({ ...a, type: 'agency' }))),
+      ]);
+      setCustSearchResults([...docs, ...meds, ...ags].slice(0, 10));
+    } catch { setCustSearchResults([]); }
+  };
+
+  const pickExistingCustomer = (c) => {
+    setCustomerForm({
+      doctor_name: c.name,
+      doctor_phone: c.phone || '',
+      doctor_email: c.email || '',
+      doctor_address: c.address || c.address_line_1 || '',
+      doctor_id: c.id,
+      link_to_doctor: false
+    });
+    setCustSearchQuery('');
+    setCustSearchResults([]);
+    setExistingDoctor(c);
   };
 
   // Add Order Functions
@@ -854,7 +892,7 @@ export const Orders = () => {
       const cType = selectedCustomer?.type || newOrderForm.customer_type || 'doctor';
       setNewOrderForm({
         ...newOrderForm,
-        items: [...newOrderForm.items, {
+        items: [{
           item_id: item.id,
           item_code: item.item_code,
           item_name: item.item_name,
@@ -866,7 +904,7 @@ export const Orders = () => {
           outOfStock: false,
           offer: item[`offer_${cType}s`] || item.offer_doctors || item.offer || '',
           special_offer: item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '',
-        }]
+        }, ...newOrderForm.items]
       });
     }
     setItemSearch('');
@@ -2246,6 +2284,30 @@ export const Orders = () => {
               <div className="flex items-center justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /><span className="ml-2 text-slate-500">Looking up customer...</span></div>
             ) : (
               <>
+                {/* Quick search to pick existing customer */}
+                <div className="space-y-2 mb-3">
+                  <Label className="text-xs font-medium text-slate-500">Search & Select Existing Customer</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <Input value={custSearchQuery} onChange={e => searchExistingCustomers(e.target.value)}
+                      placeholder="Type name, phone, or code to change customer..." className="pl-9 h-9 text-sm" data-testid="cust-search-input" />
+                    {custSearchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {custSearchResults.map(c => (
+                          <div key={c.id} className="p-2 hover:bg-blue-50 cursor-pointer flex justify-between items-center text-sm"
+                            onClick={() => pickExistingCustomer(c)}>
+                            <div>
+                              <p className="font-medium">{c.name}</p>
+                              <p className="text-xs text-slate-400">{c.phone} | {c.customer_code}</p>
+                            </div>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 capitalize">{c.type}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <Separator className="my-2" />
                 {existingDoctor && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                     <div className="flex items-start gap-2">

@@ -446,6 +446,13 @@ async def update_order_status(order_id: str, status_data: OrderStatusUpdate, bac
     if new_status == 'cancelled' and status_data.cancellation_reason:
         update_data['cancellation_reason'] = status_data.cancellation_reason
     
+    # Delete pending items when order is cancelled
+    if new_status == 'cancelled':
+        await db.pending_items.delete_many({'original_order_id': order_id})
+        doctor_phone = order.get('doctor_phone')
+        if doctor_phone:
+            await db.pending_items.delete_many({'doctor_phone': doctor_phone, 'original_order_number': order.get('order_number')})
+    
     await db.orders.update_one({'id': order_id}, {'$set': update_data})
     
     # Fetch updated order for notification (includes all stored fields + new updates)
@@ -601,6 +608,14 @@ async def delete_order(order_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Order not found")
     
     await db.orders.delete_one({'id': order_id})
+    
+    # Also delete pending items linked to this order
+    await db.pending_items.delete_many({'original_order_id': order_id})
+    # Also try by customer phone + order link
+    doctor_phone = order.get('doctor_phone')
+    if doctor_phone:
+        await db.pending_items.delete_many({'doctor_phone': doctor_phone, 'original_order_number': order.get('order_number')})
+    
     return {"message": "Order deleted successfully"}
 
 @router.put("/orders/{order_id}/items")
@@ -680,6 +695,9 @@ async def update_order_customer(order_id: str, customer_data: OrderCustomerUpdat
         update_data['doctor_address'] = customer_data.doctor_address
     if customer_data.doctor_phone:
         update_data['doctor_phone'] = customer_data.doctor_phone
+    # Allow relinking to a different customer entity
+    if customer_data.doctor_id:
+        update_data['doctor_id'] = customer_data.doctor_id
     
     # Update the order
     await db.orders.update_one({'id': order_id}, {'$set': update_data})

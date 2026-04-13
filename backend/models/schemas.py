@@ -974,6 +974,7 @@ class OrderCustomerUpdate(BaseModel):
     doctor_email: Optional[str] = None
     doctor_address: Optional[str] = None
     doctor_phone: Optional[str] = None
+    doctor_id: Optional[str] = None  # Relink order to a different customer entity
     link_to_doctor: Optional[bool] = False  # If true, link/create doctor record
 
 # ============== EXPENSE MODELS ==============

@@ -433,12 +433,7 @@ async def send_whatsapp_order_updated(order_doc: dict, items: list):
             item_dict = item if isinstance(item, dict) else item.dict()
             name = item_dict.get('item_name', 'Item')
             qty = str(item_dict.get('quantity', '1'))
-            rate = item_dict.get('rate', 0)
-            try:
-                rate = float(rate)
-                items_lines.append(f"• {name} x{qty} @ Rs.{rate:.2f}")
-            except (ValueError, TypeError):
-                items_lines.append(f"• {name} x{qty}")
+            items_lines.append(f"• {name} x{qty}")
 
         items_text = "\n".join(items_lines)
         item_count = str(len(items_lines))
@@ -456,7 +451,8 @@ async def send_whatsapp_order_updated(order_doc: dict, items: list):
             if phone:
                 message += f"\n+{phone}"
 
-        wa_phone = customer_phone if customer_phone.startswith('91') else f"91{customer_phone[-10:]}"
+        clean_ph = ''.join(filter(str.isdigit, customer_phone))
+        wa_phone = f"91{clean_ph[-10:]}" if len(clean_ph) >= 10 else customer_phone
         resp = await send_wa_msg(wa_phone, message, config=config)
         status = 'success' if resp and resp.status_code == 200 else 'failed'
         await log_whatsapp_message(wa_phone, 'order_updated', message, status)

@@ -131,6 +131,11 @@ async def startup_event():
     # Seed default templates
     await seed_default_greeting_templates()
 
+    # Auto-sync WA/Email templates to DB
+    from utils.templates import sync_templates_to_db
+    await sync_templates_to_db()
+    logger.info("WhatsApp/Email templates synced to DB")
+
     # Seed default admin if no users exist
     existing_admin = await db.users.find_one({'role': 'admin'}, {'_id': 1})
     if not existing_admin:

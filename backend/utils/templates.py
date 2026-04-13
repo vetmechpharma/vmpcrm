@@ -328,3 +328,40 @@ async def render_wa_template(key: str, **kwargs):
         rendered = rendered[:-2]
     return rendered
 
+
+async def sync_templates_to_db():
+    """Auto-sync default templates to DB on startup.
+    - Inserts missing templates
+    - Updates variables list for existing templates (keeps admin-customized template text)
+    """
+    import uuid
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+
+    for key, tmpl in DEFAULT_WA_TEMPLATES.items():
+        existing = await db.message_templates.find_one({'key': key, 'category': 'whatsapp'}, {'_id': 0})
+        if not existing:
+            doc = {**tmpl, 'id': str(uuid.uuid4()), 'created_at': now}
+            await db.message_templates.insert_one(doc)
+        else:
+            # Update variables list (in case new variables were added) but keep admin's template text
+            update = {'variables': tmpl['variables'], 'name': tmpl['name']}
+            await db.message_templates.update_one(
+                {'key': key, 'category': 'whatsapp'},
+                {'$set': update}
+            )
+
+    for key, tmpl in DEFAULT_EMAIL_TEMPLATES.items():
+        existing = await db.message_templates.find_one({'key': key, 'category': 'email'}, {'_id': 0})
+        if not existing:
+            doc = {**tmpl, 'id': str(uuid.uuid4()), 'created_at': now}
+            await db.message_templates.insert_one(doc)
+        else:
+            update = {'variables': tmpl['variables'], 'name': tmpl['name']}
+            if tmpl.get('subject'):
+                update['subject'] = existing.get('subject') or tmpl['subject']
+            await db.message_templates.update_one(
+                {'key': key, 'category': 'email'},
+                {'$set': update}
+            )
+

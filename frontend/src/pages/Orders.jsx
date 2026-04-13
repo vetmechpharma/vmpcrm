@@ -1110,6 +1110,7 @@ export const Orders = () => {
                     <th>Status</th>
                     <th>Transport</th>
                     <th>Payment</th>
+                    <th>Invoice</th>
                     <th>Date</th>
                     <th>Actions</th>
                   </tr>
@@ -1165,6 +1166,17 @@ export const Orders = () => {
                               )}
                             </div>
                           ) : <span className="text-slate-400">-</span>}
+                        </td>
+                        <td>
+                          {order.invoice_number ? (
+                            <div>
+                              <p className="text-xs font-semibold text-slate-800">{order.invoice_number}</p>
+                              {order.invoice_date && <p className="text-[10px] text-slate-500">{order.invoice_date}</p>}
+                              {order.invoice_value && <p className="text-xs font-medium text-emerald-700">₹{parseFloat(order.invoice_value).toLocaleString('en-IN')}</p>}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Not billed</span>
+                          )}
                         </td>
                         <td><span className="text-sm text-slate-500">{formatDateTime(order.created_at)}</span></td>
                         <td>

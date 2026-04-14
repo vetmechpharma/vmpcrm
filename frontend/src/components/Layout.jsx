@@ -32,7 +32,8 @@ import {
   Search,
   Presentation,
   Layers,
-  BarChart3
+  BarChart3,
+  Handshake
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAutoSubscribe } from '../hooks/usePushNotifications';
@@ -47,6 +48,7 @@ const mainNavItems = [
   { path: '/admin/payments', icon: Wallet, label: 'Payments', perm: null },
   { path: '/admin/marketing', icon: Megaphone, label: 'Marketing', perm: 'marketing' },
   { path: '/admin/reports', icon: BarChart3, label: 'Reports & Analytics', perm: null },
+  { path: '/admin/partners', icon: Handshake, label: 'Partner Reports', perm: null },
   { path: '/admin/expenses', icon: Receipt, label: 'Expenses', perm: 'expenses' },
   { path: '/admin/reminders', icon: Bell, label: 'Reminders', perm: 'reminders' },
   { path: '/admin/greeting-templates', icon: Gift, label: 'Greetings', perm: 'reminders' },

@@ -41,6 +41,7 @@ import { VisualAids } from './pages/VisualAids';
 import { MRReports } from './pages/MRReports';
 import { MessageTemplates } from './pages/MessageTemplates';
 import Reports from './pages/Reports';
+import { Partners } from './pages/Partners';
 // StockManagement merged into Items page
 import { MRAuthProvider, useMRAuth } from './context/MRAuthContext';
 import MRLogin from './pages/mrvet/MRLogin';
@@ -348,6 +349,14 @@ function AppRoutes() {
         } 
       />
       {/* Stock merged into Items page */}
+      <Route 
+        path="/admin/partners" 
+        element={
+          <AdminProtectedRoute>
+            <Partners />
+          </AdminProtectedRoute>
+        } 
+      />
       <Route 
         path="/admin/mr-management" 
         element={

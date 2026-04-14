@@ -24,7 +24,7 @@ from routes import (
     expenses, greeting_templates, followups, reminders,
     whatsapp_config, message_templates, push,
     admin_profile, database, users, mr, visual_aids,
-    stock
+    stock, partners
 )
 
 # Import background tasks
@@ -79,6 +79,7 @@ route_modules = [
     whatsapp_config, message_templates, push,
     admin_profile, database, users, mr, visual_aids,
     stock,
+    partners,
 ]
 
 for module in route_modules:
@@ -105,6 +106,50 @@ greeting_task = None
 monthly_ledger_task = None
 backup_scheduler_task = None
 cleanup_task = None
+partner_report_task = None
+
+
+async def partner_report_scheduler():
+    """Schedule partner reports: Weekly Sunday 5PM IST, Monthly 1st 9AM IST."""
+    from utils.partner_reports import auto_send_partner_reports
+    IST_OFFSET = timedelta(hours=5, minutes=30)
+    while True:
+        try:
+            now_utc = datetime.now(timezone.utc)
+            now_ist = now_utc + IST_OFFSET
+            # Weekly: Sunday 5PM IST = Sunday 11:30 UTC
+            days_to_sunday = (6 - now_ist.weekday()) % 7
+            if days_to_sunday == 0 and now_ist.hour >= 17:
+                days_to_sunday = 7
+            next_sunday_5pm = (now_ist.replace(hour=17, minute=0, second=0, microsecond=0) + timedelta(days=days_to_sunday))
+            # Monthly: 1st of next month 9AM IST
+            if now_ist.month == 12:
+                next_first = now_ist.replace(year=now_ist.year + 1, month=1, day=1, hour=9, minute=0, second=0, microsecond=0)
+            else:
+                next_first = now_ist.replace(month=now_ist.month + 1, day=1, hour=9, minute=0, second=0, microsecond=0)
+            # Find which is sooner
+            next_weekly = (next_sunday_5pm - now_ist).total_seconds()
+            next_monthly = (next_first - now_ist).total_seconds()
+            if next_weekly <= 0:
+                next_weekly = 7 * 86400
+            if next_monthly <= 0:
+                next_monthly = 30 * 86400
+            if next_weekly <= next_monthly:
+                wait_secs = next_weekly
+                period = 'week'
+                logger.info(f"Partner report: next weekly in {wait_secs/3600:.1f} hours")
+            else:
+                wait_secs = next_monthly
+                period = 'month'
+                logger.info(f"Partner report: next monthly in {wait_secs/3600:.1f} hours")
+            await asyncio.sleep(wait_secs)
+            await auto_send_partner_reports(period)
+        except asyncio.CancelledError:
+            logger.info("Partner report scheduler cancelled")
+            break
+        except Exception as e:
+            logger.error(f"Partner report scheduler error: {e}")
+            await asyncio.sleep(3600)
 
 
 @app.on_event("startup")
@@ -136,6 +181,11 @@ async def startup_event():
     await sync_templates_to_db()
     logger.info("WhatsApp/Email templates synced to DB")
 
+    # Start partner report scheduler
+    global partner_report_task
+    partner_report_task = asyncio.create_task(partner_report_scheduler())
+    logger.info("Partner report scheduler started")
+
     # Seed default admin if no users exist
     existing_admin = await db.users.find_one({'role': 'admin'}, {'_id': 1})
     if not existing_admin:
@@ -156,7 +206,7 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task, cleanup_task
+    global daily_reminder_task, backup_scheduler_task, greeting_task, monthly_ledger_task, cleanup_task, partner_report_task
 
     for task_name, task in [
         ("daily_reminder", daily_reminder_task),
@@ -164,6 +214,7 @@ async def shutdown_db_client():
         ("greeting", greeting_task),
         ("monthly_ledger", monthly_ledger_task),
         ("cleanup", cleanup_task),
+        ("partner_report", partner_report_task),
     ]:
         if task:
             task.cancel()

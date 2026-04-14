@@ -434,5 +434,16 @@ export const stockAPI = {
   getPeriodReport: (params) => api.get('/stock/period-report', { params }),
 };
 
+// Partner Reports APIs
+export const partnersAPI = {
+  getAll: () => api.get('/partners'),
+  create: (data) => api.post('/partners', data),
+  update: (id, data) => api.put(`/partners/${id}`, data),
+  delete: (id) => api.delete(`/partners/${id}`),
+  previewReport: (data) => api.post('/partner-reports/preview', data),
+  sendReport: (data) => api.post('/partner-reports/send', data),
+  getHistory: () => api.get('/partner-reports/history'),
+};
+
 
 export default api;

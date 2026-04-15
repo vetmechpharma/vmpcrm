@@ -89,6 +89,7 @@ export const Orders = () => {
   const [customerPendingItems, setCustomerPendingItems] = useState([]);
   const [lastCustomerRates, setLastCustomerRates] = useState({});
   const [companySettings, setCompanySettings] = useState(null);
+  const [customerTasks, setCustomerTasks] = useState([]);
   
   // Transfer to agency
   const [agencies, setAgencies] = useState([]);
@@ -164,6 +165,18 @@ export const Orders = () => {
     // Fetch stock availability for showing purchase rate in Add Order
     stockAPI.getAvailability().then(res => setStockAvailability(res.data || {})).catch(() => {});
   }, [statusFilter]);
+
+  // Fetch pending tasks for selected order's customer
+  useEffect(() => {
+    if (selectedOrder?.doctor_id) {
+      api.get('/tasks', { params: { doctor_id: selectedOrder.doctor_id, status: 'pending' } })
+        .then(res => setCustomerTasks(res.data || []))
+        .catch(() => setCustomerTasks([]));
+    } else {
+      setCustomerTasks([]);
+    }
+  }, [selectedOrder?.doctor_id]);
+
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -1433,6 +1446,7 @@ export const Orders = () => {
                       const offer = item[`offer_${cType}s`] || item.offer_doctors || item.offer || '';
                       const special = item[`special_offer_${cType}s`] || item.special_offer_doctors || item.special_offer || '';
                       const purRate = stockAvailability[item.id]?.last_purchase_rate || 0;
+                      const stockQty = stockAvailability[item.id]?.closing_balance || 0;
                       const lastSale = lastCustomerRates[item.id];
                       return (
                         <div
@@ -1442,7 +1456,11 @@ export const Orders = () => {
                           data-testid={`add-item-${item.id}`}
                         >
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{item.item_name}</p>
+                            <p className="font-medium text-sm">{item.item_name}
+                              <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium ${stockQty > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                Stock: {stockQty}
+                              </span>
+                            </p>
                             <p className="text-xs text-slate-500">
                               {item.item_code} | MRP: ₹{item.mrp || 0}
                               {roleRate > 0 && <span className="text-blue-600 font-medium"> | Rate: ₹{roleRate}</span>}
@@ -1482,7 +1500,13 @@ export const Orders = () => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-slate-800">{item.item_name}</p>
-                            <p className="text-sm text-slate-500">{item.item_code}</p>
+                            <p className="text-sm text-slate-500">{item.item_code}
+                              {stockAvailability[item.item_id] != null && (
+                                <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium ${(stockAvailability[item.item_id]?.closing_balance || 0) > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                  Stock: {stockAvailability[item.item_id]?.closing_balance || 0}
+                                </span>
+                              )}
+                            </p>
                             <div className="flex gap-3 mt-1 text-xs text-slate-600 flex-wrap">
                               {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                               {item.gst > 0 && <span>GST: {item.gst}%</span>}
@@ -1645,6 +1669,35 @@ export const Orders = () => {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Pending Tasks for this Customer */}
+              {customerTasks.length > 0 && (
+                <Card className="border-amber-200 bg-amber-50/50">
+                  <CardContent className="pt-4">
+                    <p className="text-xs font-semibold text-amber-700 mb-2">PENDING TASKS ({customerTasks.length})</p>
+                    <div className="space-y-1.5">
+                      {customerTasks.map(task => (
+                        <div key={task.id} className="flex items-center justify-between gap-2 bg-white rounded p-2 border border-amber-200 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-slate-800 truncate">{task.title}</p>
+                            {task.due_date && <p className="text-[10px] text-slate-400">Due: {task.due_date}</p>}
+                          </div>
+                          <Button size="sm" variant="outline" className="h-6 text-[10px] border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={async () => {
+                              try {
+                                await api.put(`/tasks/${task.id}`, { status: 'completed' });
+                                setCustomerTasks(prev => prev.filter(t => t.id !== task.id));
+                                toast.success('Task completed');
+                              } catch { toast.error('Failed'); }
+                            }}>
+                            Done
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Source & Notes Info */}
               {(selectedOrder.source || selectedOrder.notes || selectedOrder.status === 'transferred') && (
@@ -2165,7 +2218,13 @@ export const Orders = () => {
                         <p className="font-medium text-slate-800">{item.item_name}</p>
                         {item.isNew && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">NEW</span>}
                       </div>
-                      <p className="text-sm text-slate-500">{item.item_code}</p>
+                      <p className="text-sm text-slate-500">{item.item_code}
+                        {stockAvailability[item.item_id] != null && (
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium ${(stockAvailability[item.item_id]?.closing_balance || 0) > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                            Stock: {stockAvailability[item.item_id]?.closing_balance || 0}
+                          </span>
+                        )}
+                      </p>
                       <div className="flex gap-3 mt-1 text-xs text-slate-600">
                         {item.mrp > 0 && <span>MRP: ₹{item.mrp} (fixed)</span>}
                         {item.gst > 0 && <span>GST: {item.gst}%</span>}

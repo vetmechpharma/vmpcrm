@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -8,6 +8,8 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
+import api from '../lib/api';
+import { doctorsAPI, medicalsAPI, agenciesAPI } from '../lib/api';
 import { 
   LifeBuoy, 
   Search, 
@@ -27,7 +29,6 @@ import {
   Eye,
   XCircle
 } from 'lucide-react';
-import api from '../lib/api';
 
 const Support = () => {
   const [tickets, setTickets] = useState([]);
@@ -54,6 +55,8 @@ const Support = () => {
     customer_phone: '',
     customer_email: ''
   });
+  const [custSearch, setCustSearch] = useState('');
+  const [custResults, setCustResults] = useState([]);
 
   useEffect(() => {
     fetchTickets();
@@ -73,6 +76,26 @@ const Support = () => {
       setLoading(false);
     }
   };
+
+  const searchCustomersForTicket = async (q) => {
+    setCustSearch(q);
+    if (q.length < 2) { setCustResults([]); return; }
+    try {
+      const [docs, meds, ags] = await Promise.all([
+        doctorsAPI.getAll({ search: q }).then(r => (r.data || []).map(d => ({ ...d, type: 'doctor' }))),
+        medicalsAPI.getAll({ search: q }).then(r => (r.data || []).map(m => ({ ...m, type: 'medical' }))),
+        agenciesAPI.getAll({ search: q }).then(r => (r.data || []).map(a => ({ ...a, type: 'agency' }))),
+      ]);
+      setCustResults([...docs, ...meds, ...ags].slice(0, 10));
+    } catch { setCustResults([]); }
+  };
+
+  const pickCustomerForTicket = (c) => {
+    setFormData(prev => ({ ...prev, customer_name: c.name, customer_phone: c.phone || '', customer_email: c.email || '' }));
+    setCustSearch('');
+    setCustResults([]);
+  };
+
 
   const handleStatusChange = async (ticketId, newStatus) => {
     setUpdatingStatus(true);
@@ -486,14 +509,24 @@ const Support = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <Label>Customer Name *</Label>
                 <Input
                   value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  placeholder="Customer name"
+                  onChange={(e) => { setFormData({ ...formData, customer_name: e.target.value }); searchCustomersForTicket(e.target.value); }}
+                  placeholder="Type to search customer..."
                   data-testid="create-customer-name"
                 />
+                {custResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {custResults.map(c => (
+                      <div key={c.id} className="p-2 hover:bg-blue-50 cursor-pointer text-sm" onClick={() => pickCustomerForTicket(c)}>
+                        <span className="font-medium">{c.name}</span>
+                        <span className="text-xs text-slate-400 ml-2">{c.phone} | {c.customer_code}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Phone *</Label>

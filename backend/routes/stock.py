@@ -278,14 +278,19 @@ async def get_last_selling_rates(
     }).sort('created_at', -1).to_list(5000)
     
     # For each item, keep only the most recent rate (first match since sorted desc)
+    # Only include if there are at least 2 orders containing that item (repeat = not first-time)
     last_rates = {}
+    item_order_count = {}
     for order in orders:
         order_date = order.get('updated_at', order.get('created_at', ''))
         if isinstance(order_date, str) and 'T' in order_date:
             order_date = order_date.split('T')[0]
         for oi in order.get('items', []):
             iid = oi.get('item_id', '')
-            if iid and iid not in last_rates:
+            if not iid:
+                continue
+            item_order_count[iid] = item_order_count.get(iid, 0) + 1
+            if iid not in last_rates:
                 last_rates[iid] = {
                     'rate': oi.get('rate', 0),
                     'quantity': oi.get('dispatch_quantity', oi.get('quantity', 0)),
@@ -293,7 +298,8 @@ async def get_last_selling_rates(
                     'date': order_date
                 }
     
-    return last_rates
+    # Only return rates for items ordered more than once (repeat orders)
+    return {iid: data for iid, data in last_rates.items() if item_order_count.get(iid, 0) >= 2}
 
 
 # ============== PURCHASE ENTRY ==============

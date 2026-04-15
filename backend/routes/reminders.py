@@ -106,29 +106,37 @@ async def get_today_reminders(current_user: dict = Depends(get_current_user)):
     
     reminders = []
     
-    # 1. Get manual reminders for today
+    # 1. Get manual reminders for today + overdue ones (past date, not completed)
+    # Exclude birthday/anniversary from overdue
     manual_reminders = await db.reminders.find({
-        'reminder_date': today,
+        'reminder_date': {'$lte': today},
         'is_completed': False
-    }, {'_id': 0}).to_list(100)
+    }, {'_id': 0}).to_list(500)
     
     for rem in manual_reminders:
         created_at = rem.get('created_at')
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        rem_date = rem.get('reminder_date', today)
+        rem_type = rem.get('reminder_type', 'custom')
+        # Birthday/anniversary: only show on the actual day, never overdue
+        if rem_type in ('birthday', 'anniversary') and rem_date != today:
+            continue
+        is_overdue = rem_date < today and rem_type not in ('birthday', 'anniversary')
         reminders.append({
             'id': rem['id'],
-            'title': rem['title'],
+            'title': f"{'OVERDUE: ' if is_overdue else ''}{rem['title']}",
             'description': rem.get('description'),
-            'reminder_type': rem['reminder_type'],
-            'reminder_date': rem['reminder_date'],
+            'reminder_type': rem_type,
+            'reminder_date': rem_date,
             'reminder_time': rem.get('reminder_time'),
             'entity_type': rem.get('entity_type'),
             'entity_id': rem.get('entity_id'),
             'entity_name': rem.get('entity_name'),
-            'priority': rem.get('priority', 'moderate'),
+            'priority': 'high' if is_overdue else rem.get('priority', 'moderate'),
             'is_completed': rem.get('is_completed', False),
             'is_auto_generated': rem.get('is_auto_generated', False),
+            'is_overdue': is_overdue,
             'phone': None
         })
     

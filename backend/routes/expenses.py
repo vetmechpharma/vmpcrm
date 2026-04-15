@@ -177,7 +177,11 @@ async def get_expenses(
     if payment_type:
         query['payment_type'] = payment_type
     if payment_account:
-        query['payment_account'] = payment_account
+        # Normalize: admin_user and admin_account are the same
+        if payment_account in ('admin_user', 'admin_account'):
+            query['payment_account'] = {'$in': ['admin_user', 'admin_account']}
+        else:
+            query['payment_account'] = payment_account
     
     expenses = await db.expenses.find(query, {'_id': 0}).sort('date', -1).to_list(1000)
     

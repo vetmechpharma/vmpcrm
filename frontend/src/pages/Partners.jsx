@@ -36,6 +36,8 @@ export const Partners = () => {
   const [sending, setSending] = useState(false);
   const [sendingAll, setSendingAll] = useState(false);
   const [history, setHistory] = useState([]);
+  const [selectedPartnerIds, setSelectedPartnerIds] = useState([]);
+  const [autoSettings, setAutoSettings] = useState({ auto_weekly: true, auto_monthly: true });
 
   const fetchPartners = useCallback(async () => {
     try {
@@ -52,7 +54,31 @@ export const Partners = () => {
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => { fetchPartners(); fetchHistory(); }, []);
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await partnersAPI.getSettings();
+      setAutoSettings(res.data);
+    } catch { /* silent */ }
+  }, []);
+
+  const toggleAutoSetting = async (key) => {
+    const newVal = !autoSettings[key];
+    setAutoSettings(prev => ({ ...prev, [key]: newVal }));
+    try {
+      await partnersAPI.updateSettings({ [key]: newVal });
+      toast.success(`Auto ${key.replace('auto_', '')} ${newVal ? 'enabled' : 'disabled'}`);
+    } catch { toast.error('Failed to update setting'); }
+  };
+
+  const togglePartnerSelect = (id) => {
+    setSelectedPartnerIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+  const toggleSelectAllPartners = () => {
+    const activeIds = partners.filter(p => p.active !== false).map(p => p.id);
+    setSelectedPartnerIds(prev => prev.length === activeIds.length ? [] : activeIds);
+  };
+
+  useEffect(() => { fetchPartners(); fetchHistory(); fetchSettings(); }, []);
 
   const handleSave = async () => {
     if (!form.name || !form.phone) { toast.error('Name and phone required'); return; }
@@ -98,9 +124,11 @@ export const Partners = () => {
   };
 
   const handleSend = async (reportType) => {
-    const activeCount = partners.filter(p => p.active !== false).length;
-    if (activeCount === 0) { toast.error('No active partners to send to'); return; }
-    if (!window.confirm(`Send ${reportType === 'all' ? 'ALL reports' : reportType + ' report'} to ${activeCount} partner(s)?`)) return;
+    const activePartners = partners.filter(p => p.active !== false);
+    const sendTo = selectedPartnerIds.length > 0 ? selectedPartnerIds : activePartners.map(p => p.id);
+    const sendCount = sendTo.length;
+    if (sendCount === 0) { toast.error('No partners selected'); return; }
+    if (!window.confirm(`Send ${reportType === 'all' ? 'ALL reports' : reportType + ' report'} to ${sendCount} partner(s)?`)) return;
     if (reportType === 'all') setSendingAll(true);
     else setSending(reportType);
     try {
@@ -109,6 +137,7 @@ export const Partners = () => {
         period,
         from_date: period === 'custom' ? fromDate : undefined,
         to_date: period === 'custom' ? toDate : undefined,
+        partner_ids: selectedPartnerIds.length > 0 ? selectedPartnerIds : undefined,
       });
       toast.success(res.data.message);
       fetchHistory();
@@ -138,11 +167,20 @@ export const Partners = () => {
           <Card><CardContent className="p-6 text-center text-slate-400">No partners added yet. Add partners to send reports.</CardContent></Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="col-span-full flex items-center gap-2 mb-1">
+              <input type="checkbox"
+                checked={selectedPartnerIds.length === partners.filter(p => p.active !== false).length && partners.length > 0}
+                onChange={toggleSelectAllPartners} className="rounded border-slate-300 w-4 h-4" />
+              <span className="text-xs text-slate-500">{selectedPartnerIds.length > 0 ? `${selectedPartnerIds.length} selected` : 'Select partners for manual send'}</span>
+              {selectedPartnerIds.length > 0 && <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setSelectedPartnerIds([])}>Clear</Button>}
+            </div>
             {partners.map(p => (
-              <Card key={p.id} className={`border ${p.active === false ? 'opacity-50' : ''}`} data-testid={`partner-${p.id}`}>
+              <Card key={p.id} className={`border ${p.active === false ? 'opacity-50' : ''} ${selectedPartnerIds.includes(p.id) ? 'ring-2 ring-emerald-400 bg-emerald-50/30' : ''}`} data-testid={`partner-${p.id}`}>
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={selectedPartnerIds.includes(p.id)} onChange={() => togglePartnerSelect(p.id)}
+                      className="rounded border-slate-300 w-4 h-4 mt-1" disabled={p.active === false} />
+                    <div className="flex-1">
                       <p className="font-semibold text-slate-800">{p.name}</p>
                       <p className="text-sm text-slate-500 flex items-center gap-1 mt-0.5"><Phone className="w-3 h-3" /> {p.phone}</p>
                       {p.active === false && <Badge className="mt-1 bg-red-100 text-red-600 text-[10px]">Inactive</Badge>}
@@ -184,6 +222,16 @@ export const Partners = () => {
             {sendingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1" />}
             Send All Reports
           </Button>
+          <div className="ml-auto flex gap-3 items-center">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="checkbox" checked={autoSettings.auto_weekly} onChange={() => toggleAutoSetting('auto_weekly')} className="rounded border-slate-300 w-4 h-4" />
+              <span className={autoSettings.auto_weekly ? 'text-emerald-700 font-medium' : 'text-slate-400'}>Weekly (Sun 5PM)</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input type="checkbox" checked={autoSettings.auto_monthly} onChange={() => toggleAutoSetting('auto_monthly')} className="rounded border-slate-300 w-4 h-4" />
+              <span className={autoSettings.auto_monthly ? 'text-emerald-700 font-medium' : 'text-slate-400'}>Monthly (1st 9AM)</span>
+            </label>
+          </div>
         </div>
 
         {/* Report Cards */}

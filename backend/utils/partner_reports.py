@@ -99,7 +99,7 @@ async def generate_orders_expenses_report(from_date: str, to_date: str):
     total_expense = 0
     async for doc in db.expenses.aggregate([
         {'$match': expense_query},
-        {'$group': {'_id': '$category', 'total': {'$sum': '$amount'}}}
+        {'$group': {'_id': '$category_name', 'total': {'$sum': '$amount'}}}
     ]):
         cat = doc['_id'] or 'Uncategorized'
         expense_map[cat] = doc['total']
@@ -165,14 +165,17 @@ async def generate_top_performers_report(from_date: str, to_date: str):
     return [msg]
 
 
-async def send_report_to_partners(messages: list):
-    """Send list of messages to all active partners."""
+async def send_report_to_partners(messages: list, partner_ids: list = None):
+    """Send list of messages to active partners (or specific ones if partner_ids provided)."""
     config = await get_whatsapp_config()
     if not config.get('api_url') or not config.get('auth_token'):
         logger.warning("WhatsApp not configured for partner reports")
         return 0, 0
 
-    partners = await db.partners.find({'active': True}, {'_id': 0}).to_list(500)
+    query = {'active': {'$ne': False}}
+    if partner_ids:
+        query['id'] = {'$in': partner_ids}
+    partners = await db.partners.find(query, {'_id': 0}).to_list(500)
     if not partners:
         return 0, 0
 
@@ -213,6 +216,16 @@ async def send_report_to_partners(messages: list):
 
 async def auto_send_partner_reports(period: str = 'week'):
     """Called by scheduler for weekly/monthly auto-send."""
+    # Check if auto-send is enabled
+    settings = await db.partner_report_settings.find_one({}, {'_id': 0})
+    if settings:
+        if period == 'week' and not settings.get('auto_weekly', True):
+            logger.info("Partner weekly report skipped (disabled)")
+            return
+        if period == 'month' and not settings.get('auto_monthly', True):
+            logger.info("Partner monthly report skipped (disabled)")
+            return
+
     today = datetime.now(timezone.utc)
 
     if period == 'week':

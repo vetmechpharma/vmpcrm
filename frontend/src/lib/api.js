@@ -443,6 +443,8 @@ export const partnersAPI = {
   previewReport: (data) => api.post('/partner-reports/preview', data),
   sendReport: (data) => api.post('/partner-reports/send', data),
   getHistory: () => api.get('/partner-reports/history'),
+  getSettings: () => api.get('/partner-reports/settings'),
+  updateSettings: (data) => api.put('/partner-reports/settings', data),
 };
 
 

@@ -342,6 +342,9 @@ async def auto_create_transport_expense(order: dict, update_data: dict, current_
         payment_amount = update_data.get('payment_amount') or order.get('payment_amount') or order.get('invoice_value', 0)
         expense_paid_by = update_data.get('expense_paid_by') or order.get('expense_paid_by')
         expense_account = update_data.get('expense_account') or order.get('expense_account', 'company_account')
+        # Normalize account names to match frontend constants
+        account_normalize = {'admin_account': 'admin_user'}
+        expense_account = account_normalize.get(expense_account, expense_account)
         
         if not payment_amount or payment_amount <= 0:
             logger.info(f"Skipping expense creation for order {order_number} - no payment amount")

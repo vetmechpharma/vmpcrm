@@ -131,7 +131,8 @@ async def send_report(data: dict, current_user: dict = Depends(get_current_user)
     if not all_messages:
         raise HTTPException(status_code=400, detail="No reports generated")
 
-    sent, failed = await send_report_to_partners(all_messages)
+    partner_ids = data.get('partner_ids')  # Optional: list of specific partner IDs
+    sent, failed = await send_report_to_partners(all_messages, partner_ids=partner_ids)
     return {"message": f"Reports sent to {sent} partner(s), {failed} failed", "sent": sent, "failed": failed}
 
 
@@ -140,3 +141,23 @@ async def get_report_history(current_user: dict = Depends(get_current_user)):
     """Get last 50 report send logs"""
     logs = await db.partner_report_logs.find({}, {'_id': 0}).sort('sent_at', -1).to_list(50)
     return logs
+
+
+@router.get("/partner-reports/settings")
+async def get_report_settings(current_user: dict = Depends(get_current_user)):
+    doc = await db.partner_report_settings.find_one({}, {'_id': 0})
+    return doc or {'auto_weekly': True, 'auto_monthly': True}
+
+
+@router.put("/partner-reports/settings")
+async def update_report_settings(data: dict, current_user: dict = Depends(get_current_user)):
+    if current_user.get('role') != 'admin':
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {}
+    if 'auto_weekly' in data:
+        update['auto_weekly'] = bool(data['auto_weekly'])
+    if 'auto_monthly' in data:
+        update['auto_monthly'] = bool(data['auto_monthly'])
+    await db.partner_report_settings.update_one({}, {'$set': update}, upsert=True)
+    return await db.partner_report_settings.find_one({}, {'_id': 0}) or update
+
